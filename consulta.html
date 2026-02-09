@@ -13,16 +13,12 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
-    <style>
-        @font-face {
-            font-family: 'Foster';
-            src: url('Foster_Light.otf') format('opentype'),
-                 url('Foster_Light.ttf') format('truetype');
-            font-weight: normal;
-            font-style: normal;
-            font-display: swap;
-        }
+    <!-- Inter Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
+    <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         :root {
@@ -79,7 +75,7 @@
         .icon svg { width: 100%; height: 100%; }
 
         body {
-            font-family: 'Foster', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             background: var(--bg-primary);
             color: var(--text-primary);
             line-height: 1.5;
@@ -112,8 +108,9 @@
 
         .sidebar-logo h1 {
             font-size: 18px;
-            font-weight: 600;
+            font-weight: 700;
             color: #FFFFFF;
+            letter-spacing: -0.3px;
         }
 
         .sidebar-logo span {
@@ -197,6 +194,7 @@
             display: flex;
             align-items: center;
             gap: 8px;
+            letter-spacing: -0.1px;
         }
 
         .card-title-icon {
@@ -223,6 +221,7 @@
 
         .stat-card-title {
             font-size: 11px;
+            font-weight: 600;
             color: var(--text-muted);
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -231,8 +230,9 @@
 
         .stat-card-value {
             font-size: 24px;
-            font-weight: 600;
+            font-weight: 700;
             color: var(--text-primary);
+            letter-spacing: -0.5px;
         }
 
         .stat-card-subtitle {
@@ -259,7 +259,7 @@
 
         .table th {
             background: var(--bg-tertiary);
-            font-weight: 500;
+            font-weight: 600;
             font-size: 11px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -402,8 +402,9 @@
 
         .product-quantity {
             font-size: 24px;
-            font-weight: 600;
+            font-weight: 700;
             color: var(--text-primary);
+            letter-spacing: -0.5px;
         }
 
         .product-footer {
@@ -461,11 +462,13 @@
             font-size: 16px;
             font-weight: 600;
             margin-bottom: 4px;
+            letter-spacing: -0.2px;
         }
 
         .modal-subtitle {
             color: var(--text-muted);
             font-size: 13px;
+            font-weight: 400;
             margin-bottom: 20px;
         }
 
@@ -542,18 +545,19 @@
         }
 
         .page-title {
-            font-family: 'Foster', sans-serif;
-            font-size: 36px;
-            font-weight: normal;
+            font-size: 28px;
+            font-weight: 700;
             color: var(--text-primary);
-            text-transform: lowercase;
-            letter-spacing: 0.3px;
+            letter-spacing: -0.5px;
+            line-height: 1.2;
         }
 
         .page-subtitle {
             color: var(--text-muted);
-            font-size: 13px;
+            font-size: 14px;
+            font-weight: 400;
             margin-top: 4px;
+            line-height: 1.5;
         }
 
         /* ===================== RESPONSIVE ===================== */
@@ -919,7 +923,7 @@
             return (
                 <div>
                     <div className="page-header">
-                        <h1 className="page-title">consulta de estoque_</h1>
+                        <h1 className="page-title">Consulta de Estoque</h1>
                         <p className="page-subtitle">Visualize os produtos disponíveis</p>
                     </div>
 
@@ -1161,7 +1165,7 @@
             return (
                 <div>
                     <div className="page-header">
-                        <h1 className="page-title">consulta de despachos_</h1>
+                        <h1 className="page-title">Consulta de Despachos</h1>
                         <p className="page-subtitle">Visualize os despachos e rastreamentos</p>
                     </div>
 
@@ -1325,7 +1329,7 @@
             return (
                 <div>
                     <div className="page-header">
-                        <h1 className="page-title">histórico de movimentações_</h1>
+                        <h1 className="page-title">Histórico de Movimentações</h1>
                         <p className="page-subtitle">Visualize todas as entradas e saídas</p>
                     </div>
 

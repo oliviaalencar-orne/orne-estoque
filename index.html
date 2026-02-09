@@ -24,16 +24,12 @@
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     </script>
     
-    <style>
-        @font-face {
-            font-family: 'Foster';
-            src: url('Foster_Light.otf') format('opentype'),
-                 url('Foster_Light.ttf') format('truetype');
-            font-weight: normal;
-            font-style: normal;
-            font-display: swap;
-        }
+    <!-- Inter Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
+    <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         :root {
@@ -112,7 +108,7 @@
         }
 
         body {
-            font-family: 'Foster', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             background: var(--bg-primary);
             color: var(--text-primary);
             line-height: 1.5;
@@ -153,8 +149,8 @@
         }
 
         .login-logo { max-width: 100px; margin-bottom: 24px; }
-        .login-title { font-size: 24px; font-weight: 600; margin-bottom: 8px; color: var(--text-primary); }
-        .login-subtitle { color: var(--text-muted); margin-bottom: 32px; font-size: 13px; }
+        .login-title { font-size: 24px; font-weight: 700; margin-bottom: 8px; color: var(--text-primary); letter-spacing: -0.3px; }
+        .login-subtitle { color: var(--text-muted); margin-bottom: 32px; font-size: 14px; font-weight: 400; line-height: 1.5; }
 
         .login-form { display: flex; flex-direction: column; gap: 16px; }
         .login-form .form-group { text-align: left; margin-bottom: 0; }
@@ -289,7 +285,7 @@
             color: rgba(255,255,255,0.5);
             margin-bottom: 10px;
             word-break: break-all;
-            font-weight: 300;
+            font-weight: 400;
         }
 
         .btn-logout {
@@ -345,11 +341,11 @@
         .nav-icon svg { width: 16px; height: 16px; }
 
         .nav-section {
-            font-size: 10px;
-            font-weight: 500;
+            font-size: 11px;
+            font-weight: 600;
             color: rgba(255,255,255,0.25);
             text-transform: uppercase;
-            letter-spacing: 1.5px;
+            letter-spacing: 0.8px;
             padding: 18px 12px 6px;
             margin-top: 2px;
         }
@@ -403,22 +399,24 @@
         }
 
         .page-title {
-            font-family: 'Foster', sans-serif;
-            font-size: 36px;
-            font-weight: normal;
+            font-size: 28px;
+            font-weight: 700;
             color: var(--text-primary);
             margin-bottom: 4px;
-            letter-spacing: 0.3px;
-            text-transform: lowercase;
+            letter-spacing: -0.5px;
+            line-height: 1.2;
         }
 
         .page-subtitle {
             font-size: 14px;
+            font-weight: 400;
             color: var(--text-muted);
+            line-height: 1.5;
         }
 
         .page-greeting {
             font-size: 13px;
+            font-weight: 400;
             color: var(--text-secondary);
             margin-bottom: 4px;
         }
@@ -442,6 +440,7 @@
             font-weight: 600;
             color: var(--text-primary);
             margin-bottom: 16px;
+            letter-spacing: -0.1px;
             display: flex;
             align-items: center;
             gap: 8px;
@@ -546,9 +545,8 @@
         }
 
         .stat-value {
-            font-family: 'Foster', sans-serif;
             font-size: 28px;
-            font-weight: 600;
+            font-weight: 700;
             color: var(--text-primary);
             line-height: 1.1;
             margin-bottom: 2px;
@@ -558,7 +556,7 @@
         .stat-label {
             font-size: 13px;
             color: var(--text-muted);
-            font-weight: 400;
+            font-weight: 500;
         }
 
         .stat-card.warning { border-left: 3px solid var(--warning); }
@@ -610,9 +608,8 @@
         }
 
         .category-count {
-            font-family: 'Foster', sans-serif;
             font-size: 26px;
-            font-weight: 600;
+            font-weight: 700;
             margin-bottom: 2px;
             letter-spacing: -0.5px;
         }
@@ -965,11 +962,11 @@
         }
 
         .product-quantity {
-            font-family: 'Foster', sans-serif;
-            font-size: 34px;
-            font-weight: 600;
+            font-size: 32px;
+            font-weight: 700;
             color: var(--text-primary);
             margin: 12px 0 6px;
+            letter-spacing: -0.5px;
         }
 
         .product-status {
@@ -998,7 +995,7 @@
             text-align: left;
             padding: 8px 12px;
             background: var(--bg-tertiary);
-            font-weight: 500;
+            font-weight: 600;
             color: var(--text-secondary);
             font-size: 11px;
             text-transform: uppercase;
@@ -1061,10 +1058,12 @@
             display: flex;
             align-items: center;
             gap: 8px;
+            letter-spacing: -0.2px;
         }
 
         .modal-subtitle {
             font-size: 13px;
+            font-weight: 400;
             color: var(--text-muted);
             margin-bottom: 20px;
         }
@@ -1825,11 +1824,11 @@
                                 y: { 
                                     beginAtZero: true, 
                                     grid: { color: '#F3F0EC', drawBorder: false },
-                                    ticks: { font: { size: 11, family: 'Foster' }, color: '#7A7585' }
+                                    ticks: { font: { size: 11, family: 'Inter' }, color: '#7A7585' }
                                 },
                                 x: { 
                                     grid: { display: false }, 
-                                    ticks: { font: { size: 10, family: 'Foster' }, color: '#7A7585' }
+                                    ticks: { font: { size: 10, family: 'Inter' }, color: '#7A7585' }
                                 }
                             }
                         }
@@ -1851,7 +1850,7 @@
                                 <p style={{fontSize: '14px', color: 'var(--text-muted)', marginBottom: '4px'}}>
                                     {saudacao}! 👋
                                 </p>
-                                <h1 className="page-title">dashboard_</h1>
+                                <h1 className="page-title">Dashboard</h1>
                                 <p className="page-subtitle">Visão geral do seu estoque em tempo real</p>
                             </div>
                             <div style={{display: 'flex', gap: '12px'}}>
@@ -2097,9 +2096,9 @@
                                         </div>
                                         <div style={{textAlign: 'right'}}>
                                             <div style={{
-                                                fontFamily: "'Foster', sans-serif",
-                                                fontWeight: '600',
+                                                fontWeight: '700',
                                                 fontSize: '22px',
+                                                letterSpacing: '-0.5px',
                                                 color: 'var(--accent)'
                                             }}>
                                                 {p.currentQuantity.toLocaleString('pt-BR')}
@@ -2197,7 +2196,7 @@
             return (
                 <div>
                     <div className="page-header">
-                        <h1 className="page-title">estoque_</h1>
+                        <h1 className="page-title">Estoque</h1>
                         <p className="page-subtitle">Visualize e gerencie seus produtos</p>
                     </div>
 
@@ -2585,7 +2584,7 @@
             return (
                 <div>
                     <div className="page-header">
-                        <h1 className="page-title">cadastrar_</h1>
+                        <h1 className="page-title">Cadastrar</h1>
                         <p className="page-subtitle">Adicione novos produtos ao estoque</p>
                     </div>
 
@@ -2799,7 +2798,7 @@
             return (
                 <div>
                     <div className="page-header">
-                        <h1 className="page-title">categorias_</h1>
+                        <h1 className="page-title">Categorias</h1>
                         <p className="page-subtitle">Organize seus produtos por categorias</p>
                     </div>
 
@@ -3029,7 +3028,7 @@
             return (
                 <div>
                     <div className="page-header">
-                        <h1 className="page-title">entrada_</h1>
+                        <h1 className="page-title">Entrada</h1>
                         <p className="page-subtitle">Registre entradas de produtos no estoque</p>
                     </div>
 
@@ -3507,7 +3506,7 @@
             return (
                 <div>
                     <div className="page-header">
-                        <h1 className="page-title">saída_</h1>
+                        <h1 className="page-title">Saída</h1>
                         <p className="page-subtitle">Registre saídas de produtos do estoque</p>
                     </div>
 
@@ -4695,7 +4694,7 @@
             return (
                 <div>
                     <div className="page-header">
-                        <h1 className="page-title">despachos_</h1>
+                        <h1 className="page-title">Despachos</h1>
                         <p className="page-subtitle">Gerencie o envio de notas fiscais</p>
                     </div>
 
@@ -5883,7 +5882,7 @@
             return (
                 <div>
                     <div className="page-header">
-                        <h1 className="page-title">importar_</h1>
+                        <h1 className="page-title">Importar</h1>
                         <p className="page-subtitle">Importe dados de NF-e, Excel ou CSV</p>
                     </div>
 
@@ -6738,7 +6737,7 @@
             return (
                 <div>
                     <div className="page-header">
-                        <h1 className="page-title">histórico_</h1>
+                        <h1 className="page-title">Histórico</h1>
                         <p className="page-subtitle">Movimentações de estoque</p>
                     </div>
 
