@@ -1,0 +1,1381 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orne Decor - Consulta de Estoque</title>
+    
+    <!-- Supabase SDK -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    
+    <!-- React -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <style>
+        @font-face {
+            font-family: 'Foster';
+            src: url('Foster_Light.otf') format('opentype'),
+                 url('Foster_Light.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-primary: #F7F5F2;
+            --bg-secondary: #ffffff;
+            --bg-dark: #2C2640;
+            --bg-darker: #231E35;
+            
+            --text-primary: #1E1A2E;
+            --text-secondary: #7A7585;
+            --text-muted: #AEA9B8;
+            --text-light: #D1CDD8;
+            
+            --border: #EDE9E4;
+            --border-light: #F3F0EC;
+            
+            --accent: #7B6EED;
+            --accent-light: #9B8FF3;
+            --accent-bg: #EDEAFC;
+            
+            --success: #2ECC87;
+            --success-light: #E6F9EF;
+            --warning: #F0B429;
+            --warning-light: #FFF8E6;
+            --danger: #E74C5E;
+            --danger-light: #FDECEE;
+            --info: #5B9BD5;
+            --info-light: #E8F1FA;
+            
+            --shadow-sm: 0 1px 2px rgba(30,26,46,0.04);
+            --shadow: 0 1px 3px rgba(30,26,46,0.06);
+            --shadow-md: 0 4px 6px rgba(30,26,46,0.06);
+            --shadow-lg: 0 10px 15px rgba(30,26,46,0.07);
+            
+            --radius-sm: 6px;
+            --radius: 10px;
+            --radius-lg: 14px;
+            --radius-xl: 18px;
+            
+            --transition: all 0.2s ease;
+        }
+
+        body {
+            font-family: 'Foster', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.5;
+            font-size: 15px;
+        }
+
+        /* ===================== LAYOUT ===================== */
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 240px;
+            background: linear-gradient(180deg, #A52428 0%, #8C1E22 100%);
+            color: white;
+            padding: 20px 0;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .sidebar-logo {
+            padding: 0 20px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 20px;
+        }
+
+        .sidebar-logo h1 {
+            font-size: 20px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-light), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .sidebar-logo span {
+            font-size: 11px;
+            color: var(--text-muted);
+            display: block;
+            margin-top: 4px;
+        }
+
+        .sidebar-badge {
+            display: inline-block;
+            background: var(--warning);
+            color: white;
+            font-size: 9px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            margin-left: 6px;
+            font-weight: 600;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: var(--text-light);
+            text-decoration: none;
+            transition: var(--transition);
+            cursor: pointer;
+            border: none;
+            background: none;
+            width: 100%;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        .nav-item:hover {
+            background: rgba(255,255,255,0.05);
+            color: white;
+        }
+
+        .nav-item.active {
+            background: rgba(139, 92, 246, 0.2);
+            color: var(--accent-light);
+            border-right: 3px solid var(--accent);
+        }
+
+        .nav-icon {
+            margin-right: 12px;
+            font-size: 18px;
+        }
+
+        .main-content {
+            flex: 1;
+            margin-left: 240px;
+            padding: 24px;
+            max-width: calc(100% - 240px);
+        }
+
+        /* ===================== CARDS ===================== */
+        .card {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-title-icon {
+            font-size: 20px;
+        }
+
+        /* ===================== STATS ===================== */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            box-shadow: var(--shadow);
+        }
+
+        .stat-card-title {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .stat-card-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .stat-card-subtitle {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* ===================== TABLES ===================== */
+        .table-container {
+            overflow-x: auto;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .table th,
+        .table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .table th {
+            background: var(--bg-primary);
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+        }
+
+        .table tr:hover {
+            background: var(--bg-primary);
+        }
+
+        /* ===================== BADGES ===================== */
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .badge-success { background: var(--success-light); color: var(--success); }
+        .badge-warning { background: var(--warning-light); color: var(--warning); }
+        .badge-danger { background: var(--danger-light); color: var(--danger); }
+        .badge-info { background: var(--info-light); color: var(--info); }
+
+        /* ===================== SEARCH ===================== */
+        .search-box {
+            position: relative;
+            margin-bottom: 16px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px 16px 12px 44px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font-size: 14px;
+            transition: var(--transition);
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-bg);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+        }
+
+        /* ===================== FILTERS ===================== */
+        .filter-tabs {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        .filter-tab {
+            padding: 8px 16px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: white;
+            cursor: pointer;
+            font-size: 13px;
+            transition: var(--transition);
+        }
+
+        .filter-tab:hover {
+            border-color: var(--accent);
+        }
+
+        .filter-tab.active {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+
+        /* ===================== EMPTY STATE ===================== */
+        .empty-state {
+            text-align: center;
+            padding: 48px 24px;
+            color: var(--text-muted);
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        /* ===================== PRODUCTS ===================== */
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+        }
+
+        .product-card {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-lg);
+            padding: 16px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            transition: var(--transition);
+        }
+
+        .product-card:hover {
+            box-shadow: var(--shadow-md);
+            border-color: var(--accent-light);
+        }
+
+        .product-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .product-name {
+            font-weight: 600;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .product-sku {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-family: monospace;
+        }
+
+        .product-quantity {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .product-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+        }
+
+        .product-category {
+            font-size: 11px;
+            padding: 4px 8px;
+            border-radius: 12px;
+            background: var(--bg-primary);
+        }
+
+        .product-status {
+            font-size: 11px;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-weight: 600;
+        }
+
+        .status-ok { background: var(--success-light); color: var(--success); }
+        .status-low { background: var(--warning-light); color: var(--warning); }
+        .status-empty { background: var(--danger-light); color: var(--danger); }
+
+        /* ===================== MODAL ===================== */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            max-width: 600px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .modal-subtitle {
+            color: var(--text-muted);
+            font-size: 13px;
+            margin-bottom: 20px;
+        }
+
+        /* ===================== BUTTONS ===================== */
+        .btn {
+            padding: 10px 20px;
+            border-radius: var(--radius);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-light);
+        }
+
+        .btn-secondary {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        /* ===================== LOADING ===================== */
+        .loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: var(--bg-primary);
+        }
+
+        .loading-spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* ===================== PAGE HEADER ===================== */
+        .page-header {
+            margin-bottom: 24px;
+        }
+
+        .page-title {
+            font-family: 'Foster', sans-serif;
+            font-size: 42px;
+            font-weight: normal;
+            color: var(--text-primary);
+            text-transform: lowercase;
+            letter-spacing: 0.5px;
+        }
+
+        .page-subtitle {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-top: 4px;
+        }
+
+        /* ===================== RESPONSIVE ===================== */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                height: auto;
+                position: relative;
+            }
+
+            .main-content {
+                margin-left: 0;
+                max-width: 100%;
+            }
+
+            .app-container {
+                flex-direction: column;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .product-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Supabase Config
+        const SUPABASE_URL = 'https://ppslljqxsdsdmwfiayok.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBwc2xsanF4c2RzZG13ZmlheW9rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA2NDUzNjQsImV4cCI6MjA4NjIyMTM2NH0.-7oJxDaw2nwc2uN410OGwavefzjZ-AjfmkK8QxpB7cM';
+
+        let supabaseClient;
+        try {
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        } catch (error) {
+            console.error('Erro ao inicializar Supabase:', error);
+        }
+
+        // Mapeamento snake_case -> camelCase para leitura
+        const mapProductFromDB = (row) => ({
+            id: row.id, name: row.name, sku: row.sku, ean: row.ean || '',
+            category: row.category || '', minStock: row.min_stock || 3,
+            observations: row.observations || '', nfOrigem: row.nf_origem || '',
+            createdAt: row.created_at
+        });
+        const mapEntryFromDB = (row) => ({
+            id: row.id, type: row.type, sku: row.sku, quantity: row.quantity,
+            supplier: row.supplier || '', nf: row.nf || '', localEntrada: row.local_entrada || '',
+            date: row.date, userId: row.user_id || ''
+        });
+        const mapExitFromDB = (row) => ({
+            id: row.id, type: row.type, sku: row.sku, quantity: row.quantity,
+            client: row.client || '', nf: row.nf || '', nfOrigem: row.nf_origem || '',
+            date: row.date, userId: row.user_id || ''
+        });
+        const mapShippingFromDB = (row) => ({
+            id: row.id, nfNumero: row.nf_numero || '', cliente: row.cliente || '',
+            destino: row.destino || '', localOrigem: row.local_origem || '',
+            transportadora: row.transportadora || '', codigoRastreio: row.codigo_rastreio || '',
+            linkRastreio: row.link_rastreio || '', melhorEnvioId: row.melhor_envio_id || '',
+            produtos: row.produtos || [], observacoes: row.observacoes || '',
+            status: row.status || 'PENDENTE', date: row.date, userId: row.user_id || ''
+        });
+
+        // ==========================================
+        // APP PRINCIPAL (CONSULTA)
+        // ==========================================
+        function App() {
+            const [loading, setLoading] = useState(true);
+            const [error, setError] = useState(null);
+            const [authenticated, setAuthenticated] = useState(false);
+            const [products, setProducts] = useState([]);
+            const [categories, setCategories] = useState([]);
+            const [entries, setEntries] = useState([]);
+            const [exits, setExits] = useState([]);
+            const [shippings, setShippings] = useState([]);
+            const [activeTab, setActiveTab] = useState('stock');
+            const [searchTerm, setSearchTerm] = useState('');
+
+            // Autenticação anônima via Supabase
+            useEffect(() => {
+                if (!supabaseClient) {
+                    setError('Erro ao conectar com Supabase');
+                    setLoading(false);
+                    return;
+                }
+
+                supabaseClient.auth.signInAnonymously()
+                    .then(({ data, error: authError }) => {
+                        if (authError) {
+                            console.error('Erro na autenticação anônima:', authError);
+                            setError('Erro ao autenticar. Tente recarregar a página.');
+                            setLoading(false);
+                        } else {
+                            setAuthenticated(true);
+                        }
+                    });
+            }, []);
+
+            // Carregar dados do Supabase (só após autenticação)
+            useEffect(() => {
+                if (!authenticated || !supabaseClient) return;
+
+                let loadedCount = 0;
+                const totalRefs = 5;
+                const channels = [];
+
+                const checkLoaded = () => {
+                    loadedCount++;
+                    if (loadedCount >= totalRefs) {
+                        setLoading(false);
+                    }
+                };
+
+                const handleError = (err) => {
+                    console.error('Erro ao carregar dados:', err);
+                    setError('Erro ao carregar dados: ' + err.message);
+                    setLoading(false);
+                };
+
+                const setupCollection = (table, setState, transform) => {
+                    supabaseClient.from(table).select('*').then(({ data, error }) => {
+                        if (error) { handleError(error); return; }
+                        setState(transform ? data.map(transform) : data);
+                        checkLoaded();
+                    });
+                    const ch = supabaseClient
+                        .channel(table + '-consulta')
+                        .on('postgres_changes',
+                            { event: '*', schema: 'public', table: table },
+                            (payload) => {
+                                const { eventType, new: newRec, old: oldRec } = payload;
+                                setState(prev => {
+                                    let updated = [...prev];
+                                    const item = transform ? transform(newRec) : newRec;
+                                    if (eventType === 'INSERT') updated.push(item);
+                                    else if (eventType === 'UPDATE') {
+                                        const idx = updated.findIndex(i => i.id === item.id);
+                                        if (idx >= 0) updated[idx] = item; else updated.push(item);
+                                    } else if (eventType === 'DELETE') {
+                                        updated = updated.filter(i => i.id !== (oldRec && oldRec.id));
+                                    }
+                                    return updated;
+                                });
+                            }
+                        ).subscribe();
+                    channels.push(ch);
+                };
+
+                try {
+                    setupCollection('products', setProducts, mapProductFromDB);
+                    setupCollection('categories', setCategories, null);
+                    setupCollection('entries', setEntries, mapEntryFromDB);
+                    setupCollection('exits', setExits, mapExitFromDB);
+                    setupCollection('shippings', setShippings, mapShippingFromDB);
+                } catch (err) {
+                    handleError(err);
+                }
+
+                return () => {
+                    channels.forEach(ch => supabaseClient.removeChannel(ch));
+                };
+            }, [authenticated]);
+
+            // Calcular estoque
+            const calculateStock = (sku) => {
+                const totalEntries = entries.filter(e => e.sku === sku).reduce((sum, e) => sum + parseInt(e.quantity), 0);
+                const totalExits = exits.filter(e => e.sku === sku).reduce((sum, e) => sum + parseInt(e.quantity), 0);
+                return totalEntries - totalExits;
+            };
+
+            const getCurrentStock = () => products.map(p => ({
+                ...p,
+                currentQuantity: calculateStock(p.sku),
+                status: (() => {
+                    const qty = calculateStock(p.sku);
+                    const min = p.minStock || 3;
+                    return qty === 0 ? 'empty' : qty < min ? 'low' : 'ok';
+                })()
+            }));
+
+            const currentStock = getCurrentStock();
+
+            if (loading) {
+                return (
+                    <div className="loading-container">
+                        <div className="loading-spinner"></div>
+                        <p style={{marginTop: '16px', color: 'var(--text-muted)'}}>Carregando dados...</p>
+                    </div>
+                );
+            }
+
+            if (error) {
+                return (
+                    <div className="loading-container">
+                        <div style={{fontSize: '48px', marginBottom: '16px'}}>⚠️</div>
+                        <h2 style={{color: 'var(--danger)', marginBottom: '8px'}}>Erro de Conexão</h2>
+                        <p style={{color: 'var(--text-muted)', marginBottom: '16px'}}>{error}</p>
+                        <button 
+                            onClick={() => window.location.reload()} 
+                            style={{
+                                padding: '10px 20px',
+                                background: 'var(--accent)',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: 'var(--radius)',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            🔄 Tentar Novamente
+                        </button>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="app-container">
+                    {/* Sidebar */}
+                    <div className="sidebar">
+                        <div className="sidebar-logo">
+                            <h1>Orne Decor</h1>
+                            <span>Consulta de Estoque <span className="sidebar-badge">LEITURA</span></span>
+                        </div>
+
+                        <nav>
+                            <button className={`nav-item ${activeTab === 'stock' ? 'active' : ''}`} onClick={() => setActiveTab('stock')}>
+                                <span className="nav-icon">📦</span>Estoque
+                            </button>
+                            <button className={`nav-item ${activeTab === 'shipping' ? 'active' : ''}`} onClick={() => setActiveTab('shipping')}>
+                                <span className="nav-icon">🚚</span>Despachos
+                            </button>
+                            <button className={`nav-item ${activeTab === 'history' ? 'active' : ''}`} onClick={() => setActiveTab('history')}>
+                                <span className="nav-icon">📋</span>Histórico
+                            </button>
+                        </nav>
+
+                        <div style={{padding: '20px', marginTop: 'auto', borderTop: '1px solid rgba(255,255,255,0.1)'}}>
+                            <div style={{fontSize: '11px', color: 'var(--text-muted)'}}>
+                                ⚠️ Modo somente leitura
+                            </div>
+                            <a 
+                                href="index.html" 
+                                style={{
+                                    display: 'block',
+                                    marginTop: '12px',
+                                    padding: '10px',
+                                    background: 'rgba(255,255,255,0.1)',
+                                    borderRadius: 'var(--radius)',
+                                    color: 'var(--accent-light)',
+                                    textDecoration: 'none',
+                                    fontSize: '12px',
+                                    textAlign: 'center'
+                                }}
+                            >
+                                🔐 Acessar versão completa
+                            </a>
+                        </div>
+                    </div>
+
+                    {/* Main Content */}
+                    <div className="main-content">
+                        {activeTab === 'stock' && (
+                            <StockView 
+                                stock={currentStock} 
+                                categories={categories}
+                                searchTerm={searchTerm}
+                                setSearchTerm={setSearchTerm}
+                                entries={entries}
+                                exits={exits}
+                            />
+                        )}
+                        {activeTab === 'shipping' && (
+                            <ShippingView 
+                                shippings={shippings}
+                            />
+                        )}
+                        {activeTab === 'history' && (
+                            <HistoryView 
+                                entries={entries}
+                                exits={exits}
+                                products={products}
+                            />
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        // ==========================================
+        // ESTOQUE (SOMENTE LEITURA)
+        // ==========================================
+        function StockView({ stock, categories, searchTerm, setSearchTerm, entries, exits }) {
+            const [categoryFilter, setCategoryFilter] = useState('all');
+            const [historyProduct, setHistoryProduct] = useState(null);
+
+            const getCategoryName = (catId) => {
+                const cat = categories.find(c => c.id === catId);
+                return cat ? `${cat.icon || '📦'} ${cat.name}` : 'Sem categoria';
+            };
+
+            const filtered = stock
+                .filter(p => categoryFilter === 'all' || p.category === categoryFilter)
+                .filter(p => {
+                    if (!searchTerm) return true;
+                    const search = searchTerm.toLowerCase();
+                    return (p.name || '').toLowerCase().includes(search) ||
+                           (p.sku || '').toLowerCase().includes(search);
+                })
+                .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+            const getProductHistory = (sku) => {
+                const productEntries = (entries || []).filter(e => e.sku === sku).map(e => ({...e, movimento: 'ENTRADA'}));
+                const productExits = (exits || []).filter(e => e.sku === sku).map(e => ({...e, movimento: 'SAÍDA'}));
+                return [...productEntries, ...productExits].sort((a, b) => new Date(b.date) - new Date(a.date));
+            };
+
+            const formatDate = (dateStr) => {
+                if (!dateStr) return '-';
+                const date = new Date(dateStr);
+                return date.toLocaleDateString('pt-BR') + ' ' + date.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'});
+            };
+
+            // Stats
+            const totalProducts = stock.length;
+            const totalUnits = stock.reduce((sum, p) => sum + (p.currentQuantity || 0), 0);
+            const lowStock = stock.filter(p => p.status === 'low').length;
+            const emptyStock = stock.filter(p => p.status === 'empty').length;
+
+            return (
+                <div>
+                    <div className="page-header">
+                        <h1 className="page-title">consulta de estoque_</h1>
+                        <p className="page-subtitle">Visualize os produtos disponíveis</p>
+                    </div>
+
+                    {/* Stats */}
+                    <div className="stats-grid">
+                        <div className="stat-card">
+                            <div className="stat-card-title">Total de Produtos</div>
+                            <div className="stat-card-value">{totalProducts}</div>
+                        </div>
+                        <div className="stat-card">
+                            <div className="stat-card-title">Total de Unidades</div>
+                            <div className="stat-card-value">{totalUnits}</div>
+                        </div>
+                        <div className="stat-card">
+                            <div className="stat-card-title">Estoque Baixo</div>
+                            <div className="stat-card-value" style={{color: 'var(--warning)'}}>{lowStock}</div>
+                        </div>
+                        <div className="stat-card">
+                            <div className="stat-card-title">Sem Estoque</div>
+                            <div className="stat-card-value" style={{color: 'var(--danger)'}}>{emptyStock}</div>
+                        </div>
+                    </div>
+
+                    {/* Modal de Histórico */}
+                    {historyProduct && (
+                        <div className="modal-overlay">
+                            <div className="modal-content" style={{maxWidth: '800px'}}>
+                                <h2 className="modal-title">📋 Histórico de Movimentações</h2>
+                                <p className="modal-subtitle">{historyProduct.name}</p>
+
+                                <div style={{background: 'var(--bg-primary)', padding: '12px', borderRadius: 'var(--radius)', marginBottom: '16px'}}>
+                                    <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '13px'}}>
+                                        <div><strong>SKU:</strong> {historyProduct.sku}</div>
+                                        <div><strong>Estoque Atual:</strong> {historyProduct.currentQuantity} un.</div>
+                                    </div>
+                                </div>
+
+                                {(() => {
+                                    const history = getProductHistory(historyProduct.sku);
+                                    if (history.length === 0) {
+                                        return (
+                                            <div style={{textAlign: 'center', padding: '24px', color: 'var(--text-muted)'}}>
+                                                Nenhuma movimentação registrada
+                                            </div>
+                                        );
+                                    }
+                                    return (
+                                        <div className="table-container" style={{maxHeight: '350px', overflowY: 'auto'}}>
+                                            <table className="table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Data</th>
+                                                        <th>Tipo</th>
+                                                        <th>Qtd</th>
+                                                        <th>NF Entrada</th>
+                                                        <th>NF Saída</th>
+                                                        <th>Fornecedor/Cliente</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {history.map((mov, idx) => (
+                                                        <tr key={idx}>
+                                                            <td style={{fontSize: '11px', whiteSpace: 'nowrap'}}>{formatDate(mov.date)}</td>
+                                                            <td>
+                                                                <span style={{
+                                                                    background: mov.movimento === 'ENTRADA' ? 'var(--success-light)' : 'var(--danger-light)',
+                                                                    color: mov.movimento === 'ENTRADA' ? 'var(--success)' : 'var(--danger)',
+                                                                    padding: '2px 8px',
+                                                                    borderRadius: '10px',
+                                                                    fontSize: '10px',
+                                                                    fontWeight: '600'
+                                                                }}>
+                                                                    {mov.movimento}
+                                                                </span>
+                                                            </td>
+                                                            <td style={{fontWeight: '600'}}>{mov.quantity}</td>
+                                                            <td style={{fontFamily: 'monospace', fontSize: '11px'}}>
+                                                                {mov.movimento === 'ENTRADA' ? (mov.nf || '-') : (mov.nfOrigem || '-')}
+                                                            </td>
+                                                            <td style={{fontFamily: 'monospace', fontSize: '11px'}}>
+                                                                {mov.movimento === 'SAÍDA' ? (mov.nf || '-') : '-'}
+                                                            </td>
+                                                            <td style={{fontSize: '12px'}}>{mov.supplier || mov.client || '-'}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    );
+                                })()}
+
+                                {/* Resumo por NF */}
+                                {(() => {
+                                    const history = getProductHistory(historyProduct.sku);
+                                    const entradas = history.filter(h => h.movimento === 'ENTRADA');
+                                    const saidas = history.filter(h => h.movimento === 'SAÍDA');
+                                    
+                                    const saldoPorNF = {};
+                                    entradas.forEach(e => {
+                                        const nfKey = e.nf || 'SEM_NF';
+                                        if (!saldoPorNF[nfKey]) saldoPorNF[nfKey] = { entradas: 0, saidas: 0 };
+                                        saldoPorNF[nfKey].entradas += e.quantity;
+                                    });
+                                    saidas.forEach(s => {
+                                        const nfKey = s.nfOrigem || 'SEM_NF';
+                                        if (!saldoPorNF[nfKey]) saldoPorNF[nfKey] = { entradas: 0, saidas: 0 };
+                                        saldoPorNF[nfKey].saidas += s.quantity;
+                                    });
+                                    
+                                    const nfsComSaldo = Object.entries(saldoPorNF).filter(([nf, dados]) => dados.entradas - dados.saidas > 0);
+                                    
+                                    if (nfsComSaldo.length === 0) return null;
+                                    
+                                    return (
+                                        <div style={{marginTop: '16px', padding: '12px', background: 'var(--info-light)', borderRadius: 'var(--radius)'}}>
+                                            <div style={{fontWeight: '600', marginBottom: '8px', fontSize: '13px'}}>📦 Estoque por NF de Entrada:</div>
+                                            <div style={{display: 'flex', flexWrap: 'wrap', gap: '8px'}}>
+                                                {nfsComSaldo.map(([nf, dados]) => (
+                                                    <div key={nf} style={{
+                                                        background: 'white',
+                                                        padding: '6px 12px',
+                                                        borderRadius: 'var(--radius)',
+                                                        fontSize: '12px'
+                                                    }}>
+                                                        <strong>NF {nf === 'SEM_NF' ? '(sem NF)' : nf}:</strong> {dados.entradas - dados.saidas} un.
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
+
+                                <div className="btn-group" style={{marginTop: '16px'}}>
+                                    <button className="btn btn-secondary" onClick={() => setHistoryProduct(null)}>Fechar</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Filtros */}
+                    <div className="card">
+                        <div className="filter-tabs">
+                            <button
+                                className={`filter-tab ${categoryFilter === 'all' ? 'active' : ''}`}
+                                onClick={() => setCategoryFilter('all')}
+                            >
+                                Todas ({stock.length})
+                            </button>
+                            {categories.map(cat => (
+                                <button
+                                    key={cat.id}
+                                    className={`filter-tab ${categoryFilter === cat.id ? 'active' : ''}`}
+                                    onClick={() => setCategoryFilter(cat.id)}
+                                >
+                                    {cat.icon} {cat.name} ({stock.filter(p => p.category === cat.id).length})
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="search-box">
+                            <span className="search-icon">🔍</span>
+                            <input
+                                type="text"
+                                className="search-input"
+                                placeholder="Buscar por nome ou SKU..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Lista de Produtos */}
+                    <div className="product-grid">
+                        {filtered.map(p => (
+                            <div key={p.id} className="product-card">
+                                <div className="product-header">
+                                    <div>
+                                        <div className="product-name">{p.name}</div>
+                                        <div className="product-sku">SKU: {p.sku}</div>
+                                    </div>
+                                    <div className="product-quantity">{p.currentQuantity}</div>
+                                </div>
+                                <div className="product-footer">
+                                    <span className="product-category">{getCategoryName(p.category)}</span>
+                                    <div style={{display: 'flex', gap: '8px', alignItems: 'center'}}>
+                                        <span className={`product-status status-${p.status}`}>
+                                            {p.status === 'ok' ? '✓ OK' : p.status === 'low' ? '⚠ Baixo' : '✖ Vazio'}
+                                        </span>
+                                        <button 
+                                            className="btn btn-secondary" 
+                                            style={{padding: '4px 8px', fontSize: '12px'}}
+                                            onClick={() => setHistoryProduct(p)}
+                                            title="Ver histórico"
+                                        >
+                                            📋
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {filtered.length === 0 && (
+                        <div className="empty-state">
+                            <div className="empty-state-icon">📦</div>
+                            <h3>Nenhum produto encontrado</h3>
+                            <p>Tente ajustar os filtros</p>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // ==========================================
+        // DESPACHOS (SOMENTE LEITURA)
+        // ==========================================
+        function ShippingView({ shippings }) {
+            const [searchTerm, setSearchTerm] = useState('');
+            const [statusFilter, setStatusFilter] = useState('all');
+
+            const statusList = {
+                'PENDENTE': { label: '🟡 Pendente', color: 'var(--warning)' },
+                'EM_TRANSITO': { label: '🔵 Em trânsito', color: 'var(--info)' },
+                'ENTREGUE': { label: '✅ Entregue', color: 'var(--success)' },
+                'PROBLEMA': { label: '❌ Problema', color: 'var(--danger)' }
+            };
+
+            const filtered = shippings
+                .filter(s => statusFilter === 'all' || s.status === statusFilter)
+                .filter(s => {
+                    if (!searchTerm) return true;
+                    const search = searchTerm.toLowerCase();
+                    return (s.nfNumero || '').toLowerCase().includes(search) ||
+                           (s.cliente || '').toLowerCase().includes(search) ||
+                           (s.codigoRastreio || '').toLowerCase().includes(search);
+                })
+                .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+            return (
+                <div>
+                    <div className="page-header">
+                        <h1 className="page-title">consulta de despachos_</h1>
+                        <p className="page-subtitle">Visualize os despachos e rastreamentos</p>
+                    </div>
+
+                    {/* Stats */}
+                    <div className="stats-grid">
+                        <div className="stat-card">
+                            <div className="stat-card-title">Total</div>
+                            <div className="stat-card-value">{shippings.length}</div>
+                        </div>
+                        <div className="stat-card">
+                            <div className="stat-card-title">Pendentes</div>
+                            <div className="stat-card-value" style={{color: 'var(--warning)'}}>
+                                {shippings.filter(s => s.status === 'PENDENTE').length}
+                            </div>
+                        </div>
+                        <div className="stat-card">
+                            <div className="stat-card-title">Em Trânsito</div>
+                            <div className="stat-card-value" style={{color: 'var(--info)'}}>
+                                {shippings.filter(s => s.status === 'EM_TRANSITO').length}
+                            </div>
+                        </div>
+                        <div className="stat-card">
+                            <div className="stat-card-title">Entregues</div>
+                            <div className="stat-card-value" style={{color: 'var(--success)'}}>
+                                {shippings.filter(s => s.status === 'ENTREGUE').length}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="card">
+                        {/* Filtros */}
+                        <div style={{display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap'}}>
+                            <div className="search-box" style={{flex: 1, minWidth: '200px', marginBottom: 0}}>
+                                <span className="search-icon">🔍</span>
+                                <input
+                                    type="text"
+                                    className="search-input"
+                                    placeholder="Buscar por NF, cliente ou rastreio..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="filter-tabs" style={{marginBottom: '16px'}}>
+                            <button className={`filter-tab ${statusFilter === 'all' ? 'active' : ''}`} onClick={() => setStatusFilter('all')}>
+                                Todos ({shippings.length})
+                            </button>
+                            {Object.entries(statusList).map(([key, val]) => (
+                                <button 
+                                    key={key}
+                                    className={`filter-tab ${statusFilter === key ? 'active' : ''}`}
+                                    onClick={() => setStatusFilter(key)}
+                                >
+                                    {val.label} ({shippings.filter(s => s.status === key).length})
+                                </button>
+                            ))}
+                        </div>
+
+                        {filtered.length === 0 ? (
+                            <div className="empty-state">
+                                <div className="empty-state-icon">🚚</div>
+                                <h3>Nenhum despacho encontrado</h3>
+                            </div>
+                        ) : (
+                            <div className="table-container">
+                                <table className="table">
+                                    <thead>
+                                        <tr>
+                                            <th>NF</th>
+                                            <th>Cliente</th>
+                                            <th>Destino</th>
+                                            <th>Transportadora</th>
+                                            <th>Rastreio</th>
+                                            <th>Status</th>
+                                            <th>Data</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {filtered.map(s => (
+                                            <tr key={s.id}>
+                                                <td style={{fontWeight: '600'}}>{s.nfNumero}</td>
+                                                <td>{s.cliente || '-'}</td>
+                                                <td style={{maxWidth: '200px', fontSize: '12px'}}>
+                                                    {s.destino?.substring(0, 50)}{s.destino?.length > 50 ? '...' : ''}
+                                                </td>
+                                                <td>{s.transportadora || '-'}</td>
+                                                <td>
+                                                    {s.codigoRastreio ? (
+                                                        s.linkRastreio ? (
+                                                            <a 
+                                                                href={s.linkRastreio} 
+                                                                target="_blank" 
+                                                                rel="noopener noreferrer"
+                                                                style={{color: 'var(--accent)', fontFamily: 'monospace', fontSize: '12px'}}
+                                                            >
+                                                                {s.codigoRastreio}
+                                                            </a>
+                                                        ) : (
+                                                            <span style={{fontFamily: 'monospace', fontSize: '12px'}}>{s.codigoRastreio}</span>
+                                                        )
+                                                    ) : '-'}
+                                                </td>
+                                                <td>
+                                                    <span className={`badge ${
+                                                        s.status === 'ENTREGUE' ? 'badge-success' :
+                                                        s.status === 'EM_TRANSITO' ? 'badge-info' :
+                                                        s.status === 'PROBLEMA' ? 'badge-danger' : 'badge-warning'
+                                                    }`}>
+                                                        {statusList[s.status]?.label || s.status}
+                                                    </span>
+                                                </td>
+                                                <td style={{fontSize: '12px', whiteSpace: 'nowrap'}}>
+                                                    {s.createdAt ? new Date(s.createdAt).toLocaleDateString('pt-BR') : '-'}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        // ==========================================
+        // HISTÓRICO (SOMENTE LEITURA)
+        // ==========================================
+        function HistoryView({ entries, exits, products }) {
+            const [filter, setFilter] = useState('all');
+            const [searchTerm, setSearchTerm] = useState('');
+
+            const allMovements = [
+                ...entries.map(e => ({...e, movType: 'entry'})),
+                ...exits.map(e => ({...e, movType: 'exit'}))
+            ].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            const getProductName = (sku) => products.find(p => p.sku === sku)?.name || sku;
+
+            // Filtrar por tipo e busca
+            const filtered = allMovements.filter(m => {
+                const matchesType = filter === 'all' || m.movType === filter;
+                
+                if (!searchTerm) return matchesType;
+                
+                const search = searchTerm.toLowerCase();
+                const productName = getProductName(m.sku).toLowerCase();
+                const matchesSearch = 
+                    productName.includes(search) ||
+                    (m.sku || '').toLowerCase().includes(search) ||
+                    (m.nf || '').toLowerCase().includes(search) ||
+                    (m.nfOrigem || '').toLowerCase().includes(search) ||
+                    (m.supplier || '').toLowerCase().includes(search) ||
+                    (m.client || '').toLowerCase().includes(search) ||
+                    (m.localEntrada || '').toLowerCase().includes(search);
+                
+                return matchesType && matchesSearch;
+            });
+
+            return (
+                <div>
+                    <div className="page-header">
+                        <h1 className="page-title">histórico de movimentações_</h1>
+                        <p className="page-subtitle">Visualize todas as entradas e saídas</p>
+                    </div>
+
+                    <div className="card">
+                        {/* Barra de pesquisa */}
+                        <div className="search-box" style={{marginBottom: '16px'}}>
+                            <span className="search-icon">🔍</span>
+                            <input
+                                type="text"
+                                className="search-input"
+                                placeholder="Buscar por produto, SKU, NF, cliente ou fornecedor..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="filter-tabs" style={{marginBottom: '16px'}}>
+                            <button className={`filter-tab ${filter === 'all' ? 'active' : ''}`} onClick={() => setFilter('all')}>
+                                Todas ({allMovements.length})
+                            </button>
+                            <button className={`filter-tab ${filter === 'entry' ? 'active' : ''}`} onClick={() => setFilter('entry')}>
+                                ↓ Entradas ({entries.length})
+                            </button>
+                            <button className={`filter-tab ${filter === 'exit' ? 'active' : ''}`} onClick={() => setFilter('exit')}>
+                                ↑ Saídas ({exits.length})
+                            </button>
+                        </div>
+
+                        {searchTerm && (
+                            <div style={{
+                                padding: '8px 12px',
+                                background: 'var(--accent-bg)',
+                                borderRadius: 'var(--radius)',
+                                marginBottom: '16px',
+                                fontSize: '13px',
+                                color: 'var(--accent)'
+                            }}>
+                                🔍 {filtered.length} resultado(s) para "{searchTerm}"
+                            </div>
+                        )}
+
+                        {filtered.length === 0 ? (
+                            <div className="empty-state">
+                                <div className="empty-state-icon">📋</div>
+                                <h3>{searchTerm ? 'Nenhuma movimentação encontrada' : 'Nenhuma movimentação'}</h3>
+                            </div>
+                        ) : (
+                            <div className="table-container">
+                                <table className="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Data</th>
+                                            <th>Tipo</th>
+                                            <th>Produto</th>
+                                            <th>Qtd</th>
+                                            <th>Local</th>
+                                            <th>Info</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {filtered.slice(0, 100).map((m, i) => (
+                                            <tr key={i}>
+                                                <td style={{whiteSpace: 'nowrap'}}>
+                                                    {new Date(m.date).toLocaleDateString('pt-BR')}
+                                                    <div style={{fontSize: '11px', color: 'var(--text-muted)'}}>
+                                                        {new Date(m.date).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <span className={`badge ${m.movType === 'entry' ? 'badge-success' : 'badge-danger'}`}>
+                                                        {m.movType === 'entry' ? '↓ Entrada' : '↑ Saída'}
+                                                    </span>
+                                                </td>
+                                                <td style={{maxWidth: '300px'}}>
+                                                    <div style={{fontWeight: '500'}}>{getProductName(m.sku)}</div>
+                                                    <div style={{fontSize: '10px', color: 'var(--text-muted)'}}>SKU: {m.sku}</div>
+                                                </td>
+                                                <td style={{fontWeight: '600'}}>{m.quantity}</td>
+                                                <td style={{fontSize: '12px'}}>
+                                                    {m.localEntrada && (
+                                                        <span style={{
+                                                            background: 'var(--accent-bg)',
+                                                            color: 'var(--accent)',
+                                                            padding: '2px 8px',
+                                                            borderRadius: '12px',
+                                                            fontSize: '11px'
+                                                        }}>
+                                                            📍 {m.localEntrada}
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td style={{fontSize: '12px', color: 'var(--text-muted)'}}>
+                                                    {m.supplier || m.client || '-'}
+                                                    {m.nf && <div style={{marginTop: '2px'}}><strong>NF: {m.nf}</strong></div>}
+                                                    {m.nfOrigem && <div style={{marginTop: '2px', color: 'var(--warning)'}}>Saída da NF: {m.nfOrigem}</div>}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        // ==========================================
+        // RENDER
+        // ==========================================
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
