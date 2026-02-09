@@ -37,90 +37,99 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         :root {
-            /* Paleta aprovada - tons claros e quentes */
-            --bg-primary: #F7F5F2;
+            /* Fundos */
+            --bg-primary: #FAFAFA;
             --bg-secondary: #FFFFFF;
-            --bg-tertiary: #FBF9F7;
-            --bg-dark: #2C2640;
-            --bg-darker: #231E35;
-            
-            --text-primary: #1E1A2E;
-            --text-secondary: #7A7585;
-            --text-muted: #AEA9B8;
-            --text-light: #D1CDD8;
-            
-            --border: #EDE9E4;
-            --border-light: #F3F0EC;
-            
-            /* Cor de destaque - Laranja quente */
-            --accent: #E8723A;
-            --accent-light: #F4B08A;
-            --accent-dark: #D4612E;
-            --accent-bg: #FDEEE6;
-            --accent-gradient: linear-gradient(135deg, #E8723A 0%, #F4A261 100%);
-            
-            /* Cores secundárias - Roxo suave */
-            --purple: #7B6EED;
-            --purple-light: #9B8FF3;
-            --purple-bg: #EDEAFC;
-            
-            --success: #2ECC87;
-            --success-light: #E6F9EF;
-            --success-dark: #1FAF6E;
-            --warning: #F0B429;
-            --warning-light: #FFF8E6;
-            --warning-dark: #D49A1F;
-            --danger: #E74C5E;
-            --danger-light: #FDECEE;
-            --danger-dark: #D03A4C;
-            --info: #5B9BD5;
-            --info-light: #E8F1FA;
-            
-            /* Gradientes */
-            --gradient-orange: linear-gradient(135deg, #E8723A 0%, #F4A261 100%);
-            --gradient-dark: linear-gradient(135deg, #2C2640 0%, #3D3556 100%);
-            --gradient-green: linear-gradient(135deg, #2ECC87 0%, #55EFC4 100%);
-            --gradient-purple: linear-gradient(135deg, #7B6EED 0%, #9B8FF3 100%);
-            
+            --bg-tertiary: #F5F5F5;
+            --bg-dark: #0A0A0A;
+            --bg-darker: #000000;
+
+            /* Textos */
+            --text-primary: #0A0A0A;
+            --text-secondary: #666666;
+            --text-muted: #999999;
+            --text-light: #CCCCCC;
+
+            /* Bordas */
+            --border: #E5E5E5;
+            --border-light: #F0F0F0;
+            --border-focus: #0A0A0A;
+
+            /* Acento - azul Vercel */
+            --accent: #0070F3;
+            --accent-light: #D3E5FF;
+            --accent-dark: #0060D0;
+            --accent-bg: #EBF5FF;
+            --accent-gradient: #0070F3;
+
+            /* Secundarias */
+            --purple: #7928CA;
+            --purple-light: #D8B4FE;
+            --purple-bg: #F5F0FF;
+
+            /* Semanticas */
+            --success: #17B169;
+            --success-light: #ECFDF3;
+            --success-dark: #12904F;
+            --warning: #E5A100;
+            --warning-light: #FFFCE5;
+            --warning-dark: #B58200;
+            --danger: #E5484D;
+            --danger-light: #FFF0F0;
+            --danger-dark: #CD2B31;
+            --info: #0070F3;
+            --info-light: #EBF5FF;
+
             /* Categorias */
-            --cat-green: #2ECC87;
-            --cat-blue: #5B9BD5;
-            --cat-purple: #7B6EED;
-            --cat-pink: #E8729A;
-            --cat-orange: #E8723A;
-            --cat-teal: #2EC4B6;
-            --cat-gray: #7A7585;
-            
-            /* Sombras refinadas */
-            --shadow-xs: 0 1px 2px rgba(30,26,46,0.03);
-            --shadow-sm: 0 1px 3px rgba(30,26,46,0.05), 0 1px 2px rgba(30,26,46,0.03);
-            --shadow: 0 4px 6px -1px rgba(30,26,46,0.06), 0 2px 4px -1px rgba(30,26,46,0.03);
-            --shadow-md: 0 10px 15px -3px rgba(30,26,46,0.07), 0 4px 6px -2px rgba(30,26,46,0.03);
-            --shadow-lg: 0 20px 25px -5px rgba(30,26,46,0.07), 0 10px 10px -5px rgba(30,26,46,0.02);
-            --shadow-xl: 0 25px 50px -12px rgba(30,26,46,0.12);
-            --shadow-card: 0 2px 8px rgba(30,26,46,0.04), 0 1px 2px rgba(30,26,46,0.05);
-            --shadow-card-hover: 0 8px 25px rgba(30,26,46,0.07), 0 4px 10px rgba(30,26,46,0.03);
-            
+            --cat-green: #17B169;
+            --cat-blue: #0070F3;
+            --cat-purple: #7928CA;
+            --cat-pink: #EC4899;
+            --cat-orange: #F5A623;
+            --cat-teal: #0D9488;
+            --cat-gray: #666666;
+
+            /* Sombras */
+            --shadow-xs: 0 1px 2px rgba(0,0,0,0.04);
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+            --shadow: 0 2px 4px rgba(0,0,0,0.06);
+            --shadow-md: 0 4px 8px rgba(0,0,0,0.08);
+            --shadow-lg: 0 8px 16px rgba(0,0,0,0.08);
+            --shadow-xl: 0 12px 24px rgba(0,0,0,0.1);
+            --shadow-card: 0 0 0 1px var(--border);
+            --shadow-card-hover: 0 0 0 1px #CCCCCC, 0 4px 12px rgba(0,0,0,0.05);
+
             /* Bordas arredondadas */
             --radius-xs: 4px;
             --radius-sm: 6px;
-            --radius: 10px;
-            --radius-lg: 14px;
-            --radius-xl: 18px;
-            --radius-2xl: 24px;
-            
-            --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            --transition-slow: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --radius: 8px;
+            --radius-lg: 10px;
+            --radius-xl: 12px;
+            --radius-2xl: 16px;
+
+            --transition: all 0.15s ease;
+            --transition-slow: all 0.25s ease;
         }
 
         body {
-            font-family: 'Foster', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: 'Foster', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             background: var(--bg-primary);
             color: var(--text-primary);
-            line-height: 1.6;
-            font-size: 15px;
+            line-height: 1.5;
+            font-size: 14px;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
+        }
+
+        .icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .icon svg {
+            width: 100%;
+            height: 100%;
         }
 
         /* ===================== LOGIN ===================== */
@@ -129,90 +138,73 @@
             align-items: center;
             justify-content: center;
             min-height: 100vh;
-            background: var(--gradient-dark);
+            background: #000000;
             padding: 20px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .login-container::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            right: -20%;
-            width: 80%;
-            height: 150%;
-            background: radial-gradient(ellipse, rgba(232,114,58,0.12) 0%, transparent 70%);
-            pointer-events: none;
         }
 
         .login-box {
             background: var(--bg-secondary);
             padding: 48px 40px;
             border-radius: var(--radius-2xl);
-            box-shadow: var(--shadow-xl);
-            max-width: 420px;
+            border: 1px solid #333;
+            max-width: 400px;
             width: 100%;
             text-align: center;
-            position: relative;
-            z-index: 1;
         }
 
         .login-logo { max-width: 100px; margin-bottom: 24px; }
-        .login-title { font-size: 26px; font-weight: 700; margin-bottom: 8px; color: var(--text-primary); }
-        .login-subtitle { color: var(--text-muted); margin-bottom: 36px; font-size: 14px; }
+        .login-title { font-size: 24px; font-weight: 600; margin-bottom: 8px; color: var(--text-primary); }
+        .login-subtitle { color: var(--text-muted); margin-bottom: 32px; font-size: 13px; }
 
-        .login-form { display: flex; flex-direction: column; gap: 18px; }
+        .login-form { display: flex; flex-direction: column; gap: 16px; }
         .login-form .form-group { text-align: left; margin-bottom: 0; }
-        .login-form .form-label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 13px; color: var(--text-secondary); }
+        .login-form .form-label { display: block; margin-bottom: 6px; font-weight: 500; font-size: 13px; color: var(--text-secondary); }
         .login-form .form-input {
             width: 100%;
-            padding: 14px 16px;
-            border: 2px solid var(--border);
-            border-radius: var(--radius);
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
             font-size: 14px;
             transition: var(--transition);
-            background: var(--bg-tertiary);
-        }
-        .login-form .form-input:focus { 
-            outline: none; 
-            border-color: var(--accent); 
             background: var(--bg-secondary);
-            box-shadow: 0 0 0 4px var(--accent-bg); 
+        }
+        .login-form .form-input:focus {
+            outline: none;
+            border-color: var(--border-focus);
+            box-shadow: 0 0 0 1px var(--border-focus);
         }
 
         .btn-login {
             width: 100%;
-            padding: 14px;
-            background: var(--accent-gradient);
-            color: white;
-            border: none;
-            border-radius: var(--radius);
-            font-size: 15px;
-            font-weight: 600;
+            padding: 10px;
+            background: #0A0A0A;
+            color: #FFFFFF;
+            border: 1px solid #0A0A0A;
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            font-weight: 500;
             cursor: pointer;
             transition: var(--transition);
             margin-top: 8px;
-            box-shadow: 0 4px 14px rgba(232,114,58,0.35);
         }
-        .btn-login:hover { 
-            transform: translateY(-1px);
-            box-shadow: 0 6px 20px rgba(232,114,58,0.4);
+        .btn-login:hover {
+            background: #333333;
+            border-color: #333333;
         }
-        .btn-login:disabled { 
-            background: var(--border); 
-            cursor: not-allowed; 
-            box-shadow: none;
-            transform: none;
+        .btn-login:disabled {
+            background: var(--border);
+            border-color: var(--border);
+            color: var(--text-muted);
+            cursor: not-allowed;
         }
 
         .login-error {
             background: var(--danger-light);
             color: var(--danger-dark);
-            padding: 14px;
-            border-radius: var(--radius);
+            padding: 12px;
+            border-radius: var(--radius-sm);
             font-size: 13px;
-            margin-top: 16px;
+            margin-top: 12px;
             font-weight: 500;
         }
 
@@ -221,7 +213,7 @@
             background: none;
             border: none;
             color: var(--accent);
-            font-weight: 600;
+            font-weight: 500;
             cursor: pointer;
             transition: var(--transition);
         }
@@ -234,17 +226,17 @@
             align-items: center;
             justify-content: center;
             min-height: 100vh;
-            gap: 20px;
+            gap: 16px;
             background: var(--bg-primary);
         }
 
         .loading-spinner {
-            width: 44px;
-            height: 44px;
-            border: 3px solid var(--border);
-            border-top-color: var(--accent);
+            width: 32px;
+            height: 32px;
+            border: 2px solid var(--border);
+            border-top-color: var(--text-primary);
             border-radius: 50%;
-            animation: spin 0.8s linear infinite;
+            animation: spin 0.7s linear infinite;
         }
 
         @keyframes spin { to { transform: rotate(360deg); } }
@@ -255,27 +247,28 @@
         /* ===================== SIDEBAR ===================== */
         .sidebar {
             width: 240px;
-            background: linear-gradient(180deg, #A52428 0%, #8C1E22 100%);
+            background: #0A0A0A;
             color: white;
-            padding: 28px 0;
+            padding: 24px 0;
             position: fixed;
             height: 100vh;
             overflow-y: auto;
             z-index: 1000;
             display: flex;
             flex-direction: column;
+            border-right: 1px solid #1A1A1A;
         }
 
         .logo-container {
-            padding: 0 24px 24px;
-            border-bottom: 1px solid rgba(255,255,255,0.12);
+            padding: 0 20px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
             margin-bottom: 8px;
             text-align: center;
         }
 
         .logo {
             width: 100%;
-            max-width: 100px;
+            max-width: 90px;
             filter: brightness(0) invert(1);
             margin: 0 auto;
             display: block;
@@ -286,26 +279,26 @@
         }
 
         .user-info {
-            padding: 16px 24px;
-            border-bottom: 1px solid rgba(255,255,255,0.12);
+            padding: 14px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
             margin-bottom: 8px;
         }
 
         .user-email {
             font-size: 12px;
-            color: rgba(255,255,255,0.65);
-            margin-bottom: 12px;
+            color: rgba(255,255,255,0.5);
+            margin-bottom: 10px;
             word-break: break-all;
             font-weight: 300;
         }
 
         .btn-logout {
             width: 100%;
-            padding: 9px;
-            background: rgba(255,255,255,0.1);
-            color: rgba(255,255,255,0.85);
-            border: 1px solid rgba(255,255,255,0.15);
-            border-radius: var(--radius);
+            padding: 8px;
+            background: transparent;
+            color: rgba(255,255,255,0.5);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: var(--radius-sm);
             font-size: 13px;
             font-weight: 400;
             cursor: pointer;
@@ -315,60 +308,57 @@
             justify-content: center;
             gap: 8px;
             font-family: inherit;
-            letter-spacing: 0.3px;
         }
-        .btn-logout:hover { background: rgba(255,255,255,0.18); color: white; }
+        .btn-logout:hover { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.8); }
 
-        .nav-menu { 
-            list-style: none; 
-            padding: 0 14px; 
+        .nav-menu {
+            list-style: none;
+            padding: 0 12px;
             flex: 1;
         }
-        .nav-item { margin-bottom: 2px; }
+        .nav-item { margin-bottom: 1px; }
 
         .nav-link {
             display: flex;
             align-items: center;
-            gap: 12px;
-            padding: 11px 16px;
-            color: rgba(255,255,255,0.75);
+            gap: 10px;
+            padding: 8px 12px;
+            color: rgba(255,255,255,0.5);
             text-decoration: none;
-            border-radius: var(--radius);
+            border-radius: var(--radius-sm);
             font-weight: 400;
-            font-size: 14px;
+            font-size: 13px;
             transition: var(--transition);
             cursor: pointer;
-            letter-spacing: 0.2px;
         }
-        .nav-link:hover { 
-            background: rgba(255,255,255,0.1); 
-            color: white; 
+        .nav-link:hover {
+            background: rgba(255,255,255,0.06);
+            color: rgba(255,255,255,0.9);
         }
-        .nav-link.active { 
-            background: rgba(255,255,255,0.18); 
-            color: white;
+        .nav-link.active {
+            background: rgba(255,255,255,0.1);
+            color: #FFFFFF;
             font-weight: 500;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
         }
 
-        .nav-icon { font-size: 16px; width: 22px; text-align: center; line-height: 1; color: rgba(255,255,255,0.85); }
-        .nav-link.active .nav-icon { color: white; }
+        .nav-icon { width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; color: currentColor; flex-shrink: 0; }
+        .nav-icon svg { width: 16px; height: 16px; }
 
         .nav-section {
             font-size: 10px;
             font-weight: 500;
-            color: rgba(255,255,255,0.35);
+            color: rgba(255,255,255,0.25);
             text-transform: uppercase;
             letter-spacing: 1.5px;
-            padding: 20px 16px 8px;
-            margin-top: 4px;
+            padding: 18px 12px 6px;
+            margin-top: 2px;
         }
 
         /* ===================== MAIN ===================== */
         .main-content {
             flex: 1;
             margin-left: 240px;
-            padding: 32px;
+            padding: 28px 32px;
             min-height: 100vh;
             background: var(--bg-primary);
         }
@@ -376,23 +366,23 @@
         /* ===================== SYNC STATUS ===================== */
         .sync-status {
             position: fixed;
-            bottom: 20px;
-            right: 20px;
+            bottom: 16px;
+            right: 16px;
             background: var(--bg-secondary);
-            padding: 10px 16px;
-            border-radius: var(--radius-xl);
-            font-size: 12px;
-            color: var(--text-secondary);
-            box-shadow: var(--shadow-md);
+            padding: 8px 12px;
+            border-radius: var(--radius);
+            font-size: 11px;
+            color: var(--text-muted);
+            border: 1px solid var(--border);
             display: flex;
             align-items: center;
-            gap: 8px;
-            font-weight: 500;
+            gap: 6px;
+            font-weight: 400;
         }
 
         .sync-indicator {
-            width: 8px;
-            height: 8px;
+            width: 6px;
+            height: 6px;
             border-radius: 50%;
             background: var(--success);
         }
@@ -403,7 +393,7 @@
 
         /* ===================== PAGE HEADER ===================== */
         .page-header {
-            margin-bottom: 28px;
+            margin-bottom: 24px;
         }
 
         .page-header-flex {
@@ -414,21 +404,21 @@
 
         .page-title {
             font-family: 'Foster', sans-serif;
-            font-size: 42px;
+            font-size: 36px;
             font-weight: normal;
             color: var(--text-primary);
-            margin-bottom: 6px;
-            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+            letter-spacing: 0.3px;
             text-transform: lowercase;
         }
 
         .page-subtitle {
-            font-size: 15px;
+            font-size: 14px;
             color: var(--text-muted);
         }
 
         .page-greeting {
-            font-size: 14px;
+            font-size: 13px;
             color: var(--text-secondary);
             margin-bottom: 4px;
         }
@@ -438,28 +428,30 @@
             background: var(--bg-secondary);
             border-radius: var(--radius-xl);
             padding: 24px;
-            margin-bottom: 20px;
-            box-shadow: var(--shadow-card);
-            border: 1px solid var(--border-light);
+            margin-bottom: 16px;
+            border: 1px solid var(--border);
             transition: var(--transition);
         }
 
         .card:hover {
-            box-shadow: var(--shadow-card-hover);
+            border-color: #CCCCCC;
         }
 
         .card-title {
-            font-size: 16px;
+            font-size: 14px;
             font-weight: 600;
             color: var(--text-primary);
-            margin-bottom: 20px;
+            margin-bottom: 16px;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
         }
 
         .card-title-icon {
-            font-size: 18px;
+            width: 16px;
+            height: 16px;
+            display: inline-flex;
+            color: var(--text-secondary);
         }
 
         /* ===================== STATS GRID - NOVO DESIGN ===================== */
@@ -472,71 +464,69 @@
 
         .stat-card {
             background: var(--bg-secondary);
-            padding: 24px;
+            padding: 20px;
             border-radius: var(--radius-xl);
-            border: 1px solid var(--border-light);
-            box-shadow: var(--shadow-card);
+            border: 1px solid var(--border);
             transition: var(--transition);
             position: relative;
-            overflow: hidden;
         }
 
         .stat-card:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-card-hover);
+            border-color: #CCCCCC;
         }
 
         .stat-card.accent {
-            background: var(--accent-gradient);
-            border: none;
-            color: white;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
         }
-        .stat-card.accent .stat-label { color: rgba(255,255,255,0.85); }
-        .stat-card.accent .stat-value { color: white; }
-        .stat-card.accent .stat-icon { background: rgba(255,255,255,0.2); }
-        .stat-card.accent .stat-trend { color: rgba(255,255,255,0.9); background: rgba(255,255,255,0.15); }
+        .stat-card.accent .stat-label { color: var(--text-muted); }
+        .stat-card.accent .stat-value { color: var(--text-primary); }
+        .stat-card.accent .stat-icon { background: var(--bg-tertiary); }
+        .stat-card.accent .stat-trend { color: var(--success-dark); background: var(--success-light); }
 
         .stat-card.dark {
-            background: var(--gradient-dark);
-            border: none;
-            color: white;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
         }
-        .stat-card.dark .stat-label { color: rgba(255,255,255,0.7); }
-        .stat-card.dark .stat-value { color: white; }
-        .stat-card.dark .stat-icon { background: rgba(255,255,255,0.1); }
+        .stat-card.dark .stat-label { color: var(--text-muted); }
+        .stat-card.dark .stat-value { color: var(--text-primary); }
+        .stat-card.dark .stat-icon { background: var(--bg-tertiary); }
 
         .stat-header {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 16px;
+            margin-bottom: 12px;
         }
 
         .stat-icon {
-            width: 44px;
-            height: 44px;
-            border-radius: var(--radius-lg);
-            background: var(--accent-bg);
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius);
+            background: var(--bg-tertiary);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 20px;
+            font-size: 16px;
+            color: var(--text-secondary);
         }
 
-        .stat-icon.green { background: var(--success-light); }
-        .stat-icon.red { background: var(--danger-light); }
-        .stat-icon.yellow { background: var(--warning-light); }
-        .stat-icon.blue { background: var(--info-light); }
-        .stat-icon.purple { background: var(--purple-bg); }
+        .stat-icon.green { background: var(--success-light); color: var(--success-dark); }
+        .stat-icon.red { background: var(--danger-light); color: var(--danger-dark); }
+        .stat-icon.yellow { background: var(--warning-light); color: var(--warning-dark); }
+        .stat-icon.blue { background: var(--info-light); color: var(--accent); }
+        .stat-icon.purple { background: var(--purple-bg); color: var(--purple); }
 
         .stat-trend {
             display: inline-flex;
             align-items: center;
             gap: 4px;
-            font-size: 12px;
-            font-weight: 600;
-            padding: 4px 8px;
-            border-radius: var(--radius-sm);
+            font-size: 11px;
+            font-weight: 500;
+            padding: 2px 8px;
+            border-radius: 999px;
             background: var(--success-light);
             color: var(--success-dark);
         }
@@ -547,7 +537,7 @@
         }
 
         .stat-trend.neutral {
-            background: var(--border-light);
+            background: var(--bg-tertiary);
             color: var(--text-muted);
         }
 
@@ -557,68 +547,66 @@
 
         .stat-value {
             font-family: 'Foster', sans-serif;
-            font-size: 32px;
+            font-size: 28px;
             font-weight: 600;
             color: var(--text-primary);
             line-height: 1.1;
-            margin-bottom: 4px;
-            letter-spacing: -1px;
+            margin-bottom: 2px;
+            letter-spacing: -0.5px;
         }
 
         .stat-label {
-            font-size: 14px;
+            font-size: 13px;
             color: var(--text-muted);
             font-weight: 400;
         }
 
-        .stat-card.warning { border-left: 4px solid var(--warning); }
+        .stat-card.warning { border-left: 3px solid var(--warning); }
         .stat-card.warning .stat-value { color: var(--warning-dark); }
         .stat-card.warning .stat-icon { background: var(--warning-light); }
-        
-        .stat-card.danger { border-left: 4px solid var(--danger); }
+
+        .stat-card.danger { border-left: 3px solid var(--danger); }
         .stat-card.danger .stat-value { color: var(--danger-dark); }
         .stat-card.danger .stat-icon { background: var(--danger-light); }
 
-        /* ===================== CATEGORY CARDS - NOVO DESIGN ===================== */
+        /* ===================== CATEGORY CARDS ===================== */
         .category-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-            gap: 16px;
+            gap: 12px;
         }
 
         .category-card {
             background: var(--bg-secondary);
-            border: 1px solid var(--border-light);
-            border-radius: var(--radius-xl);
-            padding: 20px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 16px;
             text-align: center;
             transition: var(--transition);
             cursor: pointer;
         }
 
         .category-card:hover {
-            border-color: var(--accent);
-            box-shadow: var(--shadow-card-hover);
-            transform: translateY(-2px);
+            border-color: #CCCCCC;
         }
 
         .category-icon {
-            width: 52px;
-            height: 52px;
-            border-radius: var(--radius-lg);
-            background: var(--bg-primary);
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius);
+            background: var(--bg-tertiary);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 24px;
-            margin: 0 auto 12px;
+            font-size: 18px;
+            margin: 0 auto 10px;
         }
 
         .category-name {
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 600;
             color: var(--text-primary);
-            margin-bottom: 6px;
+            margin-bottom: 4px;
         }
 
         .category-count {
@@ -646,33 +634,33 @@
             font-weight: 600;
         }
 
-        /* ===================== FORMS - NOVO DESIGN ===================== */
-        .form-group { margin-bottom: 20px; }
-        
+        /* ===================== FORMS ===================== */
+        .form-group { margin-bottom: 16px; }
+
         .form-label {
             display: block;
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--text-secondary);
-            margin-bottom: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #333333;
+            margin-bottom: 6px;
         }
 
         .form-input, .form-select, .form-textarea {
             width: 100%;
-            padding: 12px 14px;
-            border: 2px solid var(--border);
-            border-radius: var(--radius);
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
             font-size: 14px;
             transition: var(--transition);
-            background: var(--bg-tertiary);
+            background: var(--bg-secondary);
             color: var(--text-primary);
             font-family: inherit;
         }
 
         .form-input:focus, .form-select:focus, .form-textarea:focus {
             outline: none;
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px var(--accent-bg);
+            border-color: var(--border-focus);
+            box-shadow: 0 0 0 1px var(--border-focus);
         }
 
         .form-textarea {
@@ -689,12 +677,12 @@
         .form-row {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 16px;
+            gap: 14px;
         }
 
         .form-radio-group {
             display: flex;
-            gap: 16px;
+            gap: 12px;
         }
 
         .form-radio-label {
@@ -703,164 +691,175 @@
             gap: 8px;
             font-size: 13px;
             cursor: pointer;
-            padding: 10px 16px;
+            padding: 8px 14px;
             border: 1px solid var(--border);
-            border-radius: var(--radius);
+            border-radius: var(--radius-sm);
             transition: var(--transition);
         }
 
         .form-radio-label:has(input:checked) {
-            border-color: var(--accent);
-            background: var(--accent-bg);
+            border-color: var(--border-focus);
+            background: var(--bg-tertiary);
         }
 
-        .form-radio-label input { accent-color: var(--accent); }
+        .form-radio-label input { accent-color: var(--text-primary); }
 
-        /* ===================== BUTTONS - NOVO DESIGN ===================== */
+        /* ===================== BUTTONS ===================== */
         .btn {
-            padding: 12px 20px;
-            border-radius: var(--radius);
+            padding: 8px 16px;
+            border-radius: var(--radius-sm);
             font-size: 13px;
-            font-weight: 600;
+            font-weight: 500;
             cursor: pointer;
             transition: var(--transition);
-            border: none;
+            border: 1px solid transparent;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
+            gap: 6px;
             font-family: inherit;
         }
 
         .btn-primary {
-            background: var(--accent-gradient);
-            color: white;
-            box-shadow: 0 4px 14px rgba(232,114,58,0.25);
+            background: #0A0A0A;
+            color: #FFFFFF;
+            border-color: #0A0A0A;
         }
-        .btn-primary:hover { 
-            transform: translateY(-1px);
-            box-shadow: 0 6px 20px rgba(232,114,58,0.35);
+        .btn-primary:hover {
+            background: #333333;
+            border-color: #333333;
         }
-        .btn-primary:disabled { 
-            background: var(--border); 
+        .btn-primary:disabled {
+            background: var(--border);
+            border-color: var(--border);
+            color: var(--text-muted);
             cursor: not-allowed;
-            box-shadow: none;
-            transform: none;
         }
 
         .btn-secondary {
-            background: var(--bg-secondary);
-            color: var(--text-secondary);
-            border: 2px solid var(--border);
+            background: transparent;
+            color: var(--text-primary);
+            border: 1px solid var(--border);
         }
-        .btn-secondary:hover { 
-            background: var(--bg-primary);
-            border-color: var(--text-muted);
+        .btn-secondary:hover {
+            background: var(--bg-tertiary);
+            border-color: #CCCCCC;
         }
 
         .btn-success {
-            background: var(--gradient-green);
+            background: var(--success);
             color: white;
-            box-shadow: 0 4px 14px rgba(46,204,135,0.25);
+            border-color: var(--success);
         }
-        .btn-success:hover { 
-            transform: translateY(-1px);
-            box-shadow: 0 6px 20px rgba(46,204,135,0.35);
+        .btn-success:hover {
+            background: var(--success-dark);
+            border-color: var(--success-dark);
         }
 
         .btn-danger {
-            background: var(--danger);
-            color: white;
+            background: transparent;
+            color: var(--danger);
+            border: 1px solid var(--danger-light);
         }
-        .btn-danger:hover { 
-            background: var(--danger-dark);
+        .btn-danger:hover {
+            background: var(--danger-light);
         }
 
         .btn-sm {
-            padding: 8px 14px;
+            padding: 6px 12px;
             font-size: 12px;
         }
 
         .btn-lg {
-            padding: 14px 28px;
-            font-size: 15px;
+            padding: 10px 24px;
+            font-size: 14px;
         }
 
         .btn-icon {
-            width: 36px;
-            height: 36px;
+            width: 32px;
+            height: 32px;
             padding: 0;
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: var(--radius);
-            font-size: 16px;
+            border-radius: var(--radius-sm);
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+        .btn-icon:hover {
+            background: var(--bg-tertiary);
+            border-color: #CCCCCC;
         }
 
         .btn-group {
             display: flex;
-            gap: 12px;
-            margin-top: 24px;
+            gap: 10px;
+            margin-top: 20px;
         }
 
-        /* ===================== ALERTS - NOVO DESIGN ===================== */
+        /* ===================== ALERTS ===================== */
         .alert {
-            padding: 14px 18px;
-            border-radius: var(--radius-lg);
-            margin-bottom: 20px;
+            padding: 12px 16px;
+            border-radius: var(--radius);
+            margin-bottom: 16px;
             font-size: 13px;
             font-weight: 500;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
         }
 
-        .alert-success { 
-            background: var(--success-light); 
+        .alert-success {
+            background: var(--success-light);
             color: var(--success-dark);
-            border-left: 4px solid var(--success);
+            border: 1px solid #C6F6D5;
         }
-        .alert-danger { 
-            background: var(--danger-light); 
+        .alert-danger {
+            background: var(--danger-light);
             color: var(--danger-dark);
-            border-left: 4px solid var(--danger);
+            border: 1px solid #FED7D7;
         }
-        .alert-warning { 
-            background: var(--warning-light); 
+        .alert-warning {
+            background: var(--warning-light);
             color: var(--warning-dark);
-            border-left: 4px solid var(--warning);
+            border: 1px solid #FEEBC8;
         }
         .alert-info {
             background: var(--info-light);
-            color: var(--info);
-            border-left: 4px solid var(--info);
+            color: var(--accent);
+            border: 1px solid var(--accent-light);
         }
 
         /* ===================== FILTER TABS ===================== */
         .filter-tabs {
             display: flex;
-            gap: 8px;
+            gap: 4px;
             flex-wrap: wrap;
             margin-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0;
         }
 
         .filter-tab {
             padding: 8px 14px;
-            border-radius: 20px;
+            border-radius: 0;
             font-size: 13px;
             font-weight: 500;
             cursor: pointer;
             transition: var(--transition);
-            background: var(--bg-primary);
-            border: 1px solid var(--border);
-            color: var(--text-secondary);
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            color: var(--text-muted);
+            margin-bottom: -1px;
         }
 
-        .filter-tab:hover { background: var(--border-light); }
+        .filter-tab:hover { color: var(--text-primary); }
         .filter-tab.active {
-            background: var(--text-primary);
-            color: white;
-            border-color: var(--text-primary);
+            background: transparent;
+            color: var(--text-primary);
+            border-bottom-color: var(--text-primary);
         }
 
         /* ===================== SEARCH ===================== */
@@ -871,46 +870,50 @@
 
         .search-icon {
             position: absolute;
-            left: 12px;
+            left: 10px;
             top: 50%;
             transform: translateY(-50%);
             color: var(--text-muted);
             font-size: 14px;
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
         }
 
         .search-input {
             width: 100%;
-            padding: 10px 12px 10px 36px;
+            padding: 8px 12px 8px 32px;
             border: 1px solid var(--border);
-            border-radius: var(--radius);
-            font-size: 14px;
-            background: var(--bg-primary);
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            background: var(--bg-secondary);
         }
 
         .search-input:focus {
             outline: none;
-            border-color: var(--accent);
-            background: var(--bg-secondary);
+            border-color: var(--border-focus);
+            box-shadow: 0 0 0 1px var(--border-focus);
         }
 
         /* ===================== PRODUCTS GRID ===================== */
         .products-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 16px;
+            gap: 12px;
         }
 
         .product-card {
             background: var(--bg-secondary);
             border: 1px solid var(--border);
             border-radius: var(--radius-lg);
-            padding: 18px;
+            padding: 16px;
             transition: var(--transition);
             position: relative;
         }
 
         .product-card:hover {
-            box-shadow: var(--shadow);
+            border-color: #CCCCCC;
         }
 
         .product-card.low { border-left: 3px solid var(--warning); }
@@ -953,12 +956,12 @@
         .product-obs {
             font-size: 11px;
             color: var(--text-secondary);
-            background: var(--bg-primary);
+            background: var(--bg-tertiary);
             padding: 8px 10px;
             border-radius: var(--radius-sm);
             margin: 10px 0;
             font-style: italic;
-            border-left: 2px solid var(--accent);
+            border-left: 2px solid var(--border);
         }
 
         .product-quantity {
@@ -988,41 +991,41 @@
         .table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 14px;
+            font-size: 13px;
         }
 
         .table th {
             text-align: left;
-            padding: 12px;
-            background: var(--bg-primary);
-            font-weight: 600;
+            padding: 8px 12px;
+            background: var(--bg-tertiary);
+            font-weight: 500;
             color: var(--text-secondary);
-            font-size: 12px;
+            font-size: 11px;
             text-transform: uppercase;
-            letter-spacing: 0.3px;
+            letter-spacing: 0.5px;
             border-bottom: 1px solid var(--border);
         }
 
         .table td {
-            padding: 12px;
+            padding: 10px 12px;
             border-bottom: 1px solid var(--border-light);
             color: var(--text-primary);
         }
 
-        .table tr:hover td { background: var(--bg-primary); }
+        .table tr:hover td { background: var(--bg-tertiary); }
 
         /* ===================== BADGES ===================== */
         .badge {
             display: inline-block;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 11px;
             font-weight: 500;
         }
 
-        .badge-success { background: var(--success-light); color: var(--success); }
-        .badge-warning { background: var(--warning-light); color: var(--warning); }
-        .badge-danger { background: var(--danger-light); color: var(--danger); }
+        .badge-success { background: var(--success-light); color: var(--success-dark); }
+        .badge-warning { background: var(--warning-light); color: var(--warning-dark); }
+        .badge-danger { background: var(--danger-light); color: var(--danger-dark); }
 
         /* ===================== MODAL ===================== */
         .modal-overlay {
@@ -1031,41 +1034,44 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0,0,0,0.4);
+            background: rgba(0,0,0,0.5);
             display: flex;
             align-items: center;
             justify-content: center;
             z-index: 9999;
-            backdrop-filter: blur(2px);
         }
 
         .modal-content {
             background: var(--bg-secondary);
             border-radius: var(--radius-xl);
-            padding: 28px;
+            padding: 24px;
             max-width: 500px;
             width: 90%;
             max-height: 90vh;
             overflow-y: auto;
-            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border);
+            box-shadow: 0 16px 48px rgba(0,0,0,0.2);
         }
 
         .modal-title {
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 600;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
             color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .modal-subtitle {
             font-size: 13px;
             color: var(--text-muted);
-            margin-bottom: 24px;
+            margin-bottom: 20px;
         }
 
         /* ===================== CHART ===================== */
         .chart-container {
-            height: 280px;
+            height: 260px;
             position: relative;
         }
 
@@ -1077,16 +1083,17 @@
         }
 
         .empty-state-icon {
-            font-size: 48px;
             margin-bottom: 16px;
-            opacity: 0.5;
+            color: var(--text-light);
+            display: flex;
+            justify-content: center;
         }
 
         .empty-state h3 {
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 600;
             color: var(--text-secondary);
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
 
         .empty-state p {
@@ -1095,11 +1102,11 @@
 
         /* ===================== FADE IN ===================== */
         .fade-in {
-            animation: fadeIn 0.3s ease;
+            animation: fadeIn 0.2s ease;
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(8px); }
+            from { opacity: 0; transform: translateY(4px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
@@ -1111,16 +1118,16 @@
         }
 
         .color-option {
-            width: 28px;
-            height: 28px;
-            border-radius: 6px;
+            width: 24px;
+            height: 24px;
+            border-radius: var(--radius-xs);
             cursor: pointer;
             transition: var(--transition);
             border: 2px solid transparent;
         }
 
         .color-option:hover { transform: scale(1.1); }
-        .color-option.selected { border-color: var(--text-primary); }
+        .color-option.selected { border-color: var(--text-primary); box-shadow: 0 0 0 1px var(--text-primary); }
 
         /* ===================== RESPONSIVE ===================== */
         @media (max-width: 768px) {
@@ -1228,6 +1235,53 @@
         }
 
         const generateId = () => Math.random().toString(36).substr(2, 9);
+
+        // ==========================================
+        // SVG ICON SYSTEM
+        // ==========================================
+        const ICONS = {
+            dashboard: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>',
+            stock: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16.5 9.4l-9-5.19M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>',
+            addProduct: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>',
+            categories: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>',
+            entry: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>',
+            exit: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>',
+            shipping: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>',
+            import: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>',
+            history: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+            edit: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',
+            delete: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>',
+            search: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>',
+            add: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>',
+            close: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+            settings: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>',
+            refresh: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>',
+            link: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>',
+            clipboard: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="12" y2="18"/></svg>',
+            filter: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>',
+            download: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
+            file: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>',
+            check: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+            warning: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+            error: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
+            info: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+            share: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>',
+            logout: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>',
+            success: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+            spinner: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg>',
+            empty: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg>',
+            chart: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
+            excel: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>',
+            lightbulb: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4M12 2a7 7 0 00-4 12.7V17h8v-2.3A7 7 0 0012 2z"/></svg>',
+            label: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>',
+            boxOpen: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/><path d="M7.5 4.5L16.5 9.5"/></svg>',
+        };
+
+        function Icon({ name, size = 16, className = '', style = {} }) {
+            return <span className={`icon ${className}`}
+                style={{width: size, height: size, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, ...style}}
+                dangerouslySetInnerHTML={{__html: ICONS[name] || ''}} />;
+        }
 
         // ==========================================
         // LOGIN SCREEN
@@ -1614,62 +1668,62 @@
                                     transition: 'all 0.2s'
                                 }}
                             >
-                                ◇ Compartilhar Consulta
+                                <Icon name="share" size={14} /> Compartilhar Consulta
                             </button>
                         </div>
 
                         <ul className="nav-menu">
                             <li className="nav-item">
                                 <a className={`nav-link ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>
-                                    <span className="nav-icon">◫</span>Dashboard
+                                    <span className="nav-icon" dangerouslySetInnerHTML={{__html: ICONS.dashboard}}></span>Dashboard
                                 </a>
                             </li>
                             <li className="nav-item">
                                 <a className={`nav-link ${activeTab === 'stock' ? 'active' : ''}`} onClick={() => setActiveTab('stock')}>
-                                    <span className="nav-icon">▦</span>Estoque
+                                    <span className="nav-icon" dangerouslySetInnerHTML={{__html: ICONS.stock}}></span>Estoque
                                 </a>
                             </li>
                             
                             <div className="nav-section">Produtos</div>
                             <li className="nav-item">
                                 <a className={`nav-link ${activeTab === 'newproduct' ? 'active' : ''}`} onClick={() => setActiveTab('newproduct')}>
-                                    <span className="nav-icon">◎</span>Cadastrar
+                                    <span className="nav-icon" dangerouslySetInnerHTML={{__html: ICONS.addProduct}}></span>Cadastrar
                                 </a>
                             </li>
                             <li className="nav-item">
                                 <a className={`nav-link ${activeTab === 'categories' ? 'active' : ''}`} onClick={() => setActiveTab('categories')}>
-                                    <span className="nav-icon">◧</span>Categorias
+                                    <span className="nav-icon" dangerouslySetInnerHTML={{__html: ICONS.categories}}></span>Categorias
                                 </a>
                             </li>
                             
                             <div className="nav-section">Movimentações</div>
                             <li className="nav-item">
                                 <a className={`nav-link ${activeTab === 'entry' ? 'active' : ''}`} onClick={() => setActiveTab('entry')}>
-                                    <span className="nav-icon">↓</span>Entrada
+                                    <span className="nav-icon" dangerouslySetInnerHTML={{__html: ICONS.entry}}></span>Entrada
                                 </a>
                             </li>
                             <li className="nav-item">
                                 <a className={`nav-link ${activeTab === 'exit' ? 'active' : ''}`} onClick={() => setActiveTab('exit')}>
-                                    <span className="nav-icon">↑</span>Saída
+                                    <span className="nav-icon" dangerouslySetInnerHTML={{__html: ICONS.exit}}></span>Saída
                                 </a>
                             </li>
                             <li className="nav-item">
                                 <a className={`nav-link ${activeTab === 'shipping' ? 'active' : ''}`} onClick={() => setActiveTab('shipping')}>
-                                    <span className="nav-icon">▷</span>Despachos
+                                    <span className="nav-icon" dangerouslySetInnerHTML={{__html: ICONS.shipping}}></span>Despachos
                                 </a>
                             </li>
                             
                             <div className="nav-section">Automação</div>
                             <li className="nav-item">
                                 <a className={`nav-link ${activeTab === 'import' ? 'active' : ''}`} onClick={() => setActiveTab('import')}>
-                                    <span className="nav-icon">⇡</span>Importar
+                                    <span className="nav-icon" dangerouslySetInnerHTML={{__html: ICONS.import}}></span>Importar
                                 </a>
                             </li>
                             
                             <div className="nav-section">Relatórios</div>
                             <li className="nav-item">
                                 <a className={`nav-link ${activeTab === 'history' ? 'active' : ''}`} onClick={() => setActiveTab('history')}>
-                                    <span className="nav-icon">≡</span>Histórico
+                                    <span className="nav-icon" dangerouslySetInnerHTML={{__html: ICONS.history}}></span>Histórico
                                 </a>
                             </li>
                         </ul>
@@ -1971,7 +2025,7 @@
                                     </div>
                                     {cat.alertCount > 0 && (
                                         <div className="category-alert">
-                                            ⚠️ {cat.alertCount} alerta{cat.alertCount !== 1 ? 's' : ''}
+                                            {cat.alertCount} alerta{cat.alertCount !== 1 ? 's' : ''}
                                         </div>
                                     )}
                                 </div>
@@ -2213,7 +2267,7 @@
                                 </div>
 
                                 <div className="form-group">
-                                    <label className="form-label">📄 NF de Origem</label>
+                                    <label className="form-label">NF de Origem</label>
                                     <input
                                         type="text"
                                         className="form-input"
@@ -2252,7 +2306,7 @@
                     {historyProduct && (
                         <div className="modal-overlay">
                             <div className="modal-content" style={{maxWidth: '800px'}}>
-                                <h2 className="modal-title">📋 Histórico de Movimentações</h2>
+                                <h2 className="modal-title">Histórico de Movimentações</h2>
                                 <p className="modal-subtitle">{historyProduct.name}</p>
 
                                 <div style={{background: 'var(--bg-primary)', padding: '12px', borderRadius: 'var(--radius)', marginBottom: '16px'}}>
@@ -2355,7 +2409,7 @@
                                     
                                     return (
                                         <div style={{marginTop: '16px', padding: '12px', background: 'var(--info-light)', borderRadius: 'var(--radius)'}}>
-                                            <div style={{fontWeight: '600', marginBottom: '8px', fontSize: '13px'}}>📦 Estoque por NF de Entrada:</div>
+                                            <div style={{fontWeight: '600', marginBottom: '8px', fontSize: '13px'}}>Estoque por NF de Entrada:</div>
                                             <div style={{display: 'flex', flexWrap: 'wrap', gap: '8px'}}>
                                                 {nfsComSaldo.map(([nf, dados]) => (
                                                     <div key={nf} style={{
@@ -2405,7 +2459,7 @@
                         </div>
 
                         <div className="search-box">
-                            <span className="search-icon">🔍</span>
+                            <span className="search-icon"><Icon name="search" size={14} /></span>
                             <input
                                 type="text"
                                 className="search-input"
@@ -2433,7 +2487,7 @@
 
                     {filtered.length === 0 ? (
                         <div className="empty-state">
-                            <div className="empty-state-icon">📦</div>
+                            <div className="empty-state-icon"><Icon name="boxOpen" size={48} /></div>
                             <h3>Nenhum produto encontrado</h3>
                             <p>Tente ajustar os filtros</p>
                         </div>
@@ -2442,9 +2496,9 @@
                             {filtered.map(p => (
                                 <div key={p.id} className={`product-card ${p.status}`}>
                                     <div className="product-actions">
-                                        <button className="btn btn-icon btn-secondary" onClick={() => setHistoryProduct(p)} title="Ver Histórico">📋</button>
-                                        <button className="btn btn-icon btn-secondary" onClick={() => openEditModal(p)} title="Editar">✏️</button>
-                                        <button className="btn btn-icon btn-secondary" onClick={() => handleDelete(p)} title="Excluir">🗑️</button>
+                                        <button className="btn btn-icon btn-secondary" onClick={() => setHistoryProduct(p)} title="Ver Histórico"><Icon name="clipboard" size={14} /></button>
+                                        <button className="btn btn-icon btn-secondary" onClick={() => openEditModal(p)} title="Editar"><Icon name="edit" size={14} /></button>
+                                        <button className="btn btn-icon btn-secondary" onClick={() => handleDelete(p)} title="Excluir"><Icon name="delete" size={14} /></button>
                                     </div>
 
                                     <span className="product-category-badge" style={{background: getCategoryColor(p.category)}}>
@@ -2466,7 +2520,7 @@
                                             marginTop: '8px',
                                             display: 'inline-block'
                                         }}>
-                                            📄 NF: {p.nfOrigem}
+                                            NF: {p.nfOrigem}
                                         </div>
                                     )}
                                     
@@ -2605,7 +2659,7 @@
                             </div>
 
                             <div className="form-group">
-                                <label className="form-label">📄 Nota Fiscal de Origem</label>
+                                <label className="form-label">Nota Fiscal de Origem</label>
                                 <input
                                     type="text"
                                     className="form-input"
@@ -2635,7 +2689,7 @@
                     {/* Lista de últimos produtos */}
                     <div className="card">
                         <h2 className="card-title">
-                            <span className="card-title-icon">📋</span>
+                            <Icon name="clipboard" size={16} className="card-title-icon" />
                             Últimos Produtos Cadastrados
                         </h2>
                         {products.length === 0 ? (
@@ -2699,7 +2753,7 @@
                 });
 
                 setNewName('');
-                setNewIcon('📦');
+                setNewIcon('◻');
                 setNewColor('#6b7280');
                 setNewObs('');
                 setSuccess('Categoria criada!');
@@ -2817,7 +2871,7 @@
                     {/* Formulário Nova Categoria */}
                     <div className="card">
                         <h2 className="card-title">
-                            <span className="card-title-icon">➕</span>
+                            <Icon name="add" size={16} className="card-title-icon" />
                             Nova Categoria
                         </h2>
                         <form onSubmit={handleAdd}>
@@ -2860,7 +2914,7 @@
                     {/* Lista de Categorias */}
                     <div className="card">
                         <h2 className="card-title">
-                            <span className="card-title-icon">📂</span>
+                            <Icon name="file" size={16} className="card-title-icon" />
                             Categorias Cadastradas ({categories.length})
                         </h2>
                         <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '12px'}}>
@@ -2891,8 +2945,8 @@
                                                 )}
                                             </div>
                                             <div style={{display: 'flex', gap: '4px'}}>
-                                                <button className="btn btn-icon btn-secondary btn-sm" onClick={() => openEditModal(cat)}>✏️</button>
-                                                <button className="btn btn-icon btn-secondary btn-sm" onClick={() => handleDelete(cat)}>🗑️</button>
+                                                <button className="btn btn-icon btn-secondary btn-sm" onClick={() => openEditModal(cat)}><Icon name="edit" size={14} /></button>
+                                                <button className="btn btn-icon btn-secondary btn-sm" onClick={() => handleDelete(cat)}><Icon name="delete" size={14} /></button>
                                             </div>
                                         </div>
                                     </div>
@@ -3035,7 +3089,7 @@
                                 </div>
 
                                 <div className="form-group">
-                                    <label className="form-label">📄 NF de Origem</label>
+                                    <label className="form-label">NF de Origem</label>
                                     <input
                                         type="text"
                                         className="form-input"
@@ -3085,7 +3139,7 @@
                                 <input
                                     type="text"
                                     className="form-input"
-                                    placeholder="🔍 Buscar produto por nome ou SKU..."
+                                    placeholder="Buscar produto por nome ou SKU..."
                                     value={productSearch}
                                     onChange={(e) => setProductSearch(e.target.value)}
                                     style={{marginBottom: '8px'}}
@@ -3145,7 +3199,7 @@
                                         title="Gerenciar locais/depósitos"
                                         style={{padding: '8px 12px'}}
                                     >
-                                        ⚙️
+                                        <Icon name="settings" size={14} />
                                     </button>
                                 </div>
                                 <span className="form-help">Selecione o depósito onde o produto está sendo armazenado</span>
@@ -3208,12 +3262,12 @@
                 setSalvando(true);
                 try {
                     await onUpdateLocais(locaisValidos);
-                    setMensagem('✅ Salvo com sucesso!');
+                    setMensagem('Salvo com sucesso!');
                     setTimeout(() => {
                         onClose();
                     }, 800);
                 } catch (err) {
-                    setMensagem('❌ Erro ao salvar: ' + err.message);
+                    setMensagem('Erro ao salvar: ' + err.message);
                     setSalvando(false);
                 }
             };
@@ -3227,7 +3281,7 @@
                         {mensagem && (
                             <div style={{
                                 padding: '10px',
-                                background: mensagem.includes('✅') ? 'var(--success-light)' : 'var(--danger-light)',
+                                background: mensagem.includes('Salvo') ? 'var(--success-light)' : 'var(--danger-light)',
                                 borderRadius: 'var(--radius)',
                                 marginBottom: '16px',
                                 fontSize: '13px'
@@ -3247,7 +3301,7 @@
                                     borderRadius: 'var(--radius)',
                                     marginBottom: '8px'
                                 }}>
-                                    <span style={{fontSize: '16px'}}>📦</span>
+                                    <Icon name="stock" size={16} />
                                     <input
                                         type="text"
                                         className="form-input"
@@ -3263,15 +3317,15 @@
                                             onClick={() => handleRemoveLocal(idx)}
                                             title="Remover"
                                             style={{color: 'var(--danger)', padding: '6px 10px'}}
-                                        >🗑️</button>
+                                        ><Icon name="delete" size={14} /></button>
                                     )}
                                 </div>
                             ))}
                         </div>
 
                         <div style={{
-                            display: 'flex', 
-                            gap: '8px', 
+                            display: 'flex',
+                            gap: '8px',
                             marginBottom: '16px',
                             padding: '12px',
                             background: 'var(--bg-secondary)',
@@ -3298,7 +3352,7 @@
                                 onClick={handleAddLocal}
                                 disabled={!novoLocal.trim()}
                             >
-                                ➕ Adicionar
+                                Adicionar
                             </button>
                         </div>
 
@@ -3312,7 +3366,7 @@
                                 onClick={handleSalvar}
                                 disabled={salvando}
                             >
-                                {salvando ? '⏳ Salvando...' : '💾 Salvar Alterações'}
+                                {salvando ? 'Salvando...' : 'Salvar Alterações'}
                             </button>
                         </div>
                     </div>
@@ -3485,7 +3539,7 @@
                                 <input
                                     type="text"
                                     className="form-input"
-                                    placeholder="🔍 Buscar por nome, SKU ou NF..."
+                                    placeholder="Buscar por nome, SKU ou NF..."
                                     value={productSearch}
                                     onChange={(e) => setProductSearch(e.target.value)}
                                     style={{marginBottom: '8px'}}
@@ -3503,7 +3557,7 @@
                             {/* Seleção de NF de origem */}
                             {selectedProduct && estoquePorNF.length > 0 && (
                                 <div className="form-group">
-                                    <label className="form-label">📦 Retirar do estoque da NF:</label>
+                                    <label className="form-label">Retirar do estoque da NF:</label>
                                     <div style={{
                                         border: '1px solid var(--border)',
                                         borderRadius: 'var(--radius)',
@@ -3533,7 +3587,7 @@
                                                 />
                                                 <div style={{flex: 1}}>
                                                     <div style={{fontWeight: '600', color: 'var(--text-primary)'}}>
-                                                        📄 NF: {item.nf}
+                                                        NF: {item.nf}
                                                     </div>
                                                     <div style={{fontSize: '12px', color: 'var(--text-muted)'}}>
                                                         {item.quantidade} unidade(s) disponível(is)
@@ -3556,7 +3610,7 @@
                                     </div>
                                     {!nfOrigem && (
                                         <div style={{fontSize: '11px', color: 'var(--warning)', marginTop: '6px'}}>
-                                            ⚠️ Selecione a NF de onde o produto será retirado
+                                            Selecione a NF de onde o produto será retirado
                                         </div>
                                     )}
                                 </div>
@@ -4207,9 +4261,9 @@
                                     });
                                     
                                     if (produtoEncontrado) {
-                                        console.log('✅ Produto encontrado:', produtoEncontrado.name);
+                                        console.log('OK: Produto encontrado:', produtoEncontrado.name);
                                     } else {
-                                        console.log('❌ Produto NÃO encontrado para SKU:', skuNF);
+                                        console.log('ERRO: Produto NÃO encontrado para SKU:', skuNF);
                                     }
                                     
                                     produtos.push({
@@ -4249,8 +4303,8 @@
                             });
                             
                             let msg = `NF ${nNF} importada! ${produtos.length} produto(s).`;
-                            if (vinculados > 0) msg += ` ✅ ${vinculados} vinculado(s) automaticamente.`;
-                            if (naoVinculados > 0) msg += ` ⚠️ ${naoVinculados} não encontrado(s) no estoque.`;
+                            if (vinculados > 0) msg += ` ${vinculados} vinculado(s) automaticamente.`;
+                            if (naoVinculados > 0) msg += ` ${naoVinculados} não encontrado(s) no estoque.`;
                             setSuccess(msg);
                             setActiveView('register');
                             setTimeout(() => setSuccess(''), 8000);
@@ -4366,20 +4420,20 @@
                                     
                                     // Comparação exata (case insensitive)
                                     if (pSkuOriginal.toLowerCase() === skuOriginal.toLowerCase()) {
-                                        console.log('✅ Match exato SKU:', pSkuOriginal);
+                                        console.log('OK: Match exato SKU:', pSkuOriginal);
                                         return true;
                                     }
                                     
                                     // Comparação normalizada
                                     if (pSku && skuNorm && pSku === skuNorm) {
-                                        console.log('✅ Match normalizado:', pSku, '=', skuNorm);
+                                        console.log('OK: Match normalizado:', pSku, '=', skuNorm);
                                         return true;
                                     }
                                     
                                     // SKU contém ou é contido
                                     if (pSku.length >= 5 && skuNorm.length >= 5) {
                                         if (pSku.includes(skuNorm) || skuNorm.includes(pSku)) {
-                                            console.log('✅ Match parcial:', pSku, 'vs', skuNorm);
+                                            console.log('OK: Match parcial:', pSku, 'vs', skuNorm);
                                             return true;
                                         }
                                     }
@@ -4388,7 +4442,7 @@
                                 });
                                 
                                 if (!encontrado) {
-                                    console.log('❌ Nenhum match para:', skuOriginal);
+                                    console.log('ERRO: Nenhum match para:', skuOriginal);
                                 }
                                 
                                 return encontrado;
@@ -4461,13 +4515,13 @@
                             
                             // Mensagem de resultado
                             const vinculados = produtos.filter(p => p.autoVinculado).length;
-                            let msg = `✅ PDF processado!`;
+                            let msg = `PDF processado!`;
                             if (nNF) msg += ` NF: ${nNF}.`;
                             if (xNome) msg += ` Cliente: ${xNome.substring(0, 20)}...`;
                             if (produtos.length > 0) msg += ` ${produtos.length} produto(s).`;
                             if (vinculados > 0) msg += ` ${vinculados} vinculado(s) ao estoque.`;
                             if (!nNF && !xNome && produtos.length === 0) {
-                                msg = '⚠️ Não foi possível extrair todos os dados. Complete manualmente.';
+                                msg = 'Não foi possível extrair todos os dados. Complete manualmente.';
                             }
                             
                             setSuccess(msg);
@@ -4665,19 +4719,19 @@
                                     className={`filter-tab ${activeView === 'list' ? 'active' : ''}`}
                                     onClick={() => setActiveView('list')}
                                 >
-                                    📋 Lista ({shippings.length})
+                                    Lista ({shippings.length})
                                 </button>
                                 <button 
                                     className={`filter-tab ${activeView === 'register' ? 'active' : ''}`}
                                     onClick={() => setActiveView('register')}
                                 >
-                                    ➕ Novo
+                                    Novo
                                 </button>
                                 <button 
                                     className={`filter-tab ${activeView === 'import' ? 'active' : ''}`}
                                     onClick={() => setActiveView('import')}
                                 >
-                                    📥 Importar NF
+                                    Importar NF
                                 </button>
                             </div>
                             <button 
@@ -4686,7 +4740,7 @@
                                 title="Configurar locais de origem"
                                 style={{display: 'flex', alignItems: 'center', gap: '6px'}}
                             >
-                                <span>⚙️</span>
+                                <Icon name="settings" size={14} />
                                 <span>Locais de Origem</span>
                             </button>
                         </div>
@@ -4697,7 +4751,7 @@
                         <div className="card">
                             <div style={{display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center'}}>
                                 <div className="search-box" style={{flex: 1, minWidth: '200px', marginBottom: 0}}>
-                                    <span className="search-icon">🔍</span>
+                                    <span className="search-icon"><Icon name="search" size={14} /></span>
                                     <input
                                         type="text"
                                         className="search-input"
@@ -4712,7 +4766,7 @@
                                     disabled={atualizandoRastreio}
                                     style={{whiteSpace: 'nowrap'}}
                                 >
-                                    {atualizandoRastreio ? '⏳ Atualizando...' : '🔄 Atualizar Rastreios'}
+                                    {atualizandoRastreio ? 'Atualizando...' : 'Atualizar Rastreios'}
                                 </button>
                             </div>
 
@@ -4733,7 +4787,7 @@
 
                             {filteredShippings.length === 0 ? (
                                 <div className="empty-state">
-                                    <div className="empty-state-icon">🚚</div>
+                                    <div className="empty-state-icon"><Icon name="shipping" size={48} /></div>
                                     <h3>Nenhum despacho encontrado</h3>
                                     <p>Importe uma NF ou cadastre manualmente</p>
                                 </div>
@@ -4771,7 +4825,7 @@
                                                                 {s.linkRastreio && (
                                                                     <a href={s.linkRastreio} target="_blank" rel="noopener noreferrer" 
                                                                        style={{marginLeft: '8px', fontSize: '11px'}}>
-                                                                        🔗 Rastrear
+                                                                        Rastrear
                                                                     </a>
                                                                 )}
                                                             </div>
@@ -4820,21 +4874,21 @@
                                                                     title="Atualizar status via Melhor Envio"
                                                                     style={{fontSize: '10px'}}
                                                                 >
-                                                                    {atualizandoRastreio ? '⏳' : '🔄'}
+                                                                    {atualizandoRastreio ? '...' : ''}
                                                                 </button>
                                                             )}
                                                             <button 
                                                                 className="btn btn-icon btn-secondary btn-sm" 
                                                                 onClick={() => setEditingShipping({...s})}
                                                                 title="Editar despacho"
-                                                            >✏️</button>
+                                                            ><Icon name="edit" size={14} /></button>
                                                             <button 
                                                                 className="btn btn-icon btn-secondary btn-sm" 
                                                                 onClick={() => {
                                                                     if(confirm('Excluir este despacho?')) onDelete(s.id);
                                                                 }}
                                                                 title="Excluir"
-                                                            >🗑️</button>
+                                                            ><Icon name="delete" size={14} /></button>
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -4850,7 +4904,7 @@
                     {editingShipping && (
                         <div className="modal-overlay">
                             <div className="modal-content" style={{maxWidth: '600px'}}>
-                                <h2 className="modal-title">✏️ Editar Despacho</h2>
+                                <h2 className="modal-title">Editar Despacho</h2>
                                 <p className="modal-subtitle">Atualize as informações do despacho</p>
 
                                 <div className="form-row">
@@ -4896,7 +4950,7 @@
                                         </select>
                                     </div>
                                     <div className="form-group">
-                                        <label className="form-label">🚚 Transportadora</label>
+                                        <label className="form-label">Transportadora</label>
                                         <select
                                             className="form-select"
                                             value={editingShipping.transportadora || ''}
@@ -4924,7 +4978,7 @@
                                         />
                                     </div>
                                     <div className="form-group">
-                                        <label className="form-label">🏷️ ID Melhor Envio</label>
+                                        <label className="form-label">ID Melhor Envio</label>
                                         <input
                                             type="text"
                                             className="form-input"
@@ -5004,7 +5058,7 @@
                                             setTimeout(() => setSuccess(''), 3000);
                                         }}
                                     >
-                                        💾 Salvar Alterações
+                                        Salvar Alterações
                                     </button>
                                     <button className="btn btn-secondary" onClick={() => setEditingShipping(null)}>Cancelar</button>
                                 </div>
@@ -5016,7 +5070,7 @@
                     {activeView === 'import' && (
                         <div className="card">
                             <h2 className="card-title">
-                                <span className="card-title-icon">📥</span>
+                                <Icon name="download" size={16} className="card-title-icon" />
                                 Importar Nota Fiscal
                             </h2>
                             
@@ -5026,7 +5080,7 @@
                                     className={`filter-tab ${importMode === 'single' ? 'active' : ''}`}
                                     onClick={() => { setImportMode('single'); setBatchDespachos([]); setBatchFiles([]); }}
                                 >
-                                    📄 Arquivo Único
+                                    Arquivo Único
                                 </button>
                                 <button 
                                     className={`filter-tab ${importMode === 'batch' ? 'active' : ''}`}
@@ -5058,7 +5112,7 @@
                                             id="nf-upload"
                                         />
                                         <label htmlFor="nf-upload" style={{cursor: 'pointer'}}>
-                                            <div style={{fontSize: '48px', marginBottom: '16px'}}>📄</div>
+                                            <div style={{marginBottom: '16px', color: 'var(--text-light)'}}><Icon name="file" size={48} /></div>
                                             <div style={{fontWeight: '600', marginBottom: '8px'}}>Clique para selecionar arquivo</div>
                                             <div style={{fontSize: '12px', color: 'var(--text-muted)'}}>XML ou PDF</div>
                                         </label>
@@ -5066,7 +5120,7 @@
 
                                     {nfFile && (
                                         <div style={{marginTop: '16px', padding: '12px', background: 'var(--success-light)', borderRadius: 'var(--radius)', fontSize: '13px'}}>
-                                            ✅ Arquivo carregado: <strong>{nfFile.name}</strong>
+                                            Arquivo carregado: <strong>{nfFile.name}</strong>
                                         </div>
                                     )}
                                 </>
@@ -5132,7 +5186,7 @@
                                                         className="btn btn-secondary btn-sm"
                                                         onClick={() => { setBatchDespachos([]); setBatchFiles([]); }}
                                                     >
-                                                        🗑️ Limpar
+                                                        <Icon name="delete" size={14} /> Limpar
                                                     </button>
                                                 </div>
                                             </div>
@@ -5189,7 +5243,7 @@
                                                                 </td>
                                                                 <td style={{fontSize: '12px'}}>
                                                                     {d.error ? (
-                                                                        <span style={{color: 'var(--danger)'}}>❌ {d.error}</span>
+                                                                        <span style={{color: 'var(--danger)'}}>{d.error}</span>
                                                                     ) : (
                                                                         <span>
                                                                             {d.total} item(s)
@@ -5242,9 +5296,9 @@
                                                     disabled={processingBatch || batchDespachos.filter(d => d.selected && !d.error).length === 0}
                                                 >
                                                     {processingBatch ? (
-                                                        `⏳ Salvando ${batchProgress.current}/${batchProgress.total}...`
+                                                        `Salvando ${batchProgress.current}/${batchProgress.total}...`
                                                     ) : (
-                                                        `💾 Salvar ${batchDespachos.filter(d => d.selected && !d.error).length} Despacho(s)`
+                                                        `Salvar ${batchDespachos.filter(d => d.selected && !d.error).length} Despacho(s)`
                                                     )}
                                                 </button>
                                             </div>
@@ -5281,7 +5335,7 @@
                     {activeView === 'register' && (
                         <div className="card">
                             <h2 className="card-title">
-                                <span className="card-title-icon">📝</span>
+                                <Icon name="edit" size={16} className="card-title-icon" />
                                 {nfData ? 'Confirmar Dados do Despacho' : 'Cadastrar Despacho Manual'}
                             </h2>
 
@@ -5331,7 +5385,7 @@
                                         </select>
                                     </div>
                                     <div className="form-group">
-                                        <label className="form-label">🚚 Transportadora</label>
+                                        <label className="form-label">Transportadora</label>
                                         <select
                                             className="form-select"
                                             value={form.transportadora}
@@ -5379,7 +5433,7 @@
                                         marginBottom: '16px'
                                     }}>
                                         <label className="form-label" style={{color: 'var(--info)'}}>
-                                            🏷️ ID da Etiqueta (Melhor Envio)
+                                            ID da Etiqueta (Melhor Envio)
                                         </label>
                                         <input
                                             type="text"
@@ -5389,7 +5443,7 @@
                                             placeholder="Ex: 9b3e8f7a-1234-5678-90ab-cdef12345678"
                                         />
                                         <p style={{fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px'}}>
-                                            💡 Encontre o ID no painel do Melhor Envio → Envios → Copiar ID da etiqueta. 
+                                            Encontre o ID no painel do Melhor Envio → Envios → Copiar ID da etiqueta. 
                                             Com o ID, o sistema atualiza o status automaticamente!
                                         </p>
                                     </div>
@@ -5409,7 +5463,7 @@
                                             onChange={(e) => setForm({...form, baixarEstoque: e.target.checked})}
                                             style={{width: '18px', height: '18px'}}
                                         />
-                                        <span style={{fontWeight: '500'}}>📦 Baixar produtos do estoque</span>
+                                        <span style={{fontWeight: '500'}}>Baixar produtos do estoque</span>
                                     </label>
                                     <p style={{fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px', marginLeft: '28px'}}>
                                         Se marcado, os produtos vinculados serão descontados do estoque automaticamente
@@ -5420,10 +5474,10 @@
                                 {form.produtos.length > 0 && (
                                     <div style={{marginBottom: '16px'}}>
                                         <h3 style={{fontSize: '14px', fontWeight: '600', marginBottom: '12px'}}>
-                                            📦 Produtos da NF ({form.produtos.length})
+                                            Produtos da NF ({form.produtos.length})
                                             <span style={{fontWeight: '400', fontSize: '12px', marginLeft: '12px', color: 'var(--text-muted)'}}>
-                                                ✅ {form.produtos.filter(p => p.produtoEstoque).length} vinculados | 
-                                                ⚠️ {form.produtos.filter(p => !p.produtoEstoque).length} não encontrados
+                                                {form.produtos.filter(p => p.produtoEstoque).length} vinculados |
+                                                {form.produtos.filter(p => !p.produtoEstoque).length} não encontrados
                                             </span>
                                         </h3>
                                         <div className="table-container">
@@ -5446,9 +5500,9 @@
                                                         }}>
                                                             <td style={{textAlign: 'center', fontSize: '18px'}}>
                                                                 {prod.produtoEstoque ? (
-                                                                    <span title="Vinculado ao estoque">✅</span>
+                                                                    <span title="Vinculado ao estoque" style={{color: 'var(--success)'}}><Icon name="success" size={14} /></span>
                                                                 ) : (
-                                                                    <span title="Não encontrado no estoque">⚠️</span>
+                                                                    <span title="Não encontrado no estoque" style={{color: 'var(--warning)'}}><Icon name="warning" size={14} /></span>
                                                                 )}
                                                             </td>
                                                             <td>
@@ -5520,7 +5574,7 @@
                                                                         }}
                                                                         title="Buscar e vincular produto"
                                                                     >
-                                                                        🔍
+                                                                        <Icon name="search" size={12} />
                                                                     </button>
                                                                     {!prod.produtoEstoque && (
                                                                         <button
@@ -5530,7 +5584,7 @@
                                                                             onClick={() => handleOpenNewProduct(idx)}
                                                                             title="Cadastrar novo produto"
                                                                         >
-                                                                            ➕
+                                                                            <Icon name="add" size={12} />
                                                                         </button>
                                                                     )}
                                                                     {prod.produtoEstoque && (
@@ -5584,7 +5638,7 @@
                                 {showVincularModal !== null && (
                                     <div className="modal-overlay">
                                         <div className="modal-content" style={{maxWidth: '600px'}}>
-                                            <h2 className="modal-title">🔍 Vincular Produto do Estoque</h2>
+                                            <h2 className="modal-title">Vincular Produto do Estoque</h2>
                                             <p className="modal-subtitle">
                                                 Produto da NF: <strong>{form.produtos[showVincularModal]?.nome}</strong>
                                             </p>
@@ -5682,7 +5736,7 @@
                                                         setVincularSearch('');
                                                     }}
                                                 >
-                                                    ➕ Cadastrar Novo Produto
+                                                    Cadastrar Novo Produto
                                                 </button>
                                             </div>
                                         </div>
@@ -5693,7 +5747,7 @@
                                 {showNewProductModal !== null && (
                                     <div className="modal-overlay">
                                         <div className="modal-content">
-                                            <h2 className="modal-title">➕ Cadastrar Novo Produto</h2>
+                                            <h2 className="modal-title">Cadastrar Novo Produto</h2>
                                             <p className="modal-subtitle">
                                                 Produto da NF: {form.produtos[showNewProductModal]?.nome?.substring(0, 50)}
                                             </p>
@@ -5771,7 +5825,7 @@
                                                 marginBottom: '16px',
                                                 fontSize: '12px'
                                             }}>
-                                                ⚠️ O produto será cadastrado com <strong>estoque zerado</strong>. 
+                                                O produto será cadastrado com <strong>estoque zerado</strong>.
                                                 Para dar entrada, use a aba "Entrada" após o cadastro.
                                             </div>
 
@@ -5781,7 +5835,7 @@
                                                     className="btn btn-primary" 
                                                     onClick={handleCreateAndLinkProduct}
                                                 >
-                                                    💾 Cadastrar e Vincular
+                                                    Cadastrar e Vincular
                                                 </button>
                                                 <button 
                                                     type="button"
@@ -5836,13 +5890,13 @@
                     <div className="card">
                         <div className="filter-tabs">
                             <button className={`filter-tab ${activeImport === 'nfe' ? 'active' : ''}`} onClick={() => setActiveImport('nfe')}>
-                                📄 NF-e Individual
+                                NF-e Individual
                             </button>
                             <button className={`filter-tab ${activeImport === 'nfe-batch' ? 'active' : ''}`} onClick={() => setActiveImport('nfe-batch')}>
                                 📚 NF-e em Lote
                             </button>
                             <button className={`filter-tab ${activeImport === 'excel' ? 'active' : ''}`} onClick={() => setActiveImport('excel')}>
-                                📊 Excel/CSV
+                                Excel/CSV
                             </button>
                         </div>
                     </div>
@@ -6039,7 +6093,7 @@
                 }
 
                 setProcessing(false);
-                setSuccess(`✅ Importação concluída! ${importados} entrada(s) registrada(s)${erros > 0 ? `, ${erros} erro(s)` : ''}`);
+                setSuccess(`Importação concluída! ${importados} entrada(s) registrada(s)${erros > 0 ? `, ${erros} erro(s)` : ''}`);
                 setBatchData([]);
                 setBatchFiles([]);
             };
@@ -6047,7 +6101,7 @@
             return (
                 <div className="card">
                     <h2 className="card-title">
-                        <span className="card-title-icon">📚</span>
+                        <Icon name="clipboard" size={16} className="card-title-icon" />
                         Importar NF-e em Lote
                     </h2>
 
@@ -6075,7 +6129,7 @@
                                 title="Gerenciar depósitos"
                                 style={{padding: '8px 12px'}}
                             >
-                                ⚙️
+                                <Icon name="settings" size={14} />
                             </button>
                         </div>
                         <span className="form-help">Todos os produtos importados serão registrados neste local</span>
@@ -6153,7 +6207,7 @@
                                         {batchData.filter(d => !d.error).every(d => d.selected) ? '☐ Desmarcar' : '☑ Selecionar'} todas
                                     </button>
                                     <button className="btn btn-secondary btn-sm" onClick={() => { setBatchData([]); setBatchFiles([]); }}>
-                                        🗑️ Limpar
+                                        <Icon name="delete" size={14} /> Limpar
                                     </button>
                                 </div>
                             </div>
@@ -6185,7 +6239,7 @@
                                             />
                                             <div style={{flex: 1}}>
                                                 <div style={{fontWeight: '600'}}>
-                                                    {nf.error ? '❌' : '📄'} NF: {nf.nfNumero || nf.fileName}
+                                                    {nf.error ? 'Erro -' : ''} NF: {nf.nfNumero || nf.fileName}
                                                 </div>
                                                 <div style={{fontSize: '12px', color: 'var(--text-muted)'}}>
                                                     {nf.error ? nf.error : `${nf.fornecedor} • ${nf.vinculados}/${nf.total} vinculados`}
@@ -6257,7 +6311,7 @@
                                     onClick={handleImportAll}
                                     disabled={processing || batchData.filter(d => d.selected && !d.error).length === 0}
                                 >
-                                    {processing ? '⏳ Importando...' : '📥 Importar Selecionadas'}
+                                    {processing ? 'Importando...' : 'Importar Selecionadas'}
                                 </button>
                             </div>
                         </>
@@ -6441,7 +6495,7 @@
                     )}
 
                     <h2 className="card-title">
-                        <span className="card-title-icon">📄</span>
+                        <Icon name="file" size={16} className="card-title-icon" />
                         Importar NF-e (XML)
                     </h2>
 
@@ -6465,7 +6519,7 @@
                                 title="Gerenciar depósitos"
                                 style={{padding: '8px 12px'}}
                             >
-                                ⚙️
+                                <Icon name="settings" size={14} />
                             </button>
                         </div>
                         <span className="form-help">Selecione o depósito onde os produtos serão armazenados</span>
@@ -6585,7 +6639,7 @@
             return (
                 <div className="card">
                     <h2 className="card-title">
-                        <span className="card-title-icon">📊</span>
+                        <Icon name="chart" size={16} className="card-title-icon" />
                         Importar Excel/CSV
                     </h2>
 
@@ -6614,7 +6668,7 @@
                                 title="Gerenciar depósitos"
                                 style={{padding: '8px 12px'}}
                             >
-                                ⚙️
+                                <Icon name="settings" size={14} />
                             </button>
                         </div>
                         <span className="form-help">Usado quando a planilha não tiver coluna "local"</span>
@@ -6691,7 +6745,7 @@
                     <div className="card">
                         {/* Barra de pesquisa */}
                         <div className="search-box" style={{marginBottom: '16px'}}>
-                            <span className="search-icon">🔍</span>
+                            <span className="search-icon"><Icon name="search" size={14} /></span>
                             <input
                                 type="text"
                                 className="search-input"
@@ -6738,13 +6792,13 @@
                                 fontSize: '13px',
                                 color: 'var(--accent)'
                             }}>
-                                🔍 {filtered.length} resultado(s) para "{searchTerm}"
+                                {filtered.length} resultado(s) para "{searchTerm}"
                             </div>
                         )}
 
                         {filtered.length === 0 ? (
                             <div className="empty-state">
-                                <div className="empty-state-icon">📋</div>
+                                <div className="empty-state-icon"><Icon name="clipboard" size={48} /></div>
                                 <h3>{searchTerm ? 'Nenhuma movimentação encontrada' : 'Nenhuma movimentação'}</h3>
                                 {searchTerm && <p>Tente buscar por outro termo</p>}
                             </div>
