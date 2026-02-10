@@ -1631,6 +1631,17 @@
                 await supabaseClient.from('exits').delete().eq('id', exitId);
             };
 
+            const refetchData = async () => {
+                const [prodRes, entRes, exitRes] = await Promise.all([
+                    supabaseClient.from('products').select('*'),
+                    supabaseClient.from('entries').select('*'),
+                    supabaseClient.from('exits').select('*'),
+                ]);
+                if (prodRes.data) setProducts(prodRes.data.map(mapProductFromDB).filter(p => p.name && p.sku));
+                if (entRes.data) setEntries(entRes.data.map(mapEntryFromDB));
+                if (exitRes.data) setExits(exitRes.data.map(mapExitFromDB));
+            };
+
             const addProduct = async (product) => {
                 const newProduct = { ...product, id: product.id || generateId() };
                 await supabaseClient.from('products').upsert({
@@ -1848,7 +1859,7 @@
                             {activeTab === 'shipping' && <ShippingManager shippings={shippings} onAdd={addShipping} onUpdate={updateShipping} onDelete={deleteShipping} stock={currentStock} onAddExit={addExit} locaisOrigem={locaisOrigem} onUpdateLocais={updateLocaisOrigem} onAddProduct={addProduct} categories={categories} entries={entries} exits={exits} />}
                             {activeTab === 'import' && <ImportHub products={products} onImport={handleImport} onAddProduct={addProduct} categories={categories} locaisOrigem={locaisOrigem} onUpdateLocais={updateLocaisOrigem} />}
                             {activeTab === 'history' && <History entries={entries} exits={exits} products={products} shippings={shippings} onUpdateEntry={updateEntry} onDeleteEntry={deleteEntry} onUpdateExit={updateExit} onDeleteExit={deleteExit} />}
-                            {activeTab === 'tiny' && <TinyERPPage user={user} />}
+                            {activeTab === 'tiny' && <TinyERPPage user={user} onDataChanged={refetchData} />}
                         </div>
                     </div>
 
@@ -7140,7 +7151,7 @@
         // ==========================================
         // TINY ERP INTEGRATION PAGE
         // ==========================================
-        function TinyERPPage({ user }) {
+        function TinyERPPage({ user, onDataChanged }) {
             const [activeSection, setActiveSection] = useState('config');
             const [clientId, setClientId] = useState('');
             const [clientSecret, setClientSecret] = useState('');
@@ -7205,6 +7216,12 @@
                 } catch (e) {
                     console.error('Failed to load sync logs:', e);
                 }
+            };
+
+            const deleteSyncLog = async (logId) => {
+                if (!confirm('Excluir este registro de sincronização?')) return;
+                await supabaseClient.from('sync_log').delete().eq('id', logId);
+                await loadSyncLogs();
             };
 
             const handleConnect = async () => {
@@ -7351,6 +7368,8 @@
                             : (data.error || 'Erro desconhecido'),
                     });
                     await loadSyncLogs();
+                    // Refetch entries/exits/products para atualizar o histórico do sistema
+                    if (data.success && onDataChanged) await onDataChanged();
                 } catch (e) {
                     setSyncProgress({ type, status: 'error', message: e.message });
                 }
@@ -7683,6 +7702,7 @@
                                                 <th>Mensagem</th>
                                                 <th>Início</th>
                                                 <th>Fim</th>
+                                                <th style={{width: '50px'}}></th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -7717,6 +7737,11 @@
                                                     </td>
                                                     <td style={{fontSize: '12px', color: 'var(--text-muted)', whiteSpace: 'nowrap'}}>
                                                         {formatDate(log.finished_at)}
+                                                    </td>
+                                                    <td>
+                                                        <button className="btn btn-icon btn-secondary" onClick={() => deleteSyncLog(log.id)} title="Excluir" style={{padding: '4px 6px'}}>
+                                                            <Icon name="delete" size={13} />
+                                                        </button>
                                                     </td>
                                                 </tr>
                                             ))}
