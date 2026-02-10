@@ -1599,6 +1599,38 @@
                 });
             };
 
+            const updateEntry = async (entryId, data) => {
+                const mapped = {};
+                if (data.type !== undefined) mapped.type = data.type;
+                if (data.sku !== undefined) mapped.sku = data.sku;
+                if (data.quantity !== undefined) mapped.quantity = data.quantity;
+                if (data.supplier !== undefined) mapped.supplier = data.supplier;
+                if (data.nf !== undefined) mapped.nf = data.nf;
+                if (data.localEntrada !== undefined) mapped.local_entrada = data.localEntrada;
+                if (data.date !== undefined) mapped.date = data.date;
+                await supabaseClient.from('entries').update(mapped).eq('id', entryId);
+            };
+
+            const deleteEntry = async (entryId) => {
+                await supabaseClient.from('entries').delete().eq('id', entryId);
+            };
+
+            const updateExit = async (exitId, data) => {
+                const mapped = {};
+                if (data.type !== undefined) mapped.type = data.type;
+                if (data.sku !== undefined) mapped.sku = data.sku;
+                if (data.quantity !== undefined) mapped.quantity = data.quantity;
+                if (data.client !== undefined) mapped.client = data.client;
+                if (data.nf !== undefined) mapped.nf = data.nf;
+                if (data.nfOrigem !== undefined) mapped.nf_origem = data.nfOrigem;
+                if (data.date !== undefined) mapped.date = data.date;
+                await supabaseClient.from('exits').update(mapped).eq('id', exitId);
+            };
+
+            const deleteExit = async (exitId) => {
+                await supabaseClient.from('exits').delete().eq('id', exitId);
+            };
+
             const addProduct = async (product) => {
                 const newProduct = { ...product, id: product.id || generateId() };
                 await supabaseClient.from('products').upsert({
@@ -1815,7 +1847,7 @@
                             {activeTab === 'exit' && <ExitForm products={products} stock={currentStock} onSubmit={addExit} entries={entries} exits={exits} />}
                             {activeTab === 'shipping' && <ShippingManager shippings={shippings} onAdd={addShipping} onUpdate={updateShipping} onDelete={deleteShipping} stock={currentStock} onAddExit={addExit} locaisOrigem={locaisOrigem} onUpdateLocais={updateLocaisOrigem} onAddProduct={addProduct} categories={categories} entries={entries} exits={exits} />}
                             {activeTab === 'import' && <ImportHub products={products} onImport={handleImport} onAddProduct={addProduct} categories={categories} locaisOrigem={locaisOrigem} onUpdateLocais={updateLocaisOrigem} />}
-                            {activeTab === 'history' && <History entries={entries} exits={exits} products={products} shippings={shippings} />}
+                            {activeTab === 'history' && <History entries={entries} exits={exits} products={products} shippings={shippings} onUpdateEntry={updateEntry} onDeleteEntry={deleteEntry} onUpdateExit={updateExit} onDeleteExit={deleteExit} />}
                             {activeTab === 'tiny' && <TinyERPPage user={user} />}
                         </div>
                     </div>
@@ -6778,9 +6810,13 @@
         // ==========================================
         // HISTORY
         // ==========================================
-        function History({ entries, exits, products }) {
+        function History({ entries, exits, products, onUpdateEntry, onDeleteEntry, onUpdateExit, onDeleteExit }) {
             const [filter, setFilter] = useState('all');
             const [searchTerm, setSearchTerm] = useState('');
+            const [editingItem, setEditingItem] = useState(null);
+            const [deleteConfirm, setDeleteConfirm] = useState(null);
+            const [editForm, setEditForm] = useState({});
+            const [saving, setSaving] = useState(false);
 
             const allMovements = [
                 ...entries.map(e => ({...e, movType: 'entry'})),
@@ -6789,15 +6825,12 @@
 
             const getProductName = (sku) => products.find(p => p.sku === sku)?.name || sku;
 
-            // Filtrar por tipo e busca
             const filtered = allMovements.filter(m => {
                 const matchesType = filter === 'all' || m.movType === filter;
-                
                 if (!searchTerm) return matchesType;
-                
                 const search = searchTerm.toLowerCase();
                 const productName = getProductName(m.sku).toLowerCase();
-                const matchesSearch = 
+                const matchesSearch =
                     productName.includes(search) ||
                     (m.sku || '').toLowerCase().includes(search) ||
                     (m.nf || '').toLowerCase().includes(search) ||
@@ -6805,9 +6838,70 @@
                     (m.supplier || '').toLowerCase().includes(search) ||
                     (m.client || '').toLowerCase().includes(search) ||
                     (m.localEntrada || '').toLowerCase().includes(search);
-                
                 return matchesType && matchesSearch;
             });
+
+            const handleEdit = (m) => {
+                setEditForm({
+                    sku: m.sku || '',
+                    quantity: m.quantity || 0,
+                    supplier: m.supplier || '',
+                    client: m.client || '',
+                    nf: m.nf || '',
+                    nfOrigem: m.nf_origem || m.nfOrigem || '',
+                    localEntrada: m.local_entrada || m.localEntrada || '',
+                    type: m.type || '',
+                    date: m.date ? new Date(m.date).toISOString().slice(0, 16) : '',
+                });
+                setEditingItem(m);
+            };
+
+            const handleSave = async () => {
+                if (!editingItem) return;
+                setSaving(true);
+                try {
+                    if (editingItem.movType === 'entry') {
+                        await onUpdateEntry(editingItem.id, {
+                            sku: editForm.sku,
+                            quantity: parseInt(editForm.quantity),
+                            supplier: editForm.supplier,
+                            nf: editForm.nf,
+                            localEntrada: editForm.localEntrada,
+                            type: editForm.type,
+                            date: editForm.date ? new Date(editForm.date).toISOString() : undefined,
+                        });
+                    } else {
+                        await onUpdateExit(editingItem.id, {
+                            sku: editForm.sku,
+                            quantity: parseInt(editForm.quantity),
+                            client: editForm.client,
+                            nf: editForm.nf,
+                            nfOrigem: editForm.nfOrigem,
+                            type: editForm.type,
+                            date: editForm.date ? new Date(editForm.date).toISOString() : undefined,
+                        });
+                    }
+                    setEditingItem(null);
+                } catch (e) {
+                    alert('Erro ao salvar: ' + e.message);
+                }
+                setSaving(false);
+            };
+
+            const handleDelete = async (m) => {
+                try {
+                    if (m.movType === 'entry') {
+                        await onDeleteEntry(m.id);
+                    } else {
+                        await onDeleteExit(m.id);
+                    }
+                    setDeleteConfirm(null);
+                } catch (e) {
+                    alert('Erro ao excluir: ' + e.message);
+                }
+            };
+
+            const sortedProducts = [...products].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
             return (
                 <div>
@@ -6816,8 +6910,103 @@
                         <p className="page-subtitle">Movimentações de estoque</p>
                     </div>
 
+                    {/* Modal de Edição */}
+                    {editingItem && (
+                        <div className="modal-overlay">
+                            <div className="modal-content">
+                                <h2 className="modal-title">Editar {editingItem.movType === 'entry' ? 'Entrada' : 'Saída'}</h2>
+                                <p className="modal-subtitle">{getProductName(editingItem.sku)}</p>
+
+                                <div className="form-group">
+                                    <label className="form-label">Produto (SKU)</label>
+                                    <select className="form-select" value={editForm.sku} onChange={e => setEditForm({...editForm, sku: e.target.value})}>
+                                        <option value="">Selecione...</option>
+                                        {sortedProducts.map(p => (
+                                            <option key={p.sku} value={p.sku}>{p.name} ({p.sku})</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div className="form-row">
+                                    <div className="form-group">
+                                        <label className="form-label">Quantidade</label>
+                                        <input type="number" className="form-input" min="1" value={editForm.quantity} onChange={e => setEditForm({...editForm, quantity: e.target.value})} />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Tipo</label>
+                                        <input type="text" className="form-input" value={editForm.type} onChange={e => setEditForm({...editForm, type: e.target.value})} />
+                                    </div>
+                                </div>
+
+                                <div className="form-row">
+                                    {editingItem.movType === 'entry' ? (
+                                        <div className="form-group">
+                                            <label className="form-label">Fornecedor</label>
+                                            <input type="text" className="form-input" value={editForm.supplier} onChange={e => setEditForm({...editForm, supplier: e.target.value})} />
+                                        </div>
+                                    ) : (
+                                        <div className="form-group">
+                                            <label className="form-label">Cliente</label>
+                                            <input type="text" className="form-input" value={editForm.client} onChange={e => setEditForm({...editForm, client: e.target.value})} />
+                                        </div>
+                                    )}
+                                    <div className="form-group">
+                                        <label className="form-label">NF</label>
+                                        <input type="text" className="form-input" value={editForm.nf} onChange={e => setEditForm({...editForm, nf: e.target.value})} />
+                                    </div>
+                                </div>
+
+                                {editingItem.movType === 'entry' && (
+                                    <div className="form-group">
+                                        <label className="form-label">Local de Entrada</label>
+                                        <input type="text" className="form-input" value={editForm.localEntrada} onChange={e => setEditForm({...editForm, localEntrada: e.target.value})} />
+                                    </div>
+                                )}
+
+                                {editingItem.movType === 'exit' && (
+                                    <div className="form-group">
+                                        <label className="form-label">NF Origem</label>
+                                        <input type="text" className="form-input" value={editForm.nfOrigem} onChange={e => setEditForm({...editForm, nfOrigem: e.target.value})} />
+                                    </div>
+                                )}
+
+                                <div className="form-group">
+                                    <label className="form-label">Data</label>
+                                    <input type="datetime-local" className="form-input" value={editForm.date} onChange={e => setEditForm({...editForm, date: e.target.value})} />
+                                </div>
+
+                                <div className="btn-group" style={{marginTop: '20px'}}>
+                                    <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
+                                        {saving ? 'Salvando...' : 'Salvar'}
+                                    </button>
+                                    <button className="btn btn-secondary" onClick={() => setEditingItem(null)}>Cancelar</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Modal de Confirmação de Exclusão */}
+                    {deleteConfirm && (
+                        <div className="modal-overlay">
+                            <div className="modal-content" style={{maxWidth: '400px'}}>
+                                <h2 className="modal-title">Confirmar Exclusão</h2>
+                                <p style={{margin: '16px 0', fontSize: '14px'}}>
+                                    Excluir esta {deleteConfirm.movType === 'entry' ? 'entrada' : 'saída'}?
+                                </p>
+                                <div style={{padding: '12px', background: 'var(--bg-secondary)', borderRadius: 'var(--radius)', marginBottom: '16px', fontSize: '13px'}}>
+                                    <div><strong>{getProductName(deleteConfirm.sku)}</strong></div>
+                                    <div>Qtd: {deleteConfirm.quantity} | NF: {deleteConfirm.nf || '-'}</div>
+                                    <div>{new Date(deleteConfirm.date).toLocaleDateString('pt-BR')}</div>
+                                </div>
+                                <div className="btn-group">
+                                    <button className="btn" style={{background: 'var(--danger)', color: '#fff'}} onClick={() => handleDelete(deleteConfirm)}>Excluir</button>
+                                    <button className="btn btn-secondary" onClick={() => setDeleteConfirm(null)}>Cancelar</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="card">
-                        {/* Barra de pesquisa */}
                         <div className="search-box" style={{marginBottom: '16px'}}>
                             <span className="search-icon"><Icon name="search" size={14} /></span>
                             <input
@@ -6828,7 +7017,7 @@
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                             {searchTerm && (
-                                <button 
+                                <button
                                     onClick={() => setSearchTerm('')}
                                     style={{
                                         position: 'absolute',
@@ -6887,11 +7076,12 @@
                                             <th>Qtd</th>
                                             <th>Local</th>
                                             <th>Info</th>
+                                            <th style={{width: '80px'}}></th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {filtered.slice(0, 100).map((m, i) => (
-                                            <tr key={i}>
+                                            <tr key={m.id || i}>
                                                 <td style={{whiteSpace: 'nowrap'}}>
                                                     {new Date(m.date).toLocaleDateString('pt-BR')}
                                                     <div style={{fontSize: '11px', color: 'var(--text-muted)'}}>
@@ -6925,6 +7115,16 @@
                                                     {m.supplier || m.client || '-'}
                                                     {m.nf && <div style={{marginTop: '2px'}}><strong>NF: {m.nf}</strong></div>}
                                                     {m.nfOrigem && <div style={{marginTop: '2px', color: 'var(--warning)'}}>Saída da NF: {m.nfOrigem}</div>}
+                                                </td>
+                                                <td>
+                                                    <div style={{display: 'flex', gap: '4px'}}>
+                                                        <button className="btn btn-icon btn-secondary" onClick={() => handleEdit(m)} title="Editar" style={{padding: '4px 6px'}}>
+                                                            <Icon name="edit" size={13} />
+                                                        </button>
+                                                        <button className="btn btn-icon btn-secondary" onClick={() => setDeleteConfirm(m)} title="Excluir" style={{padding: '4px 6px'}}>
+                                                            <Icon name="delete" size={13} />
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))}
