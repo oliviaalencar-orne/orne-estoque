@@ -6951,6 +6951,7 @@
             const [syncProgress, setSyncProgress] = useState(null);
             const [nfeDateFrom, setNfeDateFrom] = useState('');
             const [nfeDateTo, setNfeDateTo] = useState('');
+            const [nfeNumber, setNfeNumber] = useState('');
 
             const FUNC_BASE = `${SUPABASE_URL}/functions/v1`;
 
@@ -7138,6 +7139,7 @@
                         data = await callFunction('tiny-sync-nfe', {
                             date_from: nfeDateFrom || undefined,
                             date_to: nfeDateTo || undefined,
+                            nf_number: nfeNumber || undefined,
                         });
                     }
 
@@ -7410,6 +7412,11 @@
                                         <p style={{fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '12px'}}>
                                             Importa notas fiscais do Tiny e cria entradas/saídas automaticamente no estoque.
                                         </p>
+                                        <div style={{marginBottom: '8px'}}>
+                                            <label className="form-label">Número da NF</label>
+                                            <input type="text" className="form-input" placeholder="Ex: 12345" value={nfeNumber} onChange={e => setNfeNumber(e.target.value)} />
+                                        </div>
+                                        <div style={{fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center', marginBottom: '8px'}}>ou buscar por período</div>
                                         <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px'}}>
                                             <div>
                                                 <label className="form-label">Data início</label>
