@@ -1854,12 +1854,12 @@
                             {activeTab === 'stock' && <StockView stock={currentStock} categories={categories} onUpdate={updateProduct} onDelete={deleteProduct} searchTerm={searchTerm} setSearchTerm={setSearchTerm} entries={entries} exits={exits} />}
                             {activeTab === 'newproduct' && <ProductForm onSubmit={addProduct} products={products} categories={categories} />}
                             {activeTab === 'categories' && <CategoryManager categories={categories} onAdd={addCategory} onUpdate={updateCategory} onDelete={deleteCategory} products={currentStock} />}
-                            {activeTab === 'entry' && <EntryForm products={products} onSubmit={addEntry} onAddProduct={addProduct} categories={categories} locaisOrigem={locaisOrigem} onUpdateLocais={updateLocaisOrigem} />}
+                            {activeTab === 'entry' && <EntryForm products={products} onSubmit={addEntry} onAddProduct={addProduct} categories={categories} locaisOrigem={locaisOrigem} onUpdateLocais={updateLocaisOrigem} entries={entries} exits={exits} stock={currentStock} />}
                             {activeTab === 'exit' && <ExitForm products={products} stock={currentStock} onSubmit={addExit} entries={entries} exits={exits} />}
-                            {activeTab === 'shipping' && <ShippingManager shippings={shippings} onAdd={addShipping} onUpdate={updateShipping} onDelete={deleteShipping} stock={currentStock} onAddExit={addExit} locaisOrigem={locaisOrigem} onUpdateLocais={updateLocaisOrigem} onAddProduct={addProduct} categories={categories} entries={entries} exits={exits} />}
-                            {activeTab === 'import' && <ImportHub products={products} onImport={handleImport} onAddProduct={addProduct} categories={categories} locaisOrigem={locaisOrigem} onUpdateLocais={updateLocaisOrigem} />}
+                            {activeTab === 'shipping' && <ShippingManager shippings={shippings} onAdd={addShipping} onUpdate={updateShipping} onDelete={deleteShipping} stock={currentStock} products={products} onAddExit={addExit} onAddEntry={addEntry} locaisOrigem={locaisOrigem} onUpdateLocais={updateLocaisOrigem} onAddProduct={addProduct} categories={categories} entries={entries} exits={exits} />}
+                            {activeTab === 'import' && <ImportHub products={products} onImport={handleImport} onAddProduct={addProduct} categories={categories} locaisOrigem={locaisOrigem} onUpdateLocais={updateLocaisOrigem} entries={entries} exits={exits} stock={currentStock} onAddEntry={addEntry} onAddExit={addExit} />}
                             {activeTab === 'history' && <History entries={entries} exits={exits} products={products} shippings={shippings} onUpdateEntry={updateEntry} onDeleteEntry={deleteEntry} onUpdateExit={updateExit} onDeleteExit={deleteExit} />}
-                            {activeTab === 'tiny' && <TinyERPPage user={user} onDataChanged={refetchData} />}
+                            {activeTab === 'tiny' && <TinyERPPage user={user} onDataChanged={refetchData} products={products} entries={entries} exits={exits} stock={currentStock} onAddEntry={addEntry} onAddExit={addExit} onAddProduct={addProduct} categories={categories} locaisOrigem={locaisOrigem} onUpdateLocais={updateLocaisOrigem} />}
                         </div>
                     </div>
 
@@ -3078,7 +3078,8 @@
         // ==========================================
         // ENTRY FORM
         // ==========================================
-        function EntryForm({ products, onSubmit, onAddProduct, categories, locaisOrigem, onUpdateLocais }) {
+        function EntryForm({ products, onSubmit, onAddProduct, categories, locaisOrigem, onUpdateLocais, entries, exits, stock }) {
+            const [entryMode, setEntryMode] = useState('manual'); // 'manual' or 'tiny'
             const [type, setType] = useState('COMPRA');
             const [sku, setSku] = useState('');
             const [quantity, setQuantity] = useState('');
@@ -3150,6 +3151,34 @@
                         <p className="page-subtitle">Registre entradas de produtos no estoque</p>
                     </div>
 
+                    <div className="card" style={{marginBottom: '16px'}}>
+                        <div className="filter-tabs">
+                            <button className={`filter-tab ${entryMode === 'manual' ? 'active' : ''}`} onClick={() => setEntryMode('manual')}>
+                                Entrada Manual
+                            </button>
+                            <button className={`filter-tab ${entryMode === 'tiny' ? 'active' : ''}`} onClick={() => setEntryMode('tiny')}>
+                                Importar do Tiny
+                            </button>
+                        </div>
+                    </div>
+
+                    {entryMode === 'tiny' && (
+                        <TinyNFeImport
+                            products={products}
+                            onSubmitEntry={onSubmit}
+                            onSubmitExit={() => {}}
+                            onAddProduct={onAddProduct}
+                            categories={categories}
+                            locaisOrigem={locaisOrigem}
+                            onUpdateLocais={onUpdateLocais}
+                            entries={entries || []}
+                            exits={exits || []}
+                            stock={stock || []}
+                            mode="entry"
+                        />
+                    )}
+
+                    {entryMode === 'manual' && (<React.Fragment>
                     {success && <div className="alert alert-success">Entrada registrada!</div>}
 
                     {/* Modal Novo Produto */}
@@ -3330,12 +3359,13 @@
 
                     {/* Modal Gerenciar Locais - FORA DO FORM */}
                     {showLocaisModal && (
-                        <LocaisModal 
+                        <LocaisModal
                             locaisOrigem={locaisOrigem}
                             onUpdateLocais={onUpdateLocais}
                             onClose={() => setShowLocaisModal(false)}
                         />
                     )}
+                    </React.Fragment>)}
                 </div>
             );
         }
@@ -3796,7 +3826,7 @@
         // ==========================================
         // SHIPPING MANAGER (Despachos)
         // ==========================================
-        function ShippingManager({ shippings, onAdd, onUpdate, onDelete, stock, onAddExit, locaisOrigem, onUpdateLocais, onAddProduct, categories, entries, exits }) {
+        function ShippingManager({ shippings, onAdd, onUpdate, onDelete, stock, products, onAddExit, onAddEntry, locaisOrigem, onUpdateLocais, onAddProduct, categories, entries, exits }) {
             const [activeView, setActiveView] = useState('list');
             const [nfFile, setNfFile] = useState(null);
             const [nfData, setNfData] = useState(null);
@@ -4844,11 +4874,17 @@
                                 >
                                     Novo
                                 </button>
-                                <button 
+                                <button
                                     className={`filter-tab ${activeView === 'import' ? 'active' : ''}`}
                                     onClick={() => setActiveView('import')}
                                 >
                                     Importar NF
+                                </button>
+                                <button
+                                    className={`filter-tab ${activeView === 'import-tiny' ? 'active' : ''}`}
+                                    onClick={() => setActiveView('import-tiny')}
+                                >
+                                    Importar Tiny
                                 </button>
                             </div>
                             <button 
@@ -5448,6 +5484,23 @@
                         </div>
                     )}
 
+                    {/* Importar do Tiny */}
+                    {activeView === 'import-tiny' && (
+                        <TinyNFeImport
+                            products={products || []}
+                            onSubmitEntry={onAddEntry}
+                            onSubmitExit={onAddExit}
+                            onAddProduct={onAddProduct}
+                            categories={categories}
+                            locaisOrigem={locaisOrigem}
+                            onUpdateLocais={onUpdateLocais}
+                            entries={entries || []}
+                            exits={exits || []}
+                            stock={stock || []}
+                            mode="exit"
+                        />
+                    )}
+
                     {/* Registrar Despacho */}
                     {activeView === 'register' && (
                         <div className="card">
@@ -5994,7 +6047,7 @@
         // ==========================================
         // IMPORT HUB (Com importação em lote e local de entrada)
         // ==========================================
-        function ImportHub({ products, onImport, onAddProduct, categories, locaisOrigem, onUpdateLocais }) {
+        function ImportHub({ products, onImport, onAddProduct, categories, locaisOrigem, onUpdateLocais, entries, exits, stock, onAddEntry, onAddExit }) {
             const [activeImport, setActiveImport] = useState('nfe');
 
             return (
@@ -6006,8 +6059,11 @@
 
                     <div className="card">
                         <div className="filter-tabs">
+                            <button className={`filter-tab ${activeImport === 'tiny' ? 'active' : ''}`} onClick={() => setActiveImport('tiny')}>
+                                Tiny ERP
+                            </button>
                             <button className={`filter-tab ${activeImport === 'nfe' ? 'active' : ''}`} onClick={() => setActiveImport('nfe')}>
-                                NF-e Individual
+                                NF-e XML
                             </button>
                             <button className={`filter-tab ${activeImport === 'nfe-batch' ? 'active' : ''}`} onClick={() => setActiveImport('nfe-batch')}>
                                 NF-e em Lote
@@ -6018,6 +6074,21 @@
                         </div>
                     </div>
 
+                    {activeImport === 'tiny' && (
+                        <TinyNFeImport
+                            products={products}
+                            onSubmitEntry={onAddEntry}
+                            onSubmitExit={onAddExit}
+                            onAddProduct={onAddProduct}
+                            categories={categories}
+                            locaisOrigem={locaisOrigem}
+                            onUpdateLocais={onUpdateLocais}
+                            entries={entries || []}
+                            exits={exits || []}
+                            stock={stock || []}
+                            mode="entry"
+                        />
+                    )}
                     {activeImport === 'nfe' && <ImportNFe products={products} onImport={onImport} onAddProduct={onAddProduct} categories={categories} locaisOrigem={locaisOrigem} onUpdateLocais={onUpdateLocais} />}
                     {activeImport === 'nfe-batch' && <ImportNFeBatch products={products} onImport={onImport} onAddProduct={onAddProduct} categories={categories} locaisOrigem={locaisOrigem} onUpdateLocais={onUpdateLocais} />}
                     {activeImport === 'excel' && <ImportExcel products={products} onImport={onImport} locaisOrigem={locaisOrigem} onUpdateLocais={onUpdateLocais} />}
@@ -6819,6 +6890,446 @@
         }
 
         // ==========================================
+        // TINY NF-e IMPORT (Buscar → Revisar → Confirmar)
+        // ==========================================
+        function TinyNFeImport({ products, onSubmitEntry, onSubmitExit, onAddProduct, categories, locaisOrigem, onUpdateLocais, entries, exits, stock, mode }) {
+            const [nfNumber, setNfNumber] = useState('');
+            const [loading, setLoading] = useState(false);
+            const [error, setError] = useState('');
+            const [success, setSuccess] = useState('');
+            const [nfeData, setNfeData] = useState(null); // { numero, tipo, cliente, dataEmissao, itens }
+            const [itemStates, setItemStates] = useState([]); // per-item edit state
+            const [showVincularModal, setShowVincularModal] = useState(null);
+            const [vincularSearch, setVincularSearch] = useState('');
+            const [showNewProductModal, setShowNewProductModal] = useState(null);
+            const [newProductData, setNewProductData] = useState({ name: '', sku: '', ean: '', category: '', observations: '' });
+            const [saving, setSaving] = useState(false);
+
+            const isEntry = mode === 'entry' || (mode === 'both' && nfeData?.tipo === 'E');
+            const isExit = mode === 'exit' || (mode === 'both' && nfeData?.tipo === 'S');
+
+            const fetchNFe = async () => {
+                if (!nfNumber.trim()) { setError('Informe o número da NF.'); return; }
+                setLoading(true);
+                setError('');
+                setSuccess('');
+                setNfeData(null);
+                try {
+                    const { data: { session } } = await supabaseClient.auth.getSession();
+                    if (!session) throw new Error('Sessão expirada. Faça login novamente.');
+                    const resp = await fetch(`${SUPABASE_URL}/functions/v1/tiny-sync-nfe`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${session.access_token}`,
+                            'Content-Type': 'application/json',
+                            'apikey': SUPABASE_ANON_KEY,
+                        },
+                        body: JSON.stringify({ action: 'fetch', nf_number: nfNumber.trim() }),
+                    });
+                    if (!resp.ok) {
+                        const err = await resp.json().catch(() => ({}));
+                        throw new Error(err.error || `Erro ${resp.status}`);
+                    }
+                    const data = await resp.json();
+                    if (!data.notas || data.notas.length === 0) {
+                        setError(`Nenhuma NF-e encontrada com número ${nfNumber}.`);
+                        return;
+                    }
+                    const nfe = data.notas[0];
+                    setNfeData(nfe);
+
+                    // Build per-item states with auto-linking
+                    const states = (nfe.itens || []).map(item => {
+                        const matched = products.find(p =>
+                            (p.sku || '').toLowerCase() === (item.codigo || '').toLowerCase() ||
+                            (p.ean && p.ean === item.codigo)
+                        );
+                        const nfStr = String(nfe.numero);
+                        const alreadyInEntries = entries.some(e => e.nf === nfStr && (e.sku === item.codigo || (matched && e.sku === matched.sku)));
+                        const alreadyInExits = exits.some(e => e.nf === nfStr && (e.sku === item.codigo || (matched && e.sku === matched.sku)));
+                        const alreadyRegistered = alreadyInEntries || alreadyInExits;
+
+                        return {
+                            selected: !alreadyRegistered,
+                            linkedSku: matched?.sku || '',
+                            linkedProduct: matched || null,
+                            quantity: Math.round(item.quantidade) || 1,
+                            localEntrada: locaisOrigem?.[0] || 'Loja Principal',
+                            observations: '',
+                            alreadyRegistered,
+                        };
+                    });
+                    setItemStates(states);
+                } catch (e) {
+                    setError(e.message);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const updateItemState = (idx, updates) => {
+                setItemStates(prev => prev.map((s, i) => i === idx ? { ...s, ...updates } : s));
+            };
+
+            const handleVincular = (idx, sku) => {
+                const prod = products.find(p => (p.sku || '').toLowerCase() === (sku || '').toLowerCase());
+                updateItemState(idx, { linkedSku: sku, linkedProduct: prod || null });
+                setShowVincularModal(null);
+                setVincularSearch('');
+            };
+
+            const handleCreateProduct = async () => {
+                if (!newProductData.name || !newProductData.sku || !newProductData.category) {
+                    setError('Preencha nome, SKU e categoria do novo produto.');
+                    return;
+                }
+                try {
+                    await onAddProduct({
+                        name: newProductData.name.trim(),
+                        sku: newProductData.sku.trim(),
+                        ean: newProductData.ean?.trim() || '',
+                        category: newProductData.category,
+                        observations: newProductData.observations?.trim() || '',
+                        quantity: 0,
+                        createdAt: new Date().toISOString(),
+                    });
+                    const idx = showNewProductModal;
+                    updateItemState(idx, {
+                        linkedSku: newProductData.sku.trim(),
+                        linkedProduct: { name: newProductData.name.trim(), sku: newProductData.sku.trim() },
+                    });
+                    setShowNewProductModal(null);
+                    setNewProductData({ name: '', sku: '', ean: '', category: '', observations: '' });
+                } catch (e) {
+                    setError('Erro ao cadastrar produto: ' + e.message);
+                }
+            };
+
+            const handleConfirm = async () => {
+                const selectedItems = itemStates
+                    .map((s, i) => ({ ...s, item: nfeData.itens[i], index: i }))
+                    .filter(s => s.selected && s.linkedSku);
+
+                if (selectedItems.length === 0) {
+                    setError('Selecione ao menos um item com produto vinculado.');
+                    return;
+                }
+
+                setSaving(true);
+                setError('');
+                let count = 0;
+                try {
+                    for (const s of selectedItems) {
+                        if (isEntry || (mode === 'both' && nfeData.tipo === 'E')) {
+                            await onSubmitEntry({
+                                type: 'COMPRA',
+                                sku: s.linkedSku,
+                                quantity: s.quantity,
+                                supplier: nfeData.cliente?.nome || '',
+                                nf: String(nfeData.numero),
+                                localEntrada: s.localEntrada || '',
+                            });
+                        } else {
+                            await onSubmitExit({
+                                type: 'VENDA',
+                                sku: s.linkedSku,
+                                quantity: s.quantity,
+                                client: nfeData.cliente?.nome || '',
+                                nf: String(nfeData.numero),
+                                nfOrigem: '',
+                            });
+                        }
+                        count++;
+                    }
+                    setSuccess(`${count} item(ns) registrado(s) com sucesso!`);
+                    setNfeData(null);
+                    setItemStates([]);
+                    setNfNumber('');
+                    setTimeout(() => setSuccess(''), 5000);
+                } catch (e) {
+                    setError('Erro ao registrar: ' + e.message);
+                } finally {
+                    setSaving(false);
+                }
+            };
+
+            const sortedProducts = [...products].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+            return (
+                <div style={{marginBottom: '24px'}}>
+                    {/* Search bar */}
+                    <div style={{display: 'flex', gap: '8px', alignItems: 'end', marginBottom: '16px'}}>
+                        <div style={{flex: 1}}>
+                            <label className="form-label">Número da NF (Tiny ERP)</label>
+                            <input
+                                type="text"
+                                className="form-input"
+                                placeholder="Ex: 2305"
+                                value={nfNumber}
+                                onChange={e => setNfNumber(e.target.value)}
+                                onKeyDown={e => e.key === 'Enter' && fetchNFe()}
+                            />
+                        </div>
+                        <button className="btn btn-primary" onClick={fetchNFe} disabled={loading} style={{whiteSpace: 'nowrap'}}>
+                            {loading ? 'Buscando...' : 'Buscar no Tiny'}
+                        </button>
+                    </div>
+
+                    {error && <div className="alert alert-danger" style={{marginBottom: '12px'}}>{error}</div>}
+                    {success && <div className="alert alert-success" style={{marginBottom: '12px'}}>{success}</div>}
+
+                    {/* NF-e Preview */}
+                    {nfeData && (
+                        <div style={{border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', overflow: 'hidden'}}>
+                            {/* Header */}
+                            <div style={{background: 'var(--bg-secondary)', padding: '16px', borderBottom: '1px solid var(--border)'}}>
+                                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px'}}>
+                                    <div>
+                                        <h3 style={{fontSize: '16px', fontWeight: '600', margin: 0}}>
+                                            NF-e {nfeData.numero}
+                                        </h3>
+                                        <div style={{fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px'}}>
+                                            {nfeData.cliente?.nome || 'Sem nome'} | {nfeData.dataEmissao || '-'}
+                                        </div>
+                                    </div>
+                                    <span className={`badge ${nfeData.tipo === 'E' ? 'badge-success' : 'badge-danger'}`} style={{fontSize: '12px'}}>
+                                        {nfeData.tipo === 'E' ? 'Entrada' : 'Saída'}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Items table */}
+                            <div style={{overflowX: 'auto'}}>
+                                <table className="table" style={{marginBottom: 0}}>
+                                    <thead>
+                                        <tr>
+                                            <th style={{width: '40px'}}></th>
+                                            <th>Produto NF</th>
+                                            <th>Produto Estoque</th>
+                                            <th style={{width: '80px'}}>Qtd</th>
+                                            {(isEntry || (mode === 'both' && nfeData.tipo === 'E')) && <th>Local</th>}
+                                            <th>Obs.</th>
+                                            <th style={{width: '100px'}}>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {(nfeData.itens || []).map((item, idx) => {
+                                            const st = itemStates[idx] || {};
+                                            return (
+                                                <tr key={idx} style={{opacity: st.alreadyRegistered && !st.selected ? 0.5 : 1}}>
+                                                    <td>
+                                                        <input type="checkbox" checked={!!st.selected}
+                                                            onChange={e => updateItemState(idx, { selected: e.target.checked })} />
+                                                    </td>
+                                                    <td>
+                                                        <div style={{fontWeight: '500', fontSize: '13px'}}>{item.descricao}</div>
+                                                        <div style={{fontSize: '11px', color: 'var(--text-muted)'}}>
+                                                            Cód: {item.codigo} | Qtd NF: {item.quantidade}
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        {st.linkedProduct ? (
+                                                            <div>
+                                                                <div style={{fontWeight: '500', fontSize: '13px'}}>{st.linkedProduct.name}</div>
+                                                                <div style={{fontSize: '11px', color: 'var(--text-muted)'}}>SKU: {st.linkedSku}</div>
+                                                                <button
+                                                                    onClick={() => setShowVincularModal(idx)}
+                                                                    style={{fontSize: '11px', color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginTop: '2px'}}>
+                                                                    trocar
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            <div style={{display: 'flex', gap: '4px'}}>
+                                                                <button className="btn btn-secondary" style={{fontSize: '11px', padding: '2px 8px'}}
+                                                                    onClick={() => setShowVincularModal(idx)}>
+                                                                    Vincular
+                                                                </button>
+                                                                <button className="btn btn-secondary" style={{fontSize: '11px', padding: '2px 8px'}}
+                                                                    onClick={() => {
+                                                                        setNewProductData({
+                                                                            name: item.descricao || '',
+                                                                            sku: item.codigo || '',
+                                                                            ean: '',
+                                                                            category: '',
+                                                                            observations: '',
+                                                                        });
+                                                                        setShowNewProductModal(idx);
+                                                                    }}>
+                                                                    Novo
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                    <td>
+                                                        <input type="number" className="form-input" min="1"
+                                                            value={st.quantity || ''}
+                                                            onChange={e => updateItemState(idx, { quantity: parseInt(e.target.value) || 0 })}
+                                                            style={{width: '70px', padding: '4px 8px', fontSize: '13px'}} />
+                                                    </td>
+                                                    {(isEntry || (mode === 'both' && nfeData.tipo === 'E')) && (
+                                                        <td>
+                                                            <select className="form-select"
+                                                                value={st.localEntrada || ''}
+                                                                onChange={e => updateItemState(idx, { localEntrada: e.target.value })}
+                                                                style={{padding: '4px 8px', fontSize: '12px', minWidth: '120px'}}>
+                                                                {(locaisOrigem || []).map(l => <option key={l} value={l}>{l}</option>)}
+                                                            </select>
+                                                        </td>
+                                                    )}
+                                                    <td>
+                                                        <input type="text" className="form-input" placeholder="Observações..."
+                                                            value={st.observations || ''}
+                                                            onChange={e => updateItemState(idx, { observations: e.target.value })}
+                                                            style={{padding: '4px 8px', fontSize: '12px', minWidth: '100px'}} />
+                                                    </td>
+                                                    <td>
+                                                        {st.alreadyRegistered ? (
+                                                            <span className="badge badge-warning" style={{fontSize: '10px'}}>Já registrado</span>
+                                                        ) : st.linkedProduct ? (
+                                                            <span className="badge badge-success" style={{fontSize: '10px'}}>Vinculado</span>
+                                                        ) : (
+                                                            <span className="badge badge-danger" style={{fontSize: '10px'}}>Sem vínculo</span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Action bar */}
+                            <div style={{padding: '16px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                <div style={{fontSize: '13px', color: 'var(--text-secondary)'}}>
+                                    {itemStates.filter(s => s.selected && s.linkedSku).length} de {nfeData.itens?.length || 0} item(ns) selecionado(s)
+                                </div>
+                                <div style={{display: 'flex', gap: '8px'}}>
+                                    <button className="btn btn-secondary" onClick={() => { setNfeData(null); setItemStates([]); }}>
+                                        Cancelar
+                                    </button>
+                                    <button className="btn btn-primary" onClick={handleConfirm} disabled={saving}>
+                                        {saving ? 'Registrando...' : (
+                                            (isEntry || (mode === 'both' && nfeData.tipo === 'E'))
+                                                ? 'Registrar Entrada'
+                                                : 'Registrar Saída'
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Modal Vincular Produto */}
+                    {showVincularModal !== null && (
+                        <div className="modal-overlay">
+                            <div className="modal-content" style={{maxWidth: '600px'}}>
+                                <h2 className="modal-title">Vincular Produto do Estoque</h2>
+                                <p className="modal-subtitle">
+                                    Produto da NF: <strong>{nfeData?.itens?.[showVincularModal]?.descricao}</strong>
+                                </p>
+                                <div style={{fontSize: '11px', color: 'var(--text-muted)', marginBottom: '16px'}}>
+                                    Código NF: <code>{nfeData?.itens?.[showVincularModal]?.codigo}</code>
+                                </div>
+
+                                <div className="form-group">
+                                    <label className="form-label">Buscar no estoque</label>
+                                    <input type="text" className="form-input" placeholder="Digite nome, SKU ou EAN..."
+                                        value={vincularSearch} onChange={e => setVincularSearch(e.target.value)} autoFocus />
+                                </div>
+
+                                <div style={{maxHeight: '300px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 'var(--radius)', marginBottom: '16px'}}>
+                                    {(stock || sortedProducts).filter(s => {
+                                        if (!vincularSearch) return true;
+                                        const search = vincularSearch.toLowerCase();
+                                        return (s.name || '').toLowerCase().includes(search) ||
+                                               (s.sku || '').toLowerCase().includes(search) ||
+                                               (s.ean || '').toLowerCase().includes(search);
+                                    }).map(s => (
+                                        <div key={s.sku || s.id}
+                                            onClick={() => handleVincular(showVincularModal, s.sku)}
+                                            style={{padding: '12px', borderBottom: '1px solid var(--border)', cursor: 'pointer'}}
+                                            onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-primary)'}
+                                            onMouseLeave={e => e.currentTarget.style.background = ''}>
+                                            <div style={{fontWeight: '500', marginBottom: '4px'}}>{s.name}</div>
+                                            <div style={{fontSize: '11px', color: 'var(--text-muted)'}}>
+                                                SKU: <strong>{s.sku}</strong>
+                                                {s.ean && ` | EAN: ${s.ean}`}
+                                                {s.currentQuantity !== undefined && (
+                                                    <span> | Estoque: <span style={{color: s.currentQuantity > 0 ? 'var(--success)' : 'var(--danger)'}}>{s.currentQuantity} un.</span></span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div className="btn-group">
+                                    <button className="btn btn-secondary" onClick={() => { setShowVincularModal(null); setVincularSearch(''); }}>
+                                        Cancelar
+                                    </button>
+                                    <button className="btn btn-primary" onClick={() => {
+                                        setNewProductData({
+                                            name: nfeData?.itens?.[showVincularModal]?.descricao || '',
+                                            sku: nfeData?.itens?.[showVincularModal]?.codigo || '',
+                                            ean: '', category: '', observations: '',
+                                        });
+                                        setShowNewProductModal(showVincularModal);
+                                        setShowVincularModal(null);
+                                        setVincularSearch('');
+                                    }}>
+                                        Cadastrar Novo Produto
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Modal Novo Produto */}
+                    {showNewProductModal !== null && (
+                        <div className="modal-overlay">
+                            <div className="modal-content">
+                                <h2 className="modal-title">Cadastrar Novo Produto</h2>
+                                <div className="form-group">
+                                    <label className="form-label">Nome *</label>
+                                    <input type="text" className="form-input" value={newProductData.name}
+                                        onChange={e => setNewProductData({...newProductData, name: e.target.value})} />
+                                </div>
+                                <div className="form-row">
+                                    <div className="form-group">
+                                        <label className="form-label">SKU *</label>
+                                        <input type="text" className="form-input" value={newProductData.sku}
+                                            onChange={e => setNewProductData({...newProductData, sku: e.target.value})} />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">EAN</label>
+                                        <input type="text" className="form-input" value={newProductData.ean}
+                                            onChange={e => setNewProductData({...newProductData, ean: e.target.value})} />
+                                    </div>
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Categoria *</label>
+                                    <select className="form-select" value={newProductData.category}
+                                        onChange={e => setNewProductData({...newProductData, category: e.target.value})}>
+                                        <option value="">Selecione...</option>
+                                        {(categories || []).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                    </select>
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Observações</label>
+                                    <input type="text" className="form-input" value={newProductData.observations}
+                                        onChange={e => setNewProductData({...newProductData, observations: e.target.value})} />
+                                </div>
+                                <div className="btn-group" style={{marginTop: '16px'}}>
+                                    <button className="btn btn-primary" onClick={handleCreateProduct}>Cadastrar e Vincular</button>
+                                    <button className="btn btn-secondary" onClick={() => setShowNewProductModal(null)}>Cancelar</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // ==========================================
         // HISTORY
         // ==========================================
         function History({ entries, exits, products, onUpdateEntry, onDeleteEntry, onUpdateExit, onDeleteExit }) {
@@ -7151,7 +7662,7 @@
         // ==========================================
         // TINY ERP INTEGRATION PAGE
         // ==========================================
-        function TinyERPPage({ user, onDataChanged }) {
+        function TinyERPPage({ user, onDataChanged, products, entries, exits, stock, onAddEntry, onAddExit, onAddProduct, categories, locaisOrigem, onUpdateLocais }) {
             const [activeSection, setActiveSection] = useState('config');
             const [clientId, setClientId] = useState('');
             const [clientSecret, setClientSecret] = useState('');
@@ -7423,6 +7934,7 @@
                     <div style={{display: 'flex', gap: '0', borderBottom: '1px solid var(--border)', marginBottom: '24px'}}>
                         <button style={tabStyle('config')} onClick={() => setActiveSection('config')}>Configuração</button>
                         <button style={tabStyle('sync')} onClick={() => setActiveSection('sync')}>Sincronização</button>
+                        <button style={tabStyle('nfe')} onClick={() => setActiveSection('nfe')}>Notas Fiscais</button>
                         <button style={tabStyle('history')} onClick={() => setActiveSection('history')}>Histórico</button>
                     </div>
 
@@ -7617,7 +8129,7 @@
                                         )}
                                     </div>
 
-                                    {/* NF-e import card */}
+                                    {/* NF-e import card - agora redireciona para a aba Notas Fiscais */}
                                     <div style={cardStyle}>
                                         <div style={{display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px'}}>
                                             <div style={{width: '36px', height: '36px', borderRadius: 'var(--radius-sm)', background: 'var(--purple-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
@@ -7625,52 +8137,49 @@
                                             </div>
                                             <div>
                                                 <div style={{fontWeight: '600', fontSize: '14px'}}>Notas Fiscais</div>
-                                                <div style={{fontSize: '12px', color: 'var(--text-muted)'}}>Importar NF-e</div>
+                                                <div style={{fontSize: '12px', color: 'var(--text-muted)'}}>Importar e revisar NF-e</div>
                                             </div>
                                         </div>
-                                        <p style={{fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '12px'}}>
-                                            Importa notas fiscais do Tiny e cria entradas/saídas automaticamente no estoque.
+                                        <p style={{fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '16px'}}>
+                                            Importe notas fiscais do Tiny, revise os itens, edite quantidades e locais, e confirme a entrada ou saída no estoque.
                                         </p>
-                                        <div style={{marginBottom: '8px'}}>
-                                            <label className="form-label">Número da NF</label>
-                                            <input type="text" className="form-input" placeholder="Ex: 12345" value={nfeNumber} onChange={e => setNfeNumber(e.target.value)} />
-                                        </div>
-                                        <div style={{fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center', marginBottom: '8px'}}>ou buscar por período</div>
-                                        <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px'}}>
-                                            <div>
-                                                <label className="form-label">Data início</label>
-                                                <input type="date" className="form-input" value={nfeDateFrom} onChange={e => setNfeDateFrom(e.target.value)} />
-                                            </div>
-                                            <div>
-                                                <label className="form-label">Data fim</label>
-                                                <input type="date" className="form-input" value={nfeDateTo} onChange={e => setNfeDateTo(e.target.value)} />
-                                            </div>
-                                        </div>
                                         <button
                                             className="btn btn-primary"
                                             style={{width: '100%'}}
-                                            onClick={() => handleSync('nfe')}
-                                            disabled={syncProgress?.type === 'nfe' && syncProgress?.status === 'running'}
+                                            onClick={() => setActiveSection('nfe')}
                                         >
-                                            {syncProgress?.type === 'nfe' && syncProgress?.status === 'running'
-                                                ? <><Icon name="spinner" size={14} style={{animation: 'spin 1s linear infinite'}} /> <span style={{marginLeft: '6px'}}>Importando...</span></>
-                                                : <><Icon name="import" size={14} /> <span style={{marginLeft: '6px'}}>Importar NF-e</span></>
-                                            }
+                                            <Icon name="import" size={14} /> <span style={{marginLeft: '6px'}}>Ir para Notas Fiscais</span>
                                         </button>
-                                        {syncProgress?.type === 'nfe' && syncProgress?.status !== 'running' && (
-                                            <div style={{
-                                                marginTop: '12px',
-                                                padding: '8px 12px',
-                                                borderRadius: 'var(--radius-xs)',
-                                                background: syncProgress.status === 'success' ? 'var(--success-light)' : 'var(--danger-light)',
-                                                fontSize: '12px',
-                                                color: syncProgress.status === 'success' ? 'var(--success-dark)' : 'var(--danger-dark)',
-                                            }}>
-                                                {syncProgress.message}
-                                            </div>
-                                        )}
                                     </div>
                                 </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* === NF-e TAB (com TinyNFeImport) === */}
+                    {activeSection === 'nfe' && (
+                        <div>
+                            {!status?.connected ? (
+                                <div style={{background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '48px 24px', textAlign: 'center'}}>
+                                    <Icon name="plug" size={32} style={{color: 'var(--text-muted)', marginBottom: '12px'}} />
+                                    <div style={{fontWeight: '600', fontSize: '14px', marginBottom: '4px'}}>Não conectado</div>
+                                    <div style={{fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px'}}>Configure suas credenciais na aba Configuração primeiro.</div>
+                                    <button className="btn btn-primary" onClick={() => setActiveSection('config')}>Ir para Configuração</button>
+                                </div>
+                            ) : (
+                                <TinyNFeImport
+                                    products={products || []}
+                                    onSubmitEntry={onAddEntry}
+                                    onSubmitExit={onAddExit}
+                                    onAddProduct={onAddProduct}
+                                    categories={categories || []}
+                                    locaisOrigem={locaisOrigem || []}
+                                    onUpdateLocais={onUpdateLocais}
+                                    entries={entries || []}
+                                    exits={exits || []}
+                                    stock={stock || []}
+                                    mode="both"
+                                />
                             )}
                         </div>
                     )}
