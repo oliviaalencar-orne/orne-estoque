@@ -1023,6 +1023,7 @@
         .badge-success { background: var(--success-light); color: var(--success-dark); }
         .badge-warning { background: var(--warning-light); color: var(--warning-dark); }
         .badge-danger { background: var(--danger-light); color: var(--danger-dark); }
+        .badge-info { background: var(--info-light); color: var(--accent); }
 
         /* ===================== MODAL ===================== */
         .modal-overlay {
@@ -1160,6 +1161,19 @@
             console.error('Supabase init error:', error);
         }
 
+        // Handle Tiny ERP OAuth callback in popup window
+        (function handleTinyCallback() {
+            const params = new URLSearchParams(window.location.search);
+            const code = params.get('code');
+            if (code && window.location.pathname === '/tiny-callback') {
+                if (window.opener) {
+                    window.opener.postMessage({ type: 'tiny_oauth_callback', code }, window.location.origin);
+                    document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:Inter,sans-serif;color:#666">Autorizado! Fechando...</div>';
+                    setTimeout(() => window.close(), 1500);
+                }
+            }
+        })();
+
         // ==========================================
         // SUPABASE HELPERS
         // ==========================================
@@ -1288,6 +1302,11 @@
             catDiamond: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="4.5" width="15" height="15" rx="1" transform="rotate(45 12 12)"/></svg>',
             catTriangle: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>',
             catSquare: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>',
+            // Integration icons
+            tiny: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>',
+            sync: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>',
+            cloud: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z"/></svg>',
+            plug: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v6"/><path d="M6 2v6"/><path d="M4 8h14a1 1 0 011 1v2a6 6 0 01-12 0V9a1 1 0 011-1"/><path d="M9 17v5"/></svg>',
         };
 
         function Icon({ name, size = 16, className = '', style = {} }) {
@@ -1776,6 +1795,13 @@
                                     <span className="nav-icon" dangerouslySetInnerHTML={{__html: ICONS.history}}></span>Histórico
                                 </a>
                             </li>
+
+                            <div className="nav-section">Integrações</div>
+                            <li className="nav-item">
+                                <a className={`nav-link ${activeTab === 'tiny' ? 'active' : ''}`} onClick={() => setActiveTab('tiny')}>
+                                    <span className="nav-icon" dangerouslySetInnerHTML={{__html: ICONS.tiny}}></span>Tiny ERP
+                                </a>
+                            </li>
                         </ul>
                     </div>
 
@@ -1790,6 +1816,7 @@
                             {activeTab === 'shipping' && <ShippingManager shippings={shippings} onAdd={addShipping} onUpdate={updateShipping} onDelete={deleteShipping} stock={currentStock} onAddExit={addExit} locaisOrigem={locaisOrigem} onUpdateLocais={updateLocaisOrigem} onAddProduct={addProduct} categories={categories} entries={entries} exits={exits} />}
                             {activeTab === 'import' && <ImportHub products={products} onImport={handleImport} onAddProduct={addProduct} categories={categories} locaisOrigem={locaisOrigem} onUpdateLocais={updateLocaisOrigem} />}
                             {activeTab === 'history' && <History entries={entries} exits={exits} products={products} shippings={shippings} />}
+                            {activeTab === 'tiny' && <TinyERPPage user={user} />}
                         </div>
                     </div>
 
@@ -6906,6 +6933,587 @@
                             </div>
                         )}
                     </div>
+                </div>
+            );
+        }
+
+        // ==========================================
+        // TINY ERP INTEGRATION PAGE
+        // ==========================================
+        function TinyERPPage({ user }) {
+            const [activeSection, setActiveSection] = useState('config');
+            const [clientId, setClientId] = useState('');
+            const [clientSecret, setClientSecret] = useState('');
+            const [status, setStatus] = useState(null);
+            const [loading, setLoading] = useState(false);
+            const [testResult, setTestResult] = useState(null);
+            const [syncLogs, setSyncLogs] = useState([]);
+            const [syncProgress, setSyncProgress] = useState(null);
+            const [nfeDateFrom, setNfeDateFrom] = useState('');
+            const [nfeDateTo, setNfeDateTo] = useState('');
+
+            const FUNC_BASE = `${SUPABASE_URL}/functions/v1`;
+
+            const getAuthHeaders = async () => {
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                return {
+                    'Authorization': `Bearer ${session.access_token}`,
+                    'Content-Type': 'application/json',
+                    'apikey': SUPABASE_ANON_KEY,
+                };
+            };
+
+            const callFunction = async (name, body) => {
+                const headers = await getAuthHeaders();
+                const res = await fetch(`${FUNC_BASE}/${name}`, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify(body),
+                });
+                return await res.json();
+            };
+
+            // Load status on mount
+            useEffect(() => {
+                loadStatus();
+                loadSyncLogs();
+            }, []);
+
+            const loadStatus = async () => {
+                try {
+                    const data = await callFunction('tiny-auth', { action: 'status' });
+                    setStatus(data);
+                } catch (e) {
+                    console.error('Failed to load Tiny status:', e);
+                }
+            };
+
+            const loadSyncLogs = async () => {
+                try {
+                    const { data, error } = await supabaseClient
+                        .from('sync_log')
+                        .select('*')
+                        .order('started_at', { ascending: false })
+                        .limit(50);
+                    if (!error && data) setSyncLogs(data);
+                } catch (e) {
+                    console.error('Failed to load sync logs:', e);
+                }
+            };
+
+            const handleConnect = async () => {
+                if (!clientId || !clientSecret) return;
+                setLoading(true);
+                try {
+                    // Build redirect URI: current origin + a path we'll handle
+                    const redirectUri = window.location.origin + '/tiny-callback';
+
+                    const data = await callFunction('tiny-auth', {
+                        action: 'get_auth_url',
+                        client_id: clientId,
+                        client_secret: clientSecret,
+                        redirect_uri: redirectUri,
+                    });
+
+                    if (data.url) {
+                        // Store redirect_uri for the callback
+                        localStorage.setItem('tiny_redirect_uri', redirectUri);
+                        // Open Tiny authorization page
+                        window.open(data.url, 'tiny_auth', 'width=600,height=700');
+                    } else {
+                        alert(data.error || 'Erro ao gerar URL de autorização');
+                    }
+                } catch (e) {
+                    alert('Erro: ' + e.message);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            // Listen for OAuth callback
+            useEffect(() => {
+                const handleMessage = async (event) => {
+                    if (event.data?.type === 'tiny_oauth_callback' && event.data?.code) {
+                        const redirectUri = localStorage.getItem('tiny_redirect_uri');
+                        setLoading(true);
+                        try {
+                            const data = await callFunction('tiny-auth', {
+                                action: 'exchange_code',
+                                code: event.data.code,
+                                redirect_uri: redirectUri,
+                            });
+                            if (data.success) {
+                                await loadStatus();
+                                setTestResult({ success: true, message: 'Conectado com sucesso!' });
+                            } else {
+                                setTestResult({ success: false, message: data.error || 'Falha na autorização' });
+                            }
+                        } catch (e) {
+                            setTestResult({ success: false, message: e.message });
+                        } finally {
+                            setLoading(false);
+                        }
+                    }
+                };
+
+                window.addEventListener('message', handleMessage);
+
+                // Also check URL params (in case callback came to this window)
+                const params = new URLSearchParams(window.location.search);
+                const code = params.get('code');
+                if (code && window.location.pathname === '/tiny-callback') {
+                    window.opener?.postMessage({ type: 'tiny_oauth_callback', code }, '*');
+                    window.close();
+                }
+
+                return () => window.removeEventListener('message', handleMessage);
+            }, []);
+
+            const handleSaveConfig = async () => {
+                if (!clientId || !clientSecret) return;
+                setLoading(true);
+                try {
+                    const data = await callFunction('tiny-auth', {
+                        action: 'save_config',
+                        client_id: clientId,
+                        client_secret: clientSecret,
+                    });
+                    if (data.success) {
+                        await loadStatus();
+                        setTestResult({ success: true, message: 'Credenciais salvas!' });
+                    } else {
+                        setTestResult({ success: false, message: data.error });
+                    }
+                } catch (e) {
+                    setTestResult({ success: false, message: e.message });
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const handleTestConnection = async () => {
+                setLoading(true);
+                setTestResult(null);
+                try {
+                    const data = await callFunction('tiny-auth', { action: 'test' });
+                    setTestResult({
+                        success: data.connected,
+                        message: data.connected ? 'Conexão OK! API respondendo.' : (data.error || 'Falha na conexão'),
+                    });
+                } catch (e) {
+                    setTestResult({ success: false, message: e.message });
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const handleDisconnect = async () => {
+                if (!confirm('Desconectar do Tiny ERP?')) return;
+                setLoading(true);
+                try {
+                    await callFunction('tiny-auth', { action: 'disconnect' });
+                    await loadStatus();
+                    setTestResult(null);
+                } catch (e) {
+                    alert('Erro: ' + e.message);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const handleSync = async (type) => {
+                setSyncProgress({ type, status: 'running' });
+                try {
+                    let data;
+                    if (type === 'products') {
+                        data = await callFunction('tiny-sync-products', {});
+                    } else if (type === 'stock') {
+                        data = await callFunction('tiny-sync-stock', {});
+                    } else if (type === 'nfe') {
+                        data = await callFunction('tiny-sync-nfe', {
+                            date_from: nfeDateFrom || undefined,
+                            date_to: nfeDateTo || undefined,
+                        });
+                    }
+
+                    setSyncProgress({
+                        type,
+                        status: data.success ? 'success' : 'error',
+                        message: data.success
+                            ? `${type === 'nfe' ? data.imported : data.synced || data.adjustments || 0} itens processados`
+                            : (data.error || 'Erro desconhecido'),
+                    });
+                    await loadSyncLogs();
+                } catch (e) {
+                    setSyncProgress({ type, status: 'error', message: e.message });
+                }
+            };
+
+            const formatDate = (d) => {
+                if (!d) return '-';
+                return new Date(d).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+            };
+
+            const tabStyle = (tab) => ({
+                padding: '8px 16px',
+                fontSize: '13px',
+                fontWeight: activeSection === tab ? '600' : '400',
+                color: activeSection === tab ? 'var(--accent)' : 'var(--text-secondary)',
+                borderBottom: activeSection === tab ? '2px solid var(--accent)' : '2px solid transparent',
+                cursor: 'pointer',
+                background: 'none',
+                border: 'none',
+                borderBottomWidth: '2px',
+                borderBottomStyle: 'solid',
+                borderBottomColor: activeSection === tab ? 'var(--accent)' : 'transparent',
+            });
+
+            const cardStyle = {
+                background: 'var(--bg-secondary)',
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--radius-md)',
+                padding: '24px',
+                marginBottom: '16px',
+            };
+
+            return (
+                <div>
+                    <div className="page-header" style={{marginBottom: '24px'}}>
+                        <div className="page-header-flex">
+                            <div>
+                                <h1 className="page-title">Tiny ERP</h1>
+                                <p className="page-subtitle">Integração e sincronização com Tiny ERP (Olist)</p>
+                            </div>
+                            {status?.connected && (
+                                <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                                    <span style={{width: '8px', height: '8px', borderRadius: '50%', background: 'var(--success)', display: 'inline-block'}}></span>
+                                    <span style={{fontSize: '13px', color: 'var(--success)', fontWeight: '500'}}>Conectado</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Tabs */}
+                    <div style={{display: 'flex', gap: '0', borderBottom: '1px solid var(--border)', marginBottom: '24px'}}>
+                        <button style={tabStyle('config')} onClick={() => setActiveSection('config')}>Configuração</button>
+                        <button style={tabStyle('sync')} onClick={() => setActiveSection('sync')}>Sincronização</button>
+                        <button style={tabStyle('history')} onClick={() => setActiveSection('history')}>Histórico</button>
+                    </div>
+
+                    {/* === CONFIG TAB === */}
+                    {activeSection === 'config' && (
+                        <div>
+                            {/* Status card */}
+                            <div style={cardStyle}>
+                                <div style={{display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px'}}>
+                                    <div style={{width: '40px', height: '40px', borderRadius: 'var(--radius-sm)', background: status?.connected ? 'var(--success-light)' : 'var(--bg-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                                        <Icon name={status?.connected ? 'check' : 'plug'} size={20} style={{color: status?.connected ? 'var(--success)' : 'var(--text-muted)'}} />
+                                    </div>
+                                    <div>
+                                        <div style={{fontWeight: '600', fontSize: '14px'}}>
+                                            {status?.connected ? 'Conectado ao Tiny ERP' : status?.has_credentials ? 'Credenciais salvas, autorização pendente' : 'Não configurado'}
+                                        </div>
+                                        <div style={{fontSize: '12px', color: 'var(--text-muted)'}}>
+                                            {status?.expires_at ? `Token válido até ${formatDate(status.expires_at)}` : 'Configure suas credenciais OAuth2 abaixo'}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Info box */}
+                                <div style={{background: 'var(--info-light)', border: '1px solid var(--accent-light)', borderRadius: 'var(--radius-sm)', padding: '12px 16px', marginBottom: '20px', fontSize: '12px', color: 'var(--text-secondary)'}}>
+                                    <div style={{fontWeight: '600', marginBottom: '4px', color: 'var(--text-primary)'}}>
+                                        <Icon name="info" size={14} style={{marginRight: '6px', verticalAlign: 'middle'}} />
+                                        Como configurar
+                                    </div>
+                                    1. Acesse o Tiny ERP → Configurações → Geral → Aplicativos<br/>
+                                    2. Crie um novo aplicativo com permissões de leitura para Produtos, Estoque e NF-e<br/>
+                                    3. Copie o Client ID e Client Secret gerados e cole abaixo
+                                </div>
+
+                                {/* Credentials form */}
+                                <div style={{display: 'grid', gap: '16px'}}>
+                                    <div>
+                                        <label className="form-label">Client ID</label>
+                                        <input
+                                            type="text"
+                                            className="form-input"
+                                            placeholder="Cole o Client ID do aplicativo Tiny"
+                                            value={clientId}
+                                            onChange={e => setClientId(e.target.value)}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="form-label">Client Secret</label>
+                                        <input
+                                            type="password"
+                                            className="form-input"
+                                            placeholder="Cole o Client Secret"
+                                            value={clientSecret}
+                                            onChange={e => setClientSecret(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Actions */}
+                                <div style={{display: 'flex', gap: '12px', marginTop: '20px', flexWrap: 'wrap'}}>
+                                    <button className="btn btn-primary" onClick={handleConnect} disabled={loading || !clientId || !clientSecret}>
+                                        {loading ? <Icon name="spinner" size={14} style={{animation: 'spin 1s linear infinite'}} /> : <Icon name="tiny" size={14} />}
+                                        <span style={{marginLeft: '6px'}}>{loading ? 'Conectando...' : 'Autorizar via OAuth2'}</span>
+                                    </button>
+                                    <button className="btn btn-secondary" onClick={handleSaveConfig} disabled={loading || !clientId || !clientSecret}>
+                                        <Icon name="check" size={14} />
+                                        <span style={{marginLeft: '6px'}}>Salvar Credenciais</span>
+                                    </button>
+                                    {status?.connected && (
+                                        <button className="btn btn-secondary" onClick={handleTestConnection} disabled={loading}>
+                                            <Icon name="sync" size={14} />
+                                            <span style={{marginLeft: '6px'}}>Testar Conexão</span>
+                                        </button>
+                                    )}
+                                    {status?.has_token && (
+                                        <button className="btn" style={{color: 'var(--danger)', border: '1px solid var(--danger)', background: 'transparent'}} onClick={handleDisconnect} disabled={loading}>
+                                            <Icon name="close" size={14} />
+                                            <span style={{marginLeft: '6px'}}>Desconectar</span>
+                                        </button>
+                                    )}
+                                </div>
+
+                                {/* Test result */}
+                                {testResult && (
+                                    <div style={{
+                                        marginTop: '16px',
+                                        padding: '12px 16px',
+                                        borderRadius: 'var(--radius-sm)',
+                                        background: testResult.success ? 'var(--success-light)' : 'var(--danger-light)',
+                                        color: testResult.success ? 'var(--success-dark)' : 'var(--danger-dark)',
+                                        fontSize: '13px',
+                                        fontWeight: '500',
+                                    }}>
+                                        <Icon name={testResult.success ? 'success' : 'error'} size={14} style={{marginRight: '8px', verticalAlign: 'middle'}} />
+                                        {testResult.message}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* === SYNC TAB === */}
+                    {activeSection === 'sync' && (
+                        <div>
+                            {!status?.connected && (
+                                <div style={{...cardStyle, textAlign: 'center', padding: '48px 24px'}}>
+                                    <Icon name="plug" size={32} style={{color: 'var(--text-muted)', marginBottom: '12px'}} />
+                                    <div style={{fontWeight: '600', fontSize: '14px', marginBottom: '4px'}}>Não conectado</div>
+                                    <div style={{fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px'}}>Configure suas credenciais na aba Configuração primeiro.</div>
+                                    <button className="btn btn-primary" onClick={() => setActiveSection('config')}>
+                                        Ir para Configuração
+                                    </button>
+                                </div>
+                            )}
+
+                            {status?.connected && (
+                                <div style={{display: 'grid', gap: '16px', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))'}}>
+                                    {/* Products sync card */}
+                                    <div style={cardStyle}>
+                                        <div style={{display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px'}}>
+                                            <div style={{width: '36px', height: '36px', borderRadius: 'var(--radius-sm)', background: 'var(--accent-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                                                <Icon name="stock" size={18} style={{color: 'var(--accent)'}} />
+                                            </div>
+                                            <div>
+                                                <div style={{fontWeight: '600', fontSize: '14px'}}>Produtos</div>
+                                                <div style={{fontSize: '12px', color: 'var(--text-muted)'}}>Importar catálogo do Tiny</div>
+                                            </div>
+                                        </div>
+                                        <p style={{fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '16px'}}>
+                                            Sincroniza produtos do Tiny ERP para o Orne Estoque. Produtos existentes são atualizados pelo SKU.
+                                        </p>
+                                        <button
+                                            className="btn btn-primary"
+                                            style={{width: '100%'}}
+                                            onClick={() => handleSync('products')}
+                                            disabled={syncProgress?.type === 'products' && syncProgress?.status === 'running'}
+                                        >
+                                            {syncProgress?.type === 'products' && syncProgress?.status === 'running'
+                                                ? <><Icon name="spinner" size={14} style={{animation: 'spin 1s linear infinite'}} /> <span style={{marginLeft: '6px'}}>Sincronizando...</span></>
+                                                : <><Icon name="sync" size={14} /> <span style={{marginLeft: '6px'}}>Sincronizar Produtos</span></>
+                                            }
+                                        </button>
+                                        {syncProgress?.type === 'products' && syncProgress?.status !== 'running' && (
+                                            <div style={{
+                                                marginTop: '12px',
+                                                padding: '8px 12px',
+                                                borderRadius: 'var(--radius-xs)',
+                                                background: syncProgress.status === 'success' ? 'var(--success-light)' : 'var(--danger-light)',
+                                                fontSize: '12px',
+                                                color: syncProgress.status === 'success' ? 'var(--success-dark)' : 'var(--danger-dark)',
+                                            }}>
+                                                {syncProgress.message}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Stock sync card */}
+                                    <div style={cardStyle}>
+                                        <div style={{display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px'}}>
+                                            <div style={{width: '36px', height: '36px', borderRadius: 'var(--radius-sm)', background: 'var(--success-light)', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                                                <Icon name="chart" size={18} style={{color: 'var(--success)'}} />
+                                            </div>
+                                            <div>
+                                                <div style={{fontWeight: '600', fontSize: '14px'}}>Estoque</div>
+                                                <div style={{fontSize: '12px', color: 'var(--text-muted)'}}>Ajustar quantidades</div>
+                                            </div>
+                                        </div>
+                                        <p style={{fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '16px'}}>
+                                            Compara estoque do Tiny com o Orne e cria ajustes automáticos (entradas/saídas) para igualar.
+                                        </p>
+                                        <button
+                                            className="btn btn-primary"
+                                            style={{width: '100%'}}
+                                            onClick={() => handleSync('stock')}
+                                            disabled={syncProgress?.type === 'stock' && syncProgress?.status === 'running'}
+                                        >
+                                            {syncProgress?.type === 'stock' && syncProgress?.status === 'running'
+                                                ? <><Icon name="spinner" size={14} style={{animation: 'spin 1s linear infinite'}} /> <span style={{marginLeft: '6px'}}>Sincronizando...</span></>
+                                                : <><Icon name="sync" size={14} /> <span style={{marginLeft: '6px'}}>Sincronizar Estoque</span></>
+                                            }
+                                        </button>
+                                        {syncProgress?.type === 'stock' && syncProgress?.status !== 'running' && (
+                                            <div style={{
+                                                marginTop: '12px',
+                                                padding: '8px 12px',
+                                                borderRadius: 'var(--radius-xs)',
+                                                background: syncProgress.status === 'success' ? 'var(--success-light)' : 'var(--danger-light)',
+                                                fontSize: '12px',
+                                                color: syncProgress.status === 'success' ? 'var(--success-dark)' : 'var(--danger-dark)',
+                                            }}>
+                                                {syncProgress.message}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* NF-e import card */}
+                                    <div style={cardStyle}>
+                                        <div style={{display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px'}}>
+                                            <div style={{width: '36px', height: '36px', borderRadius: 'var(--radius-sm)', background: 'var(--purple-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                                                <Icon name="file" size={18} style={{color: 'var(--purple)'}} />
+                                            </div>
+                                            <div>
+                                                <div style={{fontWeight: '600', fontSize: '14px'}}>Notas Fiscais</div>
+                                                <div style={{fontSize: '12px', color: 'var(--text-muted)'}}>Importar NF-e</div>
+                                            </div>
+                                        </div>
+                                        <p style={{fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '12px'}}>
+                                            Importa notas fiscais do Tiny e cria entradas/saídas automaticamente no estoque.
+                                        </p>
+                                        <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px'}}>
+                                            <div>
+                                                <label className="form-label">Data início</label>
+                                                <input type="date" className="form-input" value={nfeDateFrom} onChange={e => setNfeDateFrom(e.target.value)} />
+                                            </div>
+                                            <div>
+                                                <label className="form-label">Data fim</label>
+                                                <input type="date" className="form-input" value={nfeDateTo} onChange={e => setNfeDateTo(e.target.value)} />
+                                            </div>
+                                        </div>
+                                        <button
+                                            className="btn btn-primary"
+                                            style={{width: '100%'}}
+                                            onClick={() => handleSync('nfe')}
+                                            disabled={syncProgress?.type === 'nfe' && syncProgress?.status === 'running'}
+                                        >
+                                            {syncProgress?.type === 'nfe' && syncProgress?.status === 'running'
+                                                ? <><Icon name="spinner" size={14} style={{animation: 'spin 1s linear infinite'}} /> <span style={{marginLeft: '6px'}}>Importando...</span></>
+                                                : <><Icon name="import" size={14} /> <span style={{marginLeft: '6px'}}>Importar NF-e</span></>
+                                            }
+                                        </button>
+                                        {syncProgress?.type === 'nfe' && syncProgress?.status !== 'running' && (
+                                            <div style={{
+                                                marginTop: '12px',
+                                                padding: '8px 12px',
+                                                borderRadius: 'var(--radius-xs)',
+                                                background: syncProgress.status === 'success' ? 'var(--success-light)' : 'var(--danger-light)',
+                                                fontSize: '12px',
+                                                color: syncProgress.status === 'success' ? 'var(--success-dark)' : 'var(--danger-dark)',
+                                            }}>
+                                                {syncProgress.message}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* === HISTORY TAB === */}
+                    {activeSection === 'history' && (
+                        <div>
+                            <div style={{display: 'flex', justifyContent: 'flex-end', marginBottom: '16px'}}>
+                                <button className="btn btn-secondary" onClick={loadSyncLogs}>
+                                    <Icon name="refresh" size={14} />
+                                    <span style={{marginLeft: '6px'}}>Atualizar</span>
+                                </button>
+                            </div>
+
+                            {syncLogs.length === 0 ? (
+                                <div style={{...cardStyle, textAlign: 'center', padding: '48px 24px'}}>
+                                    <Icon name="empty" size={32} style={{color: 'var(--text-muted)', marginBottom: '12px'}} />
+                                    <div style={{fontWeight: '600', fontSize: '14px', marginBottom: '4px'}}>Nenhum registro</div>
+                                    <div style={{fontSize: '13px', color: 'var(--text-muted)'}}>Os registros de sincronização aparecerão aqui.</div>
+                                </div>
+                            ) : (
+                                <div className="table-container" style={{border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', overflow: 'hidden'}}>
+                                    <table className="table">
+                                        <thead>
+                                            <tr>
+                                                <th>Tipo</th>
+                                                <th>Status</th>
+                                                <th>Itens</th>
+                                                <th>Mensagem</th>
+                                                <th>Início</th>
+                                                <th>Fim</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {syncLogs.map(log => (
+                                                <tr key={log.id}>
+                                                    <td>
+                                                        <span className={`badge ${log.type === 'products' ? 'badge-info' : log.type === 'stock' ? 'badge-success' : 'badge-purple'}`} style={log.type === 'nfe' ? {background: 'var(--purple-bg)', color: 'var(--purple)'} : {}}>
+                                                            {log.type === 'products' ? 'Produtos' : log.type === 'stock' ? 'Estoque' : 'NF-e'}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <span style={{
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            gap: '4px',
+                                                            fontSize: '12px',
+                                                            fontWeight: '500',
+                                                            color: log.status === 'success' ? 'var(--success)' : log.status === 'error' ? 'var(--danger)' : 'var(--warning)',
+                                                        }}>
+                                                            <Icon name={log.status === 'success' ? 'check' : log.status === 'error' ? 'error' : 'spinner'} size={12} />
+                                                            {log.status === 'success' ? 'Sucesso' : log.status === 'error' ? 'Erro' : 'Em andamento'}
+                                                        </span>
+                                                    </td>
+                                                    <td style={{fontSize: '13px', fontWeight: '500'}}>
+                                                        {log.items_synced}/{log.items_total}
+                                                    </td>
+                                                    <td style={{fontSize: '12px', color: 'var(--text-secondary)', maxWidth: '300px'}}>
+                                                        {log.message || '-'}
+                                                    </td>
+                                                    <td style={{fontSize: '12px', color: 'var(--text-muted)', whiteSpace: 'nowrap'}}>
+                                                        {formatDate(log.started_at)}
+                                                    </td>
+                                                    <td style={{fontSize: '12px', color: 'var(--text-muted)', whiteSpace: 'nowrap'}}>
+                                                        {formatDate(log.finished_at)}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             );
         }

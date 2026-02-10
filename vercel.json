@@ -1,6 +1,7 @@
 {
   "rewrites": [
-    { "source": "/consulta", "destination": "/consulta.html" }
+    { "source": "/consulta", "destination": "/consulta.html" },
+    { "source": "/tiny-callback", "destination": "/index.html" }
   ],
   "headers": [
     {
