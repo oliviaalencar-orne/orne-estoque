@@ -6956,6 +6956,7 @@
 
             const getAuthHeaders = async () => {
                 const { data: { session } } = await supabaseClient.auth.getSession();
+                if (!session) throw new Error('Sessão expirada. Faça login novamente.');
                 return {
                     'Authorization': `Bearer ${session.access_token}`,
                     'Content-Type': 'application/json',
@@ -6970,6 +6971,10 @@
                     headers,
                     body: JSON.stringify(body),
                 });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.error || `Erro ${res.status}`);
+                }
                 return await res.json();
             };
 
