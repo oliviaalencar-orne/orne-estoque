@@ -2,7 +2,11 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0A0A0A" media="(prefers-color-scheme: dark)">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>Orne Decor - Gestão de Estoque</title>
     
     <!-- Supabase SDK -->
@@ -33,69 +37,99 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         :root {
-            /* Fundos */
-            --bg-primary: #FAFAFA;
-            --bg-secondary: #FFFFFF;
+            /* ===== BACKGROUNDS ===== */
+            --bg-primary: #FFFFFF;
+            --bg-secondary: #FAFAFA;
             --bg-tertiary: #F5F5F5;
+            --bg-hover: #F0F0F0;
+            --bg-active: #E8E8E8;
+            --bg-elevated: #FFFFFF;
+
+            /* ===== TEXT ===== */
+            --text-primary: #171717;
+            --text-secondary: #525252;
+            --text-tertiary: #A3A3A3;
+            --text-disabled: #D4D4D4;
+            --text-heading: #000000;
+
+            /* ===== BORDERS ===== */
+            --border-default: #E5E5E5;
+            --border-subtle: #EBEBEB;
+            --border-strong: #D4D4D4;
+
+            /* ===== ACCENT (dessaturados) ===== */
+            --accent-primary: #3B6ECC;
+            --accent-primary-hover: #335EAF;
+            --accent-primary-subtle: rgba(59, 110, 204, 0.08);
+            --accent-success: #3D8B5F;
+            --accent-success-subtle: rgba(61, 139, 95, 0.08);
+            --accent-warning: #C4873B;
+            --accent-warning-subtle: rgba(196, 135, 59, 0.08);
+            --accent-error: #C45151;
+            --accent-error-subtle: rgba(196, 81, 81, 0.08);
+            --accent-info: #5B8DB8;
+            --accent-info-subtle: rgba(91, 141, 184, 0.08);
+
+            /* ===== SURFACES ===== */
+            --surface-overlay: rgba(0, 0, 0, 0.4);
+            --surface-card: #FFFFFF;
+            --surface-input: #FFFFFF;
+
+            /* ===== NAV ===== */
+            --nav-bg: rgba(255, 255, 255, 0.85);
+            --nav-border: #E5E5E5;
+            --nav-icon-default: #A3A3A3;
+            --nav-icon-active: #171717;
+            --nav-label-active: #171717;
+
+            /* ===== LEGACY ALIASES (compatibilidade com inline styles) ===== */
             --bg-dark: #0A0A0A;
             --bg-darker: #000000;
-
-            /* Textos */
-            --text-primary: #0A0A0A;
-            --text-secondary: #666666;
-            --text-muted: #999999;
+            --text-muted: var(--text-tertiary);
             --text-light: #CCCCCC;
-
-            /* Bordas */
-            --border: #E5E5E5;
-            --border-light: #F0F0F0;
-            --border-focus: #0A0A0A;
-
-            /* Acento - azul Vercel */
-            --accent: #0070F3;
+            --border: var(--border-default);
+            --border-light: var(--border-subtle);
+            --border-focus: var(--text-primary);
+            --accent: var(--accent-primary);
             --accent-light: #D3E5FF;
-            --accent-dark: #0060D0;
-            --accent-bg: #EBF5FF;
-            --accent-gradient: #0070F3;
-
-            /* Secundarias */
+            --accent-dark: #335EAF;
+            --accent-bg: rgba(59, 110, 204, 0.08);
+            --accent-gradient: var(--accent-primary);
             --purple: #7928CA;
             --purple-light: #D8B4FE;
             --purple-bg: #F5F0FF;
+            --success: var(--accent-success);
+            --success-light: var(--accent-success-subtle);
+            --success-dark: #2E6B48;
+            --warning: var(--accent-warning);
+            --warning-light: var(--accent-warning-subtle);
+            --warning-dark: #9A6B2E;
+            --danger: var(--accent-error);
+            --danger-light: var(--accent-error-subtle);
+            --danger-dark: #9A3D3D;
+            --info: var(--accent-info);
+            --info-light: var(--accent-info-subtle);
 
-            /* Semanticas */
-            --success: #17B169;
-            --success-light: #ECFDF3;
-            --success-dark: #12904F;
-            --warning: #E5A100;
-            --warning-light: #FFFCE5;
-            --warning-dark: #B58200;
-            --danger: #E5484D;
-            --danger-light: #FFF0F0;
-            --danger-dark: #CD2B31;
-            --info: #0070F3;
-            --info-light: #EBF5FF;
-
-            /* Categorias */
-            --cat-green: #17B169;
-            --cat-blue: #0070F3;
+            /* ===== CATEGORIAS ===== */
+            --cat-green: #3D8B5F;
+            --cat-blue: #3B6ECC;
             --cat-purple: #7928CA;
-            --cat-pink: #EC4899;
-            --cat-orange: #F5A623;
+            --cat-pink: #C45186;
+            --cat-orange: #C4873B;
             --cat-teal: #0D9488;
-            --cat-gray: #666666;
+            --cat-gray: #525252;
 
-            /* Sombras */
+            /* ===== SOMBRAS ===== */
             --shadow-xs: 0 1px 2px rgba(0,0,0,0.04);
             --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
             --shadow: 0 2px 4px rgba(0,0,0,0.06);
             --shadow-md: 0 4px 8px rgba(0,0,0,0.08);
             --shadow-lg: 0 8px 16px rgba(0,0,0,0.08);
             --shadow-xl: 0 12px 24px rgba(0,0,0,0.1);
-            --shadow-card: 0 0 0 1px var(--border);
-            --shadow-card-hover: 0 0 0 1px #CCCCCC, 0 4px 12px rgba(0,0,0,0.05);
+            --shadow-card: 0 0 0 1px var(--border-default);
+            --shadow-card-hover: 0 0 0 1px var(--border-strong);
 
-            /* Bordas arredondadas */
+            /* ===== RADIUS ===== */
             --radius-xs: 4px;
             --radius-sm: 6px;
             --radius: 8px;
@@ -103,8 +137,83 @@
             --radius-xl: 12px;
             --radius-2xl: 16px;
 
+            /* ===== TRANSITIONS ===== */
             --transition: all 0.15s ease;
             --transition-slow: all 0.25s ease;
+        }
+
+        /* ===== DARK MODE ===== */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-primary: #0A0A0A;
+                --bg-secondary: #111111;
+                --bg-tertiary: #171717;
+                --bg-hover: #1A1A1A;
+                --bg-active: #222222;
+                --bg-elevated: #141414;
+
+                --text-primary: #EDEDED;
+                --text-secondary: #A1A1A1;
+                --text-tertiary: #6B6B6B;
+                --text-disabled: #404040;
+                --text-heading: #FFFFFF;
+
+                --border-default: #262626;
+                --border-subtle: #1F1F1F;
+                --border-strong: #333333;
+
+                --accent-primary: #5B8DEF;
+                --accent-primary-hover: #7AA3F5;
+                --accent-primary-subtle: rgba(91, 141, 239, 0.12);
+                --accent-success: #5AAE7A;
+                --accent-success-subtle: rgba(90, 174, 122, 0.12);
+                --accent-warning: #D9A054;
+                --accent-warning-subtle: rgba(217, 160, 84, 0.12);
+                --accent-error: #D97070;
+                --accent-error-subtle: rgba(217, 112, 112, 0.12);
+                --accent-info: #7AAFDB;
+                --accent-info-subtle: rgba(122, 175, 219, 0.12);
+
+                --surface-overlay: rgba(0, 0, 0, 0.7);
+                --surface-card: #141414;
+                --surface-input: #171717;
+
+                --nav-bg: rgba(10, 10, 10, 0.88);
+                --nav-border: #262626;
+                --nav-icon-default: #6B6B6B;
+                --nav-icon-active: #EDEDED;
+                --nav-label-active: #EDEDED;
+
+                /* Legacy aliases dark overrides */
+                --bg-dark: #0A0A0A;
+                --bg-darker: #000000;
+                --text-light: #404040;
+                --accent-light: rgba(91, 141, 239, 0.2);
+                --accent-dark: #7AA3F5;
+                --accent-bg: rgba(91, 141, 239, 0.12);
+                --purple-light: rgba(121, 40, 202, 0.3);
+                --purple-bg: rgba(121, 40, 202, 0.12);
+                --success-dark: #5AAE7A;
+                --warning-dark: #D9A054;
+                --danger-dark: #D97070;
+
+                --shadow-xs: none;
+                --shadow-sm: none;
+                --shadow: none;
+                --shadow-md: none;
+                --shadow-lg: none;
+                --shadow-xl: none;
+                --shadow-card: 0 0 0 1px var(--border-default);
+                --shadow-card-hover: 0 0 0 1px var(--border-strong);
+
+                --cat-green: #5AAE7A;
+                --cat-blue: #5B8DEF;
+                --cat-purple: #A855F7;
+                --cat-pink: #D97090;
+                --cat-orange: #D9A054;
+                --cat-teal: #2DD4BF;
+                --cat-gray: #A1A1A1;
+            }
         }
 
         body {
@@ -115,7 +224,37 @@
             font-size: 14px;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
+            -webkit-tap-highlight-color: transparent;
+            padding-top: env(safe-area-inset-top);
+            padding-left: env(safe-area-inset-left);
+            padding-right: env(safe-area-inset-right);
         }
+
+        /* ===== CONTAINER QUERIES ===== */
+        .container-component { container-type: inline-size; }
+        .container-card { container-type: inline-size; container-name: card; }
+
+        /* ===== FOCUS & ACCESSIBILITY ===== */
+        :focus-visible {
+            outline: 2px solid var(--accent-primary);
+            outline-offset: 2px;
+        }
+        :focus:not(:focus-visible) { outline: none; }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
+
+        /* ===== VIEW TRANSITIONS ===== */
+        ::view-transition-old(root) { animation: vt-fade-out 120ms ease-out; }
+        ::view-transition-new(root) { animation: vt-fade-in 120ms ease-in; }
+        @keyframes vt-fade-out { from { opacity: 1; } to { opacity: 0; } }
+        @keyframes vt-fade-in { from { opacity: 0; } to { opacity: 1; } }
 
         .icon {
             display: inline-flex;
@@ -423,16 +562,18 @@
 
         /* ===================== CARDS ===================== */
         .card {
-            background: var(--bg-secondary);
+            background: var(--surface-card);
             border-radius: var(--radius-xl);
             padding: 24px;
             margin-bottom: 16px;
-            border: 1px solid var(--border);
+            border: 1px solid var(--border-default);
+            box-shadow: none;
             transition: var(--transition);
+            container-type: inline-size;
         }
 
         .card:hover {
-            border-color: #CCCCCC;
+            border-color: var(--border-strong);
         }
 
         .card-title {
@@ -462,12 +603,15 @@
         }
 
         .stat-card {
-            background: var(--bg-secondary);
+            background: var(--surface-card);
             padding: 20px;
             border-radius: var(--radius-xl);
-            border: 1px solid var(--border);
+            border: 1px solid var(--border-default);
+            box-shadow: none;
             transition: var(--transition);
             position: relative;
+            container-type: inline-size;
+            container-name: card;
         }
 
         .stat-card:hover {
@@ -1020,10 +1164,10 @@
             font-weight: 500;
         }
 
-        .badge-success { background: var(--success-light); color: var(--success-dark); }
-        .badge-warning { background: var(--warning-light); color: var(--warning-dark); }
-        .badge-danger { background: var(--danger-light); color: var(--danger-dark); }
-        .badge-info { background: var(--info-light); color: var(--accent); }
+        .badge-success { background: var(--accent-success-subtle); color: var(--accent-success); border: 1px solid rgba(61, 139, 95, 0.15); }
+        .badge-warning { background: var(--accent-warning-subtle); color: var(--accent-warning); border: 1px solid rgba(196, 135, 59, 0.15); }
+        .badge-danger { background: var(--accent-error-subtle); color: var(--accent-error); border: 1px solid rgba(196, 81, 81, 0.15); }
+        .badge-info { background: var(--accent-info-subtle); color: var(--accent-info); border: 1px solid rgba(91, 141, 184, 0.15); }
 
         /* ===================== MODAL ===================== */
         .modal-overlay {
@@ -1129,13 +1273,419 @@
         .color-option:hover { transform: scale(1.1); }
         .color-option.selected { border-color: var(--text-primary); box-shadow: 0 0 0 1px var(--text-primary); }
 
-        /* ===================== RESPONSIVE ===================== */
-        @media (max-width: 768px) {
-            .sidebar { width: 100%; height: auto; position: relative; }
-            .main-content { margin-left: 0; }
-            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+        /* ===================== DASHBOARD GRID (extraído de inline) ===================== */
+        .dashboard-main-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        /* ===================== PERFORMANCE ===================== */
+        .card, .stat-card, .product-card, .category-card {
+            contain: layout style;
+        }
+        .stat-value, .product-quantity, .category-count {
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* ===================== SKELETON LOADING ===================== */
+        .skeleton {
+            background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--bg-secondary) 50%, var(--bg-tertiary) 75%);
+            background-size: 200% 100%;
+            animation: skeleton-pulse 1.5s ease-in-out infinite;
+            border-radius: var(--radius);
+        }
+        @keyframes skeleton-pulse {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* ===================== MOBILE HEADER ===================== */
+        .mobile-header { display: none; }
+
+        /* ===================== BOTTOM NAV ===================== */
+        .mobile-bottom-nav { display: none; }
+
+        /* ===================== SIDEBAR OVERLAY ===================== */
+        .sidebar-overlay {
+            display: none;
+        }
+
+        /* ===================== BOTTOM SHEET ===================== */
+        .bottom-sheet-overlay {
+            position: fixed;
+            inset: 0;
+            background: var(--surface-overlay);
+            z-index: 10001;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+        }
+        .bottom-sheet-overlay.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .bottom-sheet {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--bg-elevated);
+            border-radius: 16px 16px 0 0;
+            z-index: 10002;
+            transform: translateY(100%);
+            transition: transform 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+            padding-bottom: env(safe-area-inset-bottom);
+            max-height: 70vh;
+            overflow-y: auto;
+            will-change: transform;
+            border-top: 1px solid var(--border-default);
+        }
+        .bottom-sheet.open {
+            transform: translateY(0);
+        }
+        .bottom-sheet-handle {
+            width: 36px;
+            height: 4px;
+            border-radius: 2px;
+            background: var(--border-strong);
+            margin: 8px auto 16px;
+        }
+        .bottom-sheet-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            padding: 0 20px 12px;
+            border-bottom: 1px solid var(--border-subtle);
+            margin-bottom: 4px;
+        }
+        .bottom-sheet-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 20px;
+            border: none;
+            background: none;
+            width: 100%;
+            font-family: inherit;
+            font-size: 15px;
+            color: var(--text-primary);
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            text-align: left;
+            transition: background 0.1s ease;
+        }
+        .bottom-sheet-item:active {
+            background: var(--bg-hover);
+        }
+        .bottom-sheet-item .icon {
+            color: var(--text-secondary);
+        }
+
+        /* ===================== TOAST ===================== */
+        .toast-container {
+            position: fixed;
+            bottom: calc(80px + env(safe-area-inset-bottom));
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 11000;
+            pointer-events: none;
+        }
+        .toast {
+            padding: 12px 20px;
+            border-radius: var(--radius);
+            font-size: 13px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            pointer-events: auto;
+            animation: toast-in 0.25s ease-out;
+            background: var(--text-primary);
+            color: var(--bg-primary);
+            will-change: opacity, transform;
+            white-space: nowrap;
+        }
+        @keyframes toast-in {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ===================== RESPONSIVE — MOBILE < 640px ===================== */
+        @media (max-width: 639px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+            .stat-card { padding: 16px; }
+            .stat-value { font-size: 22px; }
+
+            .dashboard-main-grid { grid-template-columns: 1fr; }
+
+            .products-grid { grid-template-columns: 1fr; gap: 12px; }
+            .product-card { padding: 16px; }
+
+            .category-grid { grid-template-columns: repeat(2, 1fr); }
+
+            .table-container {
+                margin-left: -16px;
+                margin-right: -16px;
+                border-radius: 0;
+                border-left: none;
+                border-right: none;
+            }
+            .table th, .table td { padding: 8px 10px; font-size: 12px; }
+            .table th:first-child, .table td:first-child { padding-left: 16px; }
+            .table th:last-child, .table td:last-child { padding-right: 16px; }
+
+            .form-input, .form-select, .form-textarea {
+                height: 44px;
+                font-size: 16px; /* previne zoom no iOS */
+            }
             .form-row { grid-template-columns: 1fr; }
-            .logo-container { text-align: center; }
+
+            .btn { min-height: 44px; }
+            .btn-group { flex-direction: column; }
+            .btn-group .btn { width: 100%; }
+
+            .filter-tabs {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                flex-wrap: nowrap;
+                gap: 0;
+                padding: 0 16px;
+                margin: 0 -16px;
+            }
+            .filter-tabs::-webkit-scrollbar { display: none; }
+            .filter-tab { white-space: nowrap; flex-shrink: 0; }
+
+            .page-title { font-size: 22px; }
+
+            .modal-overlay { align-items: flex-end; }
+            .modal-content {
+                max-width: 100%;
+                width: 100%;
+                border-radius: 16px 16px 0 0;
+                max-height: 85vh;
+                overflow-y: auto;
+                margin: 0;
+                padding-bottom: calc(20px + env(safe-area-inset-bottom));
+            }
+            .modal-content::before {
+                content: '';
+                display: block;
+                width: 36px;
+                height: 4px;
+                border-radius: 2px;
+                background: var(--border-strong);
+                margin: 0 auto 16px;
+            }
+
+            .login-container { padding: 0; }
+            .login-box {
+                padding: 24px 20px;
+                width: 100%;
+                max-width: 100%;
+                border-radius: 0;
+                min-height: 100vh;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+            }
+
+            .search-box { width: 100%; }
+        }
+
+        /* ===================== RESPONSIVE — MOBILE/TABLET < 1024px ===================== */
+        @media (max-width: 1023px) {
+            .sidebar {
+                position: fixed;
+                left: -280px;
+                top: 0;
+                bottom: 0;
+                width: 280px;
+                z-index: 10000;
+                transition: left 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+                overflow-y: auto;
+                will-change: left;
+            }
+            .sidebar.open { left: 0; }
+
+            .sidebar-overlay {
+                display: block;
+                position: fixed;
+                inset: 0;
+                background: var(--surface-overlay);
+                z-index: 9999;
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.25s ease;
+            }
+            .sidebar-overlay.visible {
+                opacity: 1;
+                pointer-events: auto;
+            }
+
+            .main-content {
+                margin-left: 0 !important;
+                padding: 16px !important;
+                padding-top: calc(48px + env(safe-area-inset-top) + 16px) !important;
+                padding-bottom: calc(64px + env(safe-area-inset-bottom) + 16px) !important;
+                min-height: 100vh;
+            }
+
+            .mobile-header {
+                display: flex;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                z-index: 8999;
+                background: var(--nav-bg);
+                backdrop-filter: blur(20px) saturate(180%);
+                -webkit-backdrop-filter: blur(20px) saturate(180%);
+                border-bottom: 1px solid var(--nav-border);
+                padding-top: env(safe-area-inset-top);
+                height: calc(48px + env(safe-area-inset-top));
+                align-items: center;
+                justify-content: space-between;
+                padding-left: 16px;
+                padding-right: 16px;
+            }
+            .mobile-header-title {
+                font-size: 18px;
+                font-weight: 600;
+                color: var(--text-primary);
+                letter-spacing: -0.02em;
+            }
+            .mobile-header-actions {
+                display: flex;
+                gap: 12px;
+                align-items: center;
+            }
+            .mobile-avatar {
+                width: 28px;
+                height: 28px;
+                border-radius: 50%;
+                background: var(--bg-tertiary);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 11px;
+                font-weight: 600;
+                color: var(--text-secondary);
+                border: 1px solid var(--border-default);
+            }
+
+            .mobile-bottom-nav {
+                display: flex;
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                z-index: 9000;
+                background: var(--nav-bg);
+                backdrop-filter: blur(20px) saturate(180%);
+                -webkit-backdrop-filter: blur(20px) saturate(180%);
+                border-top: 1px solid var(--nav-border);
+                padding-bottom: env(safe-area-inset-bottom);
+                height: calc(64px + env(safe-area-inset-bottom));
+                justify-content: space-around;
+                align-items: center;
+            }
+            .mobile-bottom-nav .nav-tab {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 2px;
+                padding: 8px 0;
+                min-width: 56px;
+                min-height: 44px;
+                background: none;
+                border: none;
+                cursor: pointer;
+                color: var(--nav-icon-default);
+                font-size: 10px;
+                font-weight: 500;
+                font-family: inherit;
+                -webkit-tap-highlight-color: transparent;
+                transition: color 0.15s ease;
+                position: relative;
+            }
+            .mobile-bottom-nav .nav-tab.active {
+                color: var(--nav-icon-active);
+                font-weight: 600;
+            }
+            .mobile-bottom-nav .nav-tab.active::after {
+                content: '';
+                position: absolute;
+                bottom: 6px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 4px;
+                height: 4px;
+                border-radius: 50%;
+                background: var(--nav-icon-active);
+            }
+            .mobile-bottom-nav .nav-tab.action-btn {
+                color: var(--accent-primary);
+            }
+            .mobile-bottom-nav .nav-tab.action-btn::after { display: none; }
+
+            .sync-status {
+                bottom: calc(72px + env(safe-area-inset-bottom));
+            }
+
+            .page-header { margin-bottom: 16px; }
+        }
+
+        /* ===================== RESPONSIVE — TABLET 640-1023px ===================== */
+        @media (min-width: 640px) and (max-width: 1023px) {
+            .main-content { padding: 24px !important; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .products-grid { grid-template-columns: repeat(2, 1fr); }
+            .dashboard-main-grid { grid-template-columns: 1fr; }
+        }
+
+        /* ===================== DESKTOP >= 1024px ===================== */
+        @media (min-width: 1024px) {
+            .mobile-bottom-nav,
+            .mobile-header,
+            .sidebar-overlay { display: none !important; }
+        }
+
+        /* ===================== TOUCH OPTIMIZATION ===================== */
+        @media (pointer: coarse) {
+            .btn, .nav-link, .filter-tab, .bottom-sheet-item { min-height: 44px; }
+            .btn:active { transform: scale(0.97); transition: transform 0.1s ease; }
+            .nav-tab:active { transform: scale(0.95); }
+        }
+
+        @media (hover: hover) {
+            .btn-primary:hover { background: #333333; }
+            .btn-secondary:hover { background: var(--bg-tertiary); }
+            .btn-danger:hover { background: var(--accent-error-subtle); }
+            .btn-icon:hover { background: var(--bg-tertiary); }
+            .product-card:hover { box-shadow: var(--shadow-card-hover); }
+            .stat-card:hover { box-shadow: var(--shadow-card-hover); }
+        }
+        @media (hover: none) {
+            .btn-primary:hover,
+            .btn-secondary:hover,
+            .btn-danger:hover,
+            .btn-icon:hover,
+            .product-card:hover,
+            .stat-card:hover { /* noop — remove hover on touch */ }
+        }
+
+        /* ===================== PERFORMANCE — LONG LISTS ===================== */
+        .table tbody tr {
+            content-visibility: auto;
+            contain-intrinsic-size: auto 44px;
+        }
+        .products-grid .product-card {
+            content-visibility: auto;
+            contain-intrinsic-size: auto 180px;
         }
     </style>
 </head>
@@ -1307,6 +1857,15 @@
             sync: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>',
             cloud: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z"/></svg>',
             plug: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v6"/><path d="M6 2v6"/><path d="M4 8h14a1 1 0 011 1v2a6 6 0 01-12 0V9a1 1 0 011-1"/><path d="M9 17v5"/></svg>',
+            // Mobile nav icons (Lucide style)
+            layoutDashboard: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>',
+            package: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>',
+            plusCircle: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>',
+            arrowLeftRight: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 3 4 7 8 11"/><line x1="4" y1="7" x2="20" y2="7"/><polyline points="16 21 20 17 16 13"/><line x1="20" y1="17" x2="4" y2="17"/></svg>',
+            menuIcon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>',
+            chevronRight: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>',
+            bell: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>',
+            user: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
         };
 
         function Icon({ name, size = 16, className = '', style = {} }) {
@@ -1446,6 +2005,21 @@
             const [shippings, setShippings] = useState([]);
             const [locaisOrigem, setLocaisOrigem] = useState(['Loja Principal', 'Depósito 1', 'Depósito 2']);
             const [syncStatus, setSyncStatus] = useState('syncing');
+            // UI-only states (mobile navigation)
+            const [sidebarOpen, setSidebarOpen] = useState(false);
+            const [mobileSheet, setMobileSheet] = useState(null); // 'movimentacoes' or null
+
+            const tabTitles = { dashboard: 'Dashboard', stock: 'Estoque', newproduct: 'Cadastrar', categories: 'Categorias', entry: 'Entrada', exit: 'Saída', shipping: 'Despachos', import: 'Importar', history: 'Histórico', tiny: 'Tiny ERP' };
+
+            const handleTabChange = (tab) => {
+                if (document.startViewTransition) {
+                    document.startViewTransition(() => { setActiveTab(tab); });
+                } else {
+                    setActiveTab(tab);
+                }
+                setSidebarOpen(false);
+                setMobileSheet(null);
+            };
             const [searchTerm, setSearchTerm] = useState('');
 
             const DEFAULT_CATEGORIES = [
@@ -1744,7 +2318,20 @@
 
             return (
                 <div className="app-container">
-                    <div className="sidebar">
+                    {/* Mobile Header */}
+                    <div className="mobile-header">
+                        <div className="mobile-header-title">{tabTitles[activeTab] || 'Orne'}</div>
+                        <div className="mobile-header-actions">
+                            <div className="mobile-avatar" aria-label="Perfil">
+                                {user.email ? user.email.charAt(0).toUpperCase() : 'U'}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Sidebar Overlay */}
+                    <div className={`sidebar-overlay ${sidebarOpen ? 'visible' : ''}`} onClick={() => setSidebarOpen(false)}></div>
+
+                    <div className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
                         <div className="logo-container">
                             <img src="logo-orne.png" alt="Orne" className="logo" onError={(e) => e.target.style.display = 'none'} />
                         </div>
@@ -1755,7 +2342,7 @@
                         </div>
 
                         <div style={{padding: '0 14px', marginBottom: '16px'}}>
-                            <button 
+                            <button
                                 onClick={() => {
                                     const url = window.location.origin + '/consulta.html';
                                     navigator.clipboard.writeText(url);
@@ -1786,62 +2373,62 @@
 
                         <ul className="nav-menu">
                             <li className="nav-item">
-                                <a className={`nav-link ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>
+                                <a className={`nav-link ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => handleTabChange('dashboard')}>
                                     <span className="nav-icon" dangerouslySetInnerHTML={{__html: ICONS.dashboard}}></span>Dashboard
                                 </a>
                             </li>
                             <li className="nav-item">
-                                <a className={`nav-link ${activeTab === 'stock' ? 'active' : ''}`} onClick={() => setActiveTab('stock')}>
+                                <a className={`nav-link ${activeTab === 'stock' ? 'active' : ''}`} onClick={() => handleTabChange('stock')}>
                                     <span className="nav-icon" dangerouslySetInnerHTML={{__html: ICONS.stock}}></span>Estoque
                                 </a>
                             </li>
-                            
+
                             <div className="nav-section">Produtos</div>
                             <li className="nav-item">
-                                <a className={`nav-link ${activeTab === 'newproduct' ? 'active' : ''}`} onClick={() => setActiveTab('newproduct')}>
+                                <a className={`nav-link ${activeTab === 'newproduct' ? 'active' : ''}`} onClick={() => handleTabChange('newproduct')}>
                                     <span className="nav-icon" dangerouslySetInnerHTML={{__html: ICONS.addProduct}}></span>Cadastrar
                                 </a>
                             </li>
                             <li className="nav-item">
-                                <a className={`nav-link ${activeTab === 'categories' ? 'active' : ''}`} onClick={() => setActiveTab('categories')}>
+                                <a className={`nav-link ${activeTab === 'categories' ? 'active' : ''}`} onClick={() => handleTabChange('categories')}>
                                     <span className="nav-icon" dangerouslySetInnerHTML={{__html: ICONS.categories}}></span>Categorias
                                 </a>
                             </li>
-                            
+
                             <div className="nav-section">Movimentações</div>
                             <li className="nav-item">
-                                <a className={`nav-link ${activeTab === 'entry' ? 'active' : ''}`} onClick={() => setActiveTab('entry')}>
+                                <a className={`nav-link ${activeTab === 'entry' ? 'active' : ''}`} onClick={() => handleTabChange('entry')}>
                                     <span className="nav-icon" dangerouslySetInnerHTML={{__html: ICONS.entry}}></span>Entrada
                                 </a>
                             </li>
                             <li className="nav-item">
-                                <a className={`nav-link ${activeTab === 'exit' ? 'active' : ''}`} onClick={() => setActiveTab('exit')}>
+                                <a className={`nav-link ${activeTab === 'exit' ? 'active' : ''}`} onClick={() => handleTabChange('exit')}>
                                     <span className="nav-icon" dangerouslySetInnerHTML={{__html: ICONS.exit}}></span>Saída
                                 </a>
                             </li>
                             <li className="nav-item">
-                                <a className={`nav-link ${activeTab === 'shipping' ? 'active' : ''}`} onClick={() => setActiveTab('shipping')}>
+                                <a className={`nav-link ${activeTab === 'shipping' ? 'active' : ''}`} onClick={() => handleTabChange('shipping')}>
                                     <span className="nav-icon" dangerouslySetInnerHTML={{__html: ICONS.shipping}}></span>Despachos
                                 </a>
                             </li>
-                            
+
                             <div className="nav-section">Automação</div>
                             <li className="nav-item">
-                                <a className={`nav-link ${activeTab === 'import' ? 'active' : ''}`} onClick={() => setActiveTab('import')}>
+                                <a className={`nav-link ${activeTab === 'import' ? 'active' : ''}`} onClick={() => handleTabChange('import')}>
                                     <span className="nav-icon" dangerouslySetInnerHTML={{__html: ICONS.import}}></span>Importar
                                 </a>
                             </li>
-                            
+
                             <div className="nav-section">Relatórios</div>
                             <li className="nav-item">
-                                <a className={`nav-link ${activeTab === 'history' ? 'active' : ''}`} onClick={() => setActiveTab('history')}>
+                                <a className={`nav-link ${activeTab === 'history' ? 'active' : ''}`} onClick={() => handleTabChange('history')}>
                                     <span className="nav-icon" dangerouslySetInnerHTML={{__html: ICONS.history}}></span>Histórico
                                 </a>
                             </li>
 
                             <div className="nav-section">Integrações</div>
                             <li className="nav-item">
-                                <a className={`nav-link ${activeTab === 'tiny' ? 'active' : ''}`} onClick={() => setActiveTab('tiny')}>
+                                <a className={`nav-link ${activeTab === 'tiny' ? 'active' : ''}`} onClick={() => handleTabChange('tiny')}>
                                     <span className="nav-icon" dangerouslySetInnerHTML={{__html: ICONS.tiny}}></span>Tiny ERP
                                 </a>
                             </li>
@@ -1866,6 +2453,80 @@
                     <div className="sync-status">
                         <div className={`sync-indicator ${syncStatus}`}></div>
                         <span>{syncStatus === 'online' ? 'Sincronizado' : syncStatus === 'offline' ? 'Offline' : 'Sincronizando...'}</span>
+                    </div>
+
+                    {/* Mobile Bottom Navigation */}
+                    <div className="mobile-bottom-nav" role="navigation" aria-label="Navegação principal">
+                        <button
+                            className={`nav-tab ${activeTab === 'dashboard' ? 'active' : ''}`}
+                            onClick={() => handleTabChange('dashboard')}
+                            aria-current={activeTab === 'dashboard' ? 'page' : undefined}
+                            aria-label="Dashboard"
+                        >
+                            <Icon name="layoutDashboard" size={22} />
+                            <span>Início</span>
+                        </button>
+                        <button
+                            className={`nav-tab ${activeTab === 'stock' ? 'active' : ''}`}
+                            onClick={() => handleTabChange('stock')}
+                            aria-current={activeTab === 'stock' ? 'page' : undefined}
+                            aria-label="Estoque"
+                        >
+                            <Icon name="package" size={22} />
+                            <span>Produtos</span>
+                        </button>
+                        <button
+                            className="nav-tab action-btn"
+                            onClick={() => handleTabChange('entry')}
+                            aria-label="Nova entrada"
+                        >
+                            <Icon name="plusCircle" size={26} />
+                            <span>Novo</span>
+                        </button>
+                        <button
+                            className={`nav-tab ${['entry','exit','shipping','import','history'].includes(activeTab) ? 'active' : ''}`}
+                            onClick={() => setMobileSheet(mobileSheet === 'moves' ? null : 'moves')}
+                            aria-label="Movimentações"
+                            aria-expanded={mobileSheet === 'moves'}
+                        >
+                            <Icon name="arrowLeftRight" size={22} />
+                            <span>Movimentar</span>
+                        </button>
+                        <button
+                            className="nav-tab"
+                            onClick={() => setSidebarOpen(true)}
+                            aria-label="Menu completo"
+                        >
+                            <Icon name="menuIcon" size={22} />
+                            <span>Mais</span>
+                        </button>
+                    </div>
+
+                    {/* Bottom Sheet - Movimentações */}
+                    <div className={`bottom-sheet-overlay ${mobileSheet === 'moves' ? 'visible' : ''}`} onClick={() => setMobileSheet(null)}></div>
+                    <div className={`bottom-sheet ${mobileSheet === 'moves' ? 'open' : ''}`} role="dialog" aria-label="Movimentações">
+                        <div className="bottom-sheet-handle"></div>
+                        <div className="bottom-sheet-title">Movimentações</div>
+                        <button className="bottom-sheet-item" onClick={() => handleTabChange('entry')}>
+                            <span dangerouslySetInnerHTML={{__html: ICONS.entry}}></span>
+                            Entrada de Estoque
+                        </button>
+                        <button className="bottom-sheet-item" onClick={() => handleTabChange('exit')}>
+                            <span dangerouslySetInnerHTML={{__html: ICONS.exit}}></span>
+                            Saída de Estoque
+                        </button>
+                        <button className="bottom-sheet-item" onClick={() => handleTabChange('shipping')}>
+                            <span dangerouslySetInnerHTML={{__html: ICONS.shipping}}></span>
+                            Despachos
+                        </button>
+                        <button className="bottom-sheet-item" onClick={() => handleTabChange('import')}>
+                            <span dangerouslySetInnerHTML={{__html: ICONS.import}}></span>
+                            Importar
+                        </button>
+                        <button className="bottom-sheet-item" onClick={() => handleTabChange('history')}>
+                            <span dangerouslySetInnerHTML={{__html: ICONS.history}}></span>
+                            Histórico
+                        </button>
                     </div>
                 </div>
             );
@@ -2035,7 +2696,7 @@
                     </div>
 
                     {/* Grid Principal */}
-                    <div style={{display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px', marginBottom: '24px'}}>
+                    <div className="dashboard-main-grid">
                         {/* Gráfico de Barras */}
                         <div className="card">
                             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
