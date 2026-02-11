@@ -1914,11 +1914,189 @@
         // ==========================================
         // LOGIN SCREEN
         // ==========================================
+        // ==========================================
+        // PENDING APPROVAL SCREEN
+        // ==========================================
+        function PendingApprovalScreen({ onLogout }) {
+            return (
+                <div className="login-container">
+                    <div className="login-box">
+                        <img src="logo-orne.png" alt="Orne" className="login-logo" onError={(e) => e.target.style.display='none'} />
+                        <div style={{textAlign: 'center', marginBottom: '16px'}}>
+                            <div style={{width: '48px', height: '48px', borderRadius: '50%', background: 'var(--accent-warning-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px'}}>
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent-warning)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            </div>
+                            <h1 className="login-title">Aguardando Aprovação</h1>
+                            <p className="login-subtitle" style={{marginTop: '8px', lineHeight: '1.6'}}>
+                                Seu cadastro está sendo analisado pelo administrador.
+                                <br/>Você receberá acesso assim que for aprovado.
+                            </p>
+                        </div>
+                        <button className="btn-login" onClick={onLogout} style={{background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border-default)'}}>
+                            Sair
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        // ==========================================
+        // REJECTED SCREEN
+        // ==========================================
+        function RejectedScreen({ onLogout }) {
+            return (
+                <div className="login-container">
+                    <div className="login-box">
+                        <img src="logo-orne.png" alt="Orne" className="login-logo" onError={(e) => e.target.style.display='none'} />
+                        <div style={{textAlign: 'center', marginBottom: '16px'}}>
+                            <div style={{width: '48px', height: '48px', borderRadius: '50%', background: 'var(--accent-error-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px'}}>
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent-error)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                            </div>
+                            <h1 className="login-title">Acesso Negado</h1>
+                            <p className="login-subtitle" style={{marginTop: '8px', lineHeight: '1.6'}}>
+                                Seu acesso foi negado pelo administrador.
+                                <br/>Entre em contato caso acredite ser um erro.
+                            </p>
+                        </div>
+                        <button className="btn-login" onClick={onLogout} style={{background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border-default)'}}>
+                            Sair
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        // ==========================================
+        // ADMIN PANEL
+        // ==========================================
+        function AdminPanel({ currentUserId }) {
+            const [users, setUsers] = useState([]);
+            const [loadingUsers, setLoadingUsers] = useState(true);
+            const [actionLoading, setActionLoading] = useState(null);
+
+            useEffect(() => {
+                loadUsers();
+                const channel = supabaseClient.channel('admin-user-profiles')
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'user_profiles' }, () => loadUsers())
+                    .subscribe();
+                return () => supabaseClient.removeChannel(channel);
+            }, []);
+
+            const loadUsers = async () => {
+                const { data } = await supabaseClient.from('user_profiles').select('*').order('created_at', { ascending: false });
+                if (data) setUsers(data);
+                setLoadingUsers(false);
+            };
+
+            const updateUser = async (userId, updates) => {
+                setActionLoading(userId);
+                await supabaseClient.from('user_profiles').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', userId);
+                await loadUsers();
+                setActionLoading(null);
+            };
+
+            const statusBadge = (status) => {
+                const map = {
+                    'approved': { label: 'Aprovado', cls: 'badge-success' },
+                    'pending': { label: 'Pendente', cls: 'badge-warning' },
+                    'rejected': { label: 'Rejeitado', cls: 'badge-danger' }
+                };
+                const s = map[status] || { label: status, cls: '' };
+                return <span className={`badge ${s.cls}`}>{s.label}</span>;
+            };
+
+            const roleBadge = (role) => {
+                return role === 'admin'
+                    ? <span className="badge badge-info">Admin</span>
+                    : <span className="badge" style={{background: 'var(--bg-tertiary)', color: 'var(--text-secondary)'}}>Usuário</span>;
+            };
+
+            const formatDate = (d) => d ? new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+
+            return (
+                <div>
+                    <div className="page-header">
+                        <h1 className="page-title">Gerenciar Usuários</h1>
+                        <p className="page-subtitle">Aprove ou rejeite cadastros de novos usuários</p>
+                    </div>
+
+                    {loadingUsers ? (
+                        <div style={{textAlign: 'center', padding: '40px'}}>
+                            <div className="loading-spinner" style={{margin: '0 auto'}}></div>
+                        </div>
+                    ) : (
+                        <div className="card">
+                            <div className="table-container">
+                                <table className="table">
+                                    <thead>
+                                        <tr>
+                                            <th>E-mail</th>
+                                            <th>Função</th>
+                                            <th>Status</th>
+                                            <th>Cadastro</th>
+                                            <th>Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {users.map(u => (
+                                            <tr key={u.id}>
+                                                <td style={{fontWeight: 500}}>{u.email || '—'}</td>
+                                                <td>{roleBadge(u.role)}</td>
+                                                <td>{statusBadge(u.status)}</td>
+                                                <td style={{fontSize: '12px', color: 'var(--text-secondary)'}}>{formatDate(u.created_at)}</td>
+                                                <td>
+                                                    <div style={{display: 'flex', gap: '6px', flexWrap: 'wrap'}}>
+                                                        {u.status !== 'approved' && (
+                                                            <button
+                                                                className="btn btn-primary"
+                                                                style={{fontSize: '12px', padding: '4px 10px', minHeight: 'auto', background: 'var(--accent-success)', borderColor: 'var(--accent-success)'}}
+                                                                disabled={actionLoading === u.id}
+                                                                onClick={() => updateUser(u.id, { status: 'approved' })}
+                                                            >Aprovar</button>
+                                                        )}
+                                                        {u.status !== 'rejected' && u.id !== currentUserId && (
+                                                            <button
+                                                                className="btn btn-secondary"
+                                                                style={{fontSize: '12px', padding: '4px 10px', minHeight: 'auto', color: 'var(--accent-error)', borderColor: 'var(--accent-error)'}}
+                                                                disabled={actionLoading === u.id}
+                                                                onClick={() => updateUser(u.id, { status: 'rejected' })}
+                                                            >Rejeitar</button>
+                                                        )}
+                                                        {u.status === 'approved' && u.role !== 'admin' && (
+                                                            <button
+                                                                className="btn btn-secondary"
+                                                                style={{fontSize: '12px', padding: '4px 10px', minHeight: 'auto'}}
+                                                                disabled={actionLoading === u.id}
+                                                                onClick={() => updateUser(u.id, { role: 'admin' })}
+                                                            >Tornar Admin</button>
+                                                        )}
+                                                        {u.role === 'admin' && u.id !== currentUserId && (
+                                                            <button
+                                                                className="btn btn-secondary"
+                                                                style={{fontSize: '12px', padding: '4px 10px', minHeight: 'auto'}}
+                                                                disabled={actionLoading === u.id}
+                                                                onClick={() => updateUser(u.id, { role: 'user' })}
+                                                            >Remover Admin</button>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
         function LoginScreen({ loading }) {
             const [email, setEmail] = useState('');
             const [password, setPassword] = useState('');
             const [isLogin, setIsLogin] = useState(true);
             const [error, setError] = useState('');
+            const [successMsg, setSuccessMsg] = useState('');
             const [isLoading, setIsLoading] = useState(false);
 
             if (loading) {
@@ -1933,6 +2111,7 @@
             const handleSubmit = async (e) => {
                 e.preventDefault();
                 setError('');
+                setSuccessMsg('');
                 setIsLoading(true);
 
                 try {
@@ -1942,6 +2121,10 @@
                     } else {
                         const { data, error: authError } = await supabaseClient.auth.signUp({ email, password });
                         if (authError) throw authError;
+                        // Sign out so they see the success message
+                        await supabaseClient.auth.signOut();
+                        setSuccessMsg('Conta criada com sucesso! Aguarde a aprovação do administrador.');
+                        setIsLogin(true);
                     }
                 } catch (err) {
                     const messages = {
@@ -1964,6 +2147,12 @@
                         <h1 className="login-title">{isLogin ? 'Entrar' : 'Criar conta'}</h1>
                         <p className="login-subtitle">Sistema de Gestão de Estoque</p>
 
+                        {successMsg && (
+                            <div style={{padding: '12px 16px', borderRadius: '8px', background: 'var(--accent-success-subtle)', color: 'var(--accent-success)', fontSize: '13px', marginBottom: '16px', lineHeight: '1.5', border: '1px solid rgba(61, 139, 95, 0.2)'}}>
+                                {successMsg}
+                            </div>
+                        )}
+
                         <form className="login-form" onSubmit={handleSubmit}>
                             <div className="form-group">
                                 <label className="form-label">E-mail</label>
@@ -1982,7 +2171,7 @@
 
                         <div className="login-toggle">
                             {isLogin ? 'Não tem conta? ' : 'Já tem conta? '}
-                            <button onClick={() => setIsLogin(!isLogin)}>
+                            <button onClick={() => { setIsLogin(!isLogin); setError(''); setSuccessMsg(''); }}>
                                 {isLogin ? 'Criar conta' : 'Fazer login'}
                             </button>
                         </div>
@@ -2005,11 +2194,15 @@
             const [shippings, setShippings] = useState([]);
             const [locaisOrigem, setLocaisOrigem] = useState(['Loja Principal', 'Depósito 1', 'Depósito 2']);
             const [syncStatus, setSyncStatus] = useState('syncing');
+            // User profile (approval system)
+            const [userProfile, setUserProfile] = useState(null);
+            const [profileLoading, setProfileLoading] = useState(true);
+
             // UI-only states (mobile navigation)
             const [sidebarOpen, setSidebarOpen] = useState(false);
             const [mobileSheet, setMobileSheet] = useState(null); // 'movimentacoes' or null
 
-            const tabTitles = { dashboard: 'Dashboard', stock: 'Estoque', newproduct: 'Cadastrar', categories: 'Categorias', entry: 'Entrada', exit: 'Saída', shipping: 'Despachos', import: 'Importar', history: 'Histórico', tiny: 'Tiny ERP' };
+            const tabTitles = { dashboard: 'Dashboard', stock: 'Estoque', newproduct: 'Cadastrar', categories: 'Categorias', entry: 'Entrada', exit: 'Saída', shipping: 'Despachos', import: 'Importar', history: 'Histórico', tiny: 'Tiny ERP', admin: 'Usuários' };
 
             const handleTabChange = (tab) => {
                 if (document.startViewTransition) {
@@ -2044,6 +2237,31 @@
                 );
                 return () => subscription.unsubscribe();
             }, []);
+
+            // Fetch user profile for approval gating
+            useEffect(() => {
+                if (!user) { setUserProfile(null); setProfileLoading(false); return; }
+                setProfileLoading(true);
+                const fetchProfile = () => {
+                    supabaseClient.from('user_profiles').select('*').eq('id', user.id).single()
+                        .then(({ data, error: err }) => {
+                            if (err || !data) {
+                                // Trigger may not have fired yet, retry once
+                                setTimeout(() => {
+                                    supabaseClient.from('user_profiles').select('*').eq('id', user.id).single()
+                                        .then(({ data: d2 }) => {
+                                            setUserProfile(d2 || { status: 'pending', role: 'user' });
+                                            setProfileLoading(false);
+                                        });
+                                }, 1500);
+                            } else {
+                                setUserProfile(data);
+                                setProfileLoading(false);
+                            }
+                        });
+                };
+                fetchProfile();
+            }, [user]);
 
             useEffect(() => {
                 if (!user || !supabaseInitialized) return;
@@ -2315,6 +2533,9 @@
             };
 
             if (!user) return <LoginScreen loading={loading} />;
+            if (profileLoading) return <LoginScreen loading={true} />;
+            if (userProfile?.status === 'pending') return <PendingApprovalScreen onLogout={handleLogout} />;
+            if (userProfile?.status === 'rejected') return <RejectedScreen onLogout={handleLogout} />;
 
             return (
                 <div className="app-container">
@@ -2432,6 +2653,17 @@
                                     <span className="nav-icon" dangerouslySetInnerHTML={{__html: ICONS.tiny}}></span>Tiny ERP
                                 </a>
                             </li>
+
+                            {userProfile?.role === 'admin' && (
+                                <React.Fragment>
+                                    <div className="nav-section">Administração</div>
+                                    <li className="nav-item">
+                                        <a className={`nav-link ${activeTab === 'admin' ? 'active' : ''}`} onClick={() => handleTabChange('admin')}>
+                                            <span className="nav-icon" dangerouslySetInnerHTML={{__html: ICONS.user}}></span>Usuários
+                                        </a>
+                                    </li>
+                                </React.Fragment>
+                            )}
                         </ul>
                     </div>
 
@@ -2447,6 +2679,7 @@
                             {activeTab === 'import' && <ImportHub products={products} onImport={handleImport} onAddProduct={addProduct} categories={categories} locaisOrigem={locaisOrigem} onUpdateLocais={updateLocaisOrigem} entries={entries} exits={exits} stock={currentStock} onAddEntry={addEntry} onAddExit={addExit} />}
                             {activeTab === 'history' && <History entries={entries} exits={exits} products={products} shippings={shippings} onUpdateEntry={updateEntry} onDeleteEntry={deleteEntry} onUpdateExit={updateExit} onDeleteExit={deleteExit} />}
                             {activeTab === 'tiny' && <TinyERPPage user={user} onDataChanged={refetchData} products={products} entries={entries} exits={exits} stock={currentStock} onAddEntry={addEntry} onAddExit={addExit} onAddProduct={addProduct} categories={categories} locaisOrigem={locaisOrigem} onUpdateLocais={updateLocaisOrigem} />}
+                            {activeTab === 'admin' && userProfile?.role === 'admin' && <AdminPanel currentUserId={user.id} />}
                         </div>
                     </div>
 
