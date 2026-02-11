@@ -2850,46 +2850,45 @@
                 if (!isVisible || !chartRef.current || stock.length === 0) return;
                 if (chartInstance.current) chartInstance.current.destroy();
 
-                    const top8 = [...stock].sort((a, b) => b.currentQuantity - a.currentQuantity).slice(0, 8);
+                const top8 = [...stock].sort((a, b) => b.currentQuantity - a.currentQuantity).slice(0, 8);
 
-                    chartInstance.current = new Chart(chartRef.current, {
-                        type: 'bar',
-                        data: {
-                            labels: top8.map(p => p.name.length > 15 ? p.name.substring(0, 15) + '...' : p.name),
-                            datasets: [{
-                                data: top8.map(p => p.currentQuantity),
-                                backgroundColor: '#F4B08A',
-                                borderRadius: 6,
-                                barThickness: 28
-                            }]
+                chartInstance.current = new Chart(chartRef.current, {
+                    type: 'bar',
+                    data: {
+                        labels: top8.map(p => p.name.length > 15 ? p.name.substring(0, 15) + '...' : p.name),
+                        datasets: [{
+                            data: top8.map(p => p.currentQuantity),
+                            backgroundColor: '#F4B08A',
+                            borderRadius: 6,
+                            barThickness: 28
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: '#2C2640',
+                                titleFont: { size: 12, weight: '600' },
+                                bodyFont: { size: 11 },
+                                padding: 12,
+                                cornerRadius: 8
+                            }
                         },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: { 
-                                legend: { display: false },
-                                tooltip: {
-                                    backgroundColor: '#2C2640',
-                                    titleFont: { size: 12, weight: '600' },
-                                    bodyFont: { size: 11 },
-                                    padding: 12,
-                                    cornerRadius: 8
-                                }
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: { color: '#F3F0EC', drawBorder: false },
+                                ticks: { font: { size: 11, family: 'Inter' }, color: '#7A7585' }
                             },
-                            scales: {
-                                y: { 
-                                    beginAtZero: true, 
-                                    grid: { color: '#F3F0EC', drawBorder: false },
-                                    ticks: { font: { size: 11, family: 'Inter' }, color: '#7A7585' }
-                                },
-                                x: { 
-                                    grid: { display: false }, 
-                                    ticks: { font: { size: 10, family: 'Inter' }, color: '#7A7585' }
-                                }
+                            x: {
+                                grid: { display: false },
+                                ticks: { font: { size: 10, family: 'Inter' }, color: '#7A7585' }
                             }
                         }
-                    });
-                }
+                    }
+                });
 
                 return () => {
                     chartInstance.current?.destroy();
