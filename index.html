@@ -2242,24 +2242,41 @@
             useEffect(() => {
                 if (!user) { setUserProfile(null); setProfileLoading(false); return; }
                 setProfileLoading(true);
-                const fetchProfile = () => {
-                    supabaseClient.from('user_profiles').select('*').eq('id', user.id).single()
-                        .then(({ data, error: err }) => {
-                            if (err || !data) {
-                                // Trigger may not have fired yet, retry once
-                                setTimeout(() => {
-                                    supabaseClient.from('user_profiles').select('*').eq('id', user.id).single()
-                                        .then(({ data: d2 }) => {
-                                            setUserProfile(d2 || { status: 'pending', role: 'user' });
-                                            setProfileLoading(false);
-                                        });
-                                }, 1500);
-                            } else {
-                                setUserProfile(data);
-                                setProfileLoading(false);
-                            }
-                        });
+
+                const fetchProfile = async (retries = 3) => {
+                    try {
+                        const { data, error: err } = await supabaseClient
+                            .from('user_profiles')
+                            .select('*')
+                            .eq('id', user.id)
+                            .single();
+
+                        if (data && !err) {
+                            setUserProfile(data);
+                            setProfileLoading(false);
+                            return;
+                        }
+
+                        // Profile not found yet — retry (trigger may not have fired)
+                        if (retries > 0) {
+                            await new Promise(r => setTimeout(r, 1500));
+                            return fetchProfile(retries - 1);
+                        }
+
+                        // After all retries, set as pending (genuinely new user)
+                        setUserProfile({ status: 'pending', role: 'user' });
+                        setProfileLoading(false);
+                    } catch (e) {
+                        console.error('Error fetching profile:', e);
+                        if (retries > 0) {
+                            await new Promise(r => setTimeout(r, 1500));
+                            return fetchProfile(retries - 1);
+                        }
+                        setUserProfile({ status: 'pending', role: 'user' });
+                        setProfileLoading(false);
+                    }
                 };
+
                 fetchProfile();
             }, [user]);
 
