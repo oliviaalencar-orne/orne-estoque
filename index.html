@@ -615,18 +615,18 @@
         }
 
         .stat-card:hover {
-            border-color: #CCCCCC;
+            border-color: var(--border-strong);
         }
 
         .stat-card.accent {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
+            background: var(--surface-card);
+            border: 1px solid var(--border-default);
             color: var(--text-primary);
         }
-        .stat-card.accent .stat-label { color: var(--text-muted); }
+        .stat-card.accent .stat-label { color: var(--text-tertiary); }
         .stat-card.accent .stat-value { color: var(--text-primary); }
         .stat-card.accent .stat-icon { background: var(--bg-tertiary); }
-        .stat-card.accent .stat-trend { color: var(--success-dark); background: var(--success-light); }
+        .stat-card.accent .stat-trend { color: var(--accent-success); background: var(--accent-success-subtle); }
 
         .stat-card.dark {
             background: var(--bg-secondary);
@@ -656,11 +656,11 @@
             color: var(--text-secondary);
         }
 
-        .stat-icon.green { background: var(--success-light); color: var(--success-dark); }
-        .stat-icon.red { background: var(--danger-light); color: var(--danger-dark); }
-        .stat-icon.yellow { background: var(--warning-light); color: var(--warning-dark); }
-        .stat-icon.blue { background: var(--info-light); color: var(--accent); }
-        .stat-icon.purple { background: var(--purple-bg); color: var(--purple); }
+        .stat-icon.green { background: var(--accent-success-subtle); color: var(--accent-success); }
+        .stat-icon.red { background: var(--accent-error-subtle); color: var(--accent-error); }
+        .stat-icon.yellow { background: var(--accent-warning-subtle); color: var(--accent-warning); }
+        .stat-icon.blue { background: var(--accent-info-subtle); color: var(--accent-info); }
+        .stat-icon.purple { background: rgba(123,110,237,0.08); color: #7B6EED; }
 
         .stat-trend {
             display: inline-flex;
@@ -703,13 +703,13 @@
             font-weight: 500;
         }
 
-        .stat-card.warning { border-left: 3px solid var(--warning); }
-        .stat-card.warning .stat-value { color: var(--warning-dark); }
-        .stat-card.warning .stat-icon { background: var(--warning-light); }
+        .stat-card.warning { border-left: 3px solid var(--accent-warning); }
+        .stat-card.warning .stat-value { color: var(--text-primary); }
+        .stat-card.warning .stat-icon { background: var(--accent-warning-subtle); }
 
-        .stat-card.danger { border-left: 3px solid var(--danger); }
-        .stat-card.danger .stat-value { color: var(--danger-dark); }
-        .stat-card.danger .stat-icon { background: var(--danger-light); }
+        .stat-card.danger { border-left: 3px solid var(--accent-error); }
+        .stat-card.danger .stat-value { color: var(--text-primary); }
+        .stat-card.danger .stat-icon { background: var(--accent-error-subtle); }
 
         /* ===================== CATEGORY CARDS ===================== */
         .category-grid {
@@ -752,10 +752,10 @@
         }
 
         .category-count {
-            font-size: 26px;
+            font-size: 22px;
             font-weight: 700;
+            color: var(--text-primary);
             margin-bottom: 2px;
-            letter-spacing: -0.5px;
         }
 
         .category-meta {
@@ -766,8 +766,8 @@
 
         .category-alert {
             font-size: 12px;
-            color: var(--warning-dark);
-            background: var(--warning-light);
+            color: var(--accent-warning);
+            background: var(--accent-warning-subtle);
             padding: 4px 8px;
             border-radius: var(--radius-sm);
             margin-top: 8px;
@@ -1054,19 +1054,28 @@
         }
 
         .product-card:hover {
-            border-color: #CCCCCC;
+            border-color: var(--border-strong);
         }
 
-        .product-card.low { border-left: 3px solid var(--warning); }
-        .product-card.empty { border-left: 3px solid var(--danger); }
+        .product-card.low { border-left: 3px solid var(--accent-warning); }
+        .product-card.empty { border-left: 3px solid var(--accent-error); }
 
         .product-actions {
             position: absolute;
             top: 12px;
             right: 12px;
             display: flex;
-            gap: 4px;
+            gap: 2px;
+            opacity: 0.5;
+            transition: opacity 0.15s;
         }
+        .product-card:hover .product-actions { opacity: 1; }
+
+        .category-card-actions {
+            opacity: 0.5;
+            transition: opacity 0.15s;
+        }
+        .category-card-item:hover .category-card-actions { opacity: 1; }
 
         .product-category-badge {
             display: inline-block;
@@ -1075,7 +1084,6 @@
             font-size: 11px;
             font-weight: 600;
             margin-bottom: 10px;
-            color: white;
         }
 
         .product-name {
@@ -1106,11 +1114,10 @@
         }
 
         .product-quantity {
-            font-size: 32px;
+            font-size: 18px;
             font-weight: 700;
             color: var(--text-primary);
             margin: 12px 0 6px;
-            letter-spacing: -0.5px;
         }
 
         .product-status {
@@ -1122,9 +1129,9 @@
             text-transform: uppercase;
         }
 
-        .status-ok { background: var(--success-light); color: var(--success); }
-        .status-low { background: var(--warning-light); color: var(--warning); }
-        .status-empty { background: var(--danger-light); color: var(--danger); }
+        .status-ok { background: var(--accent-success-subtle); color: var(--accent-success); }
+        .status-low { background: var(--accent-warning-subtle); color: var(--accent-warning); }
+        .status-empty { background: var(--accent-error-subtle); color: var(--accent-error); }
 
         /* ===================== TABLES ===================== */
         .table-container { overflow-x: auto; }
@@ -2205,13 +2212,14 @@
             const tabTitles = { dashboard: 'Dashboard', stock: 'Estoque', newproduct: 'Cadastrar', categories: 'Categorias', entry: 'Entrada', exit: 'Saída', shipping: 'Despachos', import: 'Importar', history: 'Histórico', tiny: 'Tiny ERP', admin: 'Usuários' };
 
             const handleTabChange = (tab) => {
+                if (tab === activeTab) return;
                 if (document.startViewTransition) {
                     document.startViewTransition(() => { setActiveTab(tab); });
                 } else {
                     setActiveTab(tab);
                 }
-                setSidebarOpen(false);
-                setMobileSheet(null);
+                if (sidebarOpen) setSidebarOpen(false);
+                if (mobileSheet) setMobileSheet(null);
             };
             const [searchTerm, setSearchTerm] = useState('');
 
@@ -2686,15 +2694,31 @@
 
                     <div className="main-content">
                         <div className="fade-in">
-                            {activeTab === 'dashboard' && <Dashboard stock={currentStock} categories={categories} />}
-                            {activeTab === 'stock' && <StockView stock={currentStock} categories={categories} onUpdate={updateProduct} onDelete={deleteProduct} searchTerm={searchTerm} setSearchTerm={setSearchTerm} entries={entries} exits={exits} />}
+                            {/* Frequent tabs — kept mounted, hidden via display:none */}
+                            <div style={{display: activeTab === 'dashboard' ? 'block' : 'none'}}>
+                                <Dashboard stock={currentStock} categories={categories} isVisible={activeTab === 'dashboard'} />
+                            </div>
+                            <div style={{display: activeTab === 'stock' ? 'block' : 'none'}}>
+                                <StockView stock={currentStock} categories={categories} onUpdate={updateProduct} onDelete={deleteProduct} searchTerm={searchTerm} setSearchTerm={setSearchTerm} entries={entries} exits={exits} />
+                            </div>
+                            <div style={{display: activeTab === 'categories' ? 'block' : 'none'}}>
+                                <CategoryManager categories={categories} onAdd={addCategory} onUpdate={updateCategory} onDelete={deleteCategory} products={currentStock} />
+                            </div>
+                            <div style={{display: activeTab === 'entry' ? 'block' : 'none'}}>
+                                <EntryForm products={products} onSubmit={addEntry} onAddProduct={addProduct} categories={categories} locaisOrigem={locaisOrigem} onUpdateLocais={updateLocaisOrigem} entries={entries} exits={exits} stock={currentStock} />
+                            </div>
+                            <div style={{display: activeTab === 'exit' ? 'block' : 'none'}}>
+                                <ExitForm products={products} stock={currentStock} onSubmit={addExit} entries={entries} exits={exits} />
+                            </div>
+                            <div style={{display: activeTab === 'shipping' ? 'block' : 'none'}}>
+                                <ShippingManager shippings={shippings} onAdd={addShipping} onUpdate={updateShipping} onDelete={deleteShipping} stock={currentStock} products={products} onAddExit={addExit} onAddEntry={addEntry} locaisOrigem={locaisOrigem} onUpdateLocais={updateLocaisOrigem} onAddProduct={addProduct} categories={categories} entries={entries} exits={exits} />
+                            </div>
+                            <div style={{display: activeTab === 'history' ? 'block' : 'none'}}>
+                                <History entries={entries} exits={exits} products={products} shippings={shippings} onUpdateEntry={updateEntry} onDeleteEntry={deleteEntry} onUpdateExit={updateExit} onDeleteExit={deleteExit} />
+                            </div>
+                            {/* Rare tabs — mounted on demand */}
                             {activeTab === 'newproduct' && <ProductForm onSubmit={addProduct} products={products} categories={categories} />}
-                            {activeTab === 'categories' && <CategoryManager categories={categories} onAdd={addCategory} onUpdate={updateCategory} onDelete={deleteCategory} products={currentStock} />}
-                            {activeTab === 'entry' && <EntryForm products={products} onSubmit={addEntry} onAddProduct={addProduct} categories={categories} locaisOrigem={locaisOrigem} onUpdateLocais={updateLocaisOrigem} entries={entries} exits={exits} stock={currentStock} />}
-                            {activeTab === 'exit' && <ExitForm products={products} stock={currentStock} onSubmit={addExit} entries={entries} exits={exits} />}
-                            {activeTab === 'shipping' && <ShippingManager shippings={shippings} onAdd={addShipping} onUpdate={updateShipping} onDelete={deleteShipping} stock={currentStock} products={products} onAddExit={addExit} onAddEntry={addEntry} locaisOrigem={locaisOrigem} onUpdateLocais={updateLocaisOrigem} onAddProduct={addProduct} categories={categories} entries={entries} exits={exits} />}
                             {activeTab === 'import' && <ImportHub products={products} onImport={handleImport} onAddProduct={addProduct} categories={categories} locaisOrigem={locaisOrigem} onUpdateLocais={updateLocaisOrigem} entries={entries} exits={exits} stock={currentStock} onAddEntry={addEntry} onAddExit={addExit} />}
-                            {activeTab === 'history' && <History entries={entries} exits={exits} products={products} shippings={shippings} onUpdateEntry={updateEntry} onDeleteEntry={deleteEntry} onUpdateExit={updateExit} onDeleteExit={deleteExit} />}
                             {activeTab === 'tiny' && <TinyERPPage user={user} onDataChanged={refetchData} products={products} entries={entries} exits={exits} stock={currentStock} onAddEntry={addEntry} onAddExit={addExit} onAddProduct={addProduct} categories={categories} locaisOrigem={locaisOrigem} onUpdateLocais={updateLocaisOrigem} />}
                             {activeTab === 'admin' && userProfile?.role === 'admin' && <AdminPanel currentUserId={user.id} />}
                         </div>
@@ -2785,7 +2809,7 @@
         // ==========================================
         // DASHBOARD - NOVO DESIGN
         // ==========================================
-        function Dashboard({ stock, categories }) {
+        function Dashboard({ stock, categories, isVisible }) {
             const chartRef = useRef(null);
             const lineChartRef = useRef(null);
             const chartInstance = useRef(null);
@@ -2822,12 +2846,12 @@
             });
 
             useEffect(() => {
-                // Gráfico de barras
-                if (chartRef.current && stock.length > 0) {
-                    if (chartInstance.current) chartInstance.current.destroy();
-                    
+                // Gráfico de barras — só cria quando tab visível (canvas precisa ter dimensões)
+                if (!isVisible || !chartRef.current || stock.length === 0) return;
+                if (chartInstance.current) chartInstance.current.destroy();
+
                     const top8 = [...stock].sort((a, b) => b.currentQuantity - a.currentQuantity).slice(0, 8);
-                    
+
                     chartInstance.current = new Chart(chartRef.current, {
                         type: 'bar',
                         data: {
@@ -2871,7 +2895,7 @@
                     chartInstance.current?.destroy();
                     lineChartInstance.current?.destroy();
                 };
-            }, [stock, categories]);
+            }, [stock, categories, isVisible]);
 
             return (
                 <div>
@@ -2961,72 +2985,74 @@
                         </div>
 
                         {/* Lista de Alertas */}
-                        <div className="card" style={{background: 'linear-gradient(135deg, #A52428 0%, #8C1E22 100%)', color: 'white'}}>
-                            <h2 className="card-title" style={{color: 'white', marginBottom: '20px'}}>
+                        <div className="card">
+                            <h2 className="card-title" style={{marginBottom: '20px'}}>
                                 <Icon name="warning" size={16} className="card-title-icon" />
                                 Ações Pendentes
                             </h2>
-                            
+
                             {alertProducts.length === 0 ? (
                                 <div style={{
                                     textAlign: 'center',
                                     padding: '40px 20px',
-                                    color: 'rgba(255,255,255,0.6)'
+                                    color: 'var(--text-tertiary)'
                                 }}>
                                     <div style={{marginBottom: '12px'}}><Icon name="check" size={40} /></div>
                                     <div style={{fontSize: '14px'}}>Tudo em ordem!</div>
-                                    <div style={{fontSize: '12px', marginTop: '4px', opacity: 0.7}}>
+                                    <div style={{fontSize: '12px', marginTop: '4px', color: 'var(--text-tertiary)'}}>
                                         Nenhum produto com estoque crítico
                                     </div>
                                 </div>
                             ) : (
-                                <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
+                                <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
                                     {alertProducts.map((p, idx) => (
                                         <div key={idx} style={{
                                             display: 'flex',
                                             alignItems: 'center',
                                             gap: '12px',
                                             padding: '12px',
-                                            background: 'rgba(255,255,255,0.08)',
+                                            background: 'var(--bg-secondary)',
+                                            border: '1px solid var(--border-default)',
                                             borderRadius: 'var(--radius)',
-                                            borderLeft: `3px solid ${p.status === 'empty' ? 'var(--danger)' : 'var(--warning)'}`
+                                            borderLeft: `3px solid ${p.status === 'empty' ? 'var(--accent-error)' : 'var(--accent-warning)'}`
                                         }}>
                                             <div style={{
-                                                width: '36px',
-                                                height: '36px',
+                                                width: '32px',
+                                                height: '32px',
                                                 borderRadius: 'var(--radius)',
-                                                background: p.status === 'empty' ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.2)',
+                                                background: p.status === 'empty' ? 'var(--accent-error-subtle)' : 'var(--accent-warning-subtle)',
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 justifyContent: 'center',
-                                                fontSize: '16px'
+                                                color: p.status === 'empty' ? 'var(--accent-error)' : 'var(--accent-warning)'
                                             }}>
-                                                {p.status === 'empty' ? <Icon name="error" size={16} /> : <Icon name="warning" size={16} />}
+                                                {p.status === 'empty' ? <Icon name="error" size={14} /> : <Icon name="warning" size={14} />}
                                             </div>
                                             <div style={{flex: 1, minWidth: 0}}>
                                                 <div style={{
-                                                    fontSize: '14px', 
+                                                    fontSize: '13px',
                                                     fontWeight: '500',
+                                                    color: 'var(--text-primary)',
                                                     whiteSpace: 'nowrap',
                                                     overflow: 'hidden',
                                                     textOverflow: 'ellipsis'
                                                 }}>
                                                     {p.name}
                                                 </div>
-                                                <div style={{fontSize: '12px', color: 'rgba(255,255,255,0.6)'}}>
+                                                <div style={{fontSize: '12px', color: 'var(--text-tertiary)'}}>
                                                     {p.status === 'empty' ? 'Sem estoque' : `${p.currentQuantity} un. restantes`}
                                                 </div>
                                             </div>
                                         </div>
                                     ))}
-                                    {alertProducts.length > 0 && (
+                                    {lowStock + emptyStock > 5 && (
                                         <div style={{
                                             textAlign: 'center',
-                                            marginTop: '8px',
+                                            marginTop: '4px',
                                             fontSize: '12px',
-                                            color: 'rgba(255,255,255,0.5)'
+                                            color: 'var(--text-tertiary)'
                                         }}>
-                                            {lowStock + emptyStock > 5 && `+${lowStock + emptyStock - 5} outros produtos`}
+                                            +{lowStock + emptyStock - 5} outros produtos
                                         </div>
                                     )}
                                 </div>
@@ -3043,11 +3069,11 @@
                         <div className="category-grid">
                             {categoryStats.map(cat => (
                                 <div key={cat.id} className="category-card">
-                                    <div className="category-icon" style={{background: `${cat.color}15`}}>
+                                    <div className="category-icon" style={{background: `${cat.color}08`}}>
                                         <CategoryIcon icon={cat.icon} size={20} color={cat.color} />
                                     </div>
                                     <div className="category-name">{cat.name}</div>
-                                    <div className="category-count" style={{color: cat.color}}>
+                                    <div className="category-count">
                                         {cat.totalStock.toLocaleString('pt-BR')}
                                     </div>
                                     <div className="category-meta">
@@ -3086,23 +3112,23 @@
                                         transition: 'var(--transition)'
                                     }}>
                                         <div style={{
-                                            width: '40px',
-                                            height: '40px',
+                                            width: '36px',
+                                            height: '36px',
                                             borderRadius: 'var(--radius)',
-                                            background: idx === 0 ? 'var(--accent-gradient)' : 'var(--border-light)',
-                                            color: idx === 0 ? 'white' : 'var(--text-muted)',
+                                            background: idx === 0 ? 'var(--text-primary)' : 'var(--bg-tertiary)',
+                                            color: idx === 0 ? 'white' : 'var(--text-tertiary)',
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
                                             fontWeight: '700',
-                                            fontSize: '14px'
+                                            fontSize: '13px'
                                         }}>
                                             #{idx + 1}
                                         </div>
                                         <div style={{flex: 1, minWidth: 0}}>
                                             <div style={{
-                                                fontWeight: '600',
-                                                fontSize: '15px',
+                                                fontWeight: '500',
+                                                fontSize: '14px',
                                                 marginBottom: '4px',
                                                 whiteSpace: 'nowrap',
                                                 overflow: 'hidden',
@@ -3111,16 +3137,16 @@
                                                 {p.name}
                                             </div>
                                             <div style={{
-                                                height: '6px',
-                                                background: 'var(--border)',
-                                                borderRadius: '3px',
+                                                height: '4px',
+                                                background: 'var(--border-default)',
+                                                borderRadius: '2px',
                                                 overflow: 'hidden'
                                             }}>
                                                 <div style={{
                                                     height: '100%',
                                                     width: `${percentage}%`,
-                                                    background: idx === 0 ? 'var(--accent)' : idx === 1 ? 'var(--purple)' : 'var(--accent-light)',
-                                                    borderRadius: '3px',
+                                                    background: idx === 0 ? 'var(--text-secondary)' : idx === 1 ? 'var(--text-tertiary)' : 'var(--border-strong)',
+                                                    borderRadius: '2px',
                                                     transition: 'width 0.5s ease'
                                                 }}></div>
                                             </div>
@@ -3128,13 +3154,12 @@
                                         <div style={{textAlign: 'right'}}>
                                             <div style={{
                                                 fontWeight: '700',
-                                                fontSize: '22px',
-                                                letterSpacing: '-0.5px',
-                                                color: 'var(--accent)'
+                                                fontSize: '20px',
+                                                color: 'var(--text-primary)'
                                             }}>
                                                 {p.currentQuantity.toLocaleString('pt-BR')}
                                             </div>
-                                            <div style={{fontSize: '11px', color: 'var(--text-muted)'}}>
+                                            <div style={{fontSize: '11px', color: 'var(--text-tertiary)'}}>
                                                 unidades
                                             </div>
                                         </div>
@@ -3157,10 +3182,11 @@
             const [editForm, setEditForm] = useState({});
             const [successMsg, setSuccessMsg] = useState('');
             const [historyProduct, setHistoryProduct] = useState(null);
+            const [visibleCount, setVisibleCount] = useState(50);
 
             const filtered = stock.filter(p => {
                 const search = searchTerm.toLowerCase();
-                const matchesSearch = (p.name || '').toLowerCase().includes(search) || 
+                const matchesSearch = (p.name || '').toLowerCase().includes(search) ||
                                      (p.sku || '').toLowerCase().includes(search) ||
                                      (p.ean || '').toLowerCase().includes(search) ||
                                      (p.nfOrigem || '').toLowerCase().includes(search);
@@ -3168,6 +3194,9 @@
                 const matchesCategory = categoryFilter === 'all' || p.category === categoryFilter;
                 return matchesSearch && matchesStatus && matchesCategory;
             });
+
+            // Reset visible count when filters change
+            useEffect(() => { setVisibleCount(50); }, [searchTerm, filter, categoryFilter]);
 
             const getCategoryName = (catId) => {
                 const cat = categories.find(c => c.id === catId);
@@ -3523,7 +3552,7 @@
                         </div>
                     ) : (
                         <div className="products-grid">
-                            {filtered.map(p => (
+                            {filtered.slice(0, visibleCount).map(p => (
                                 <div key={p.id} className={`product-card ${p.status}`}>
                                     <div className="product-actions">
                                         <button className="btn btn-icon btn-secondary" onClick={() => setHistoryProduct(p)} title="Ver Histórico"><Icon name="clipboard" size={14} /></button>
@@ -3531,18 +3560,18 @@
                                         <button className="btn btn-icon btn-secondary" onClick={() => handleDelete(p)} title="Excluir"><Icon name="delete" size={14} /></button>
                                     </div>
 
-                                    <span className="product-category-badge" style={{background: getCategoryColor(p.category)}}>
+                                    <span className="product-category-badge" style={{color: getCategoryColor(p.category), background: getCategoryColor(p.category) + '10', border: '1px solid ' + getCategoryColor(p.category) + '20'}}>
                                         {getCategoryName(p.category)}
                                     </span>
 
                                     <div className="product-name">{p.name}</div>
                                     <div className="product-sku">SKU: {p.sku}</div>
                                     {p.ean && <div className="product-sku">EAN: {p.ean}</div>}
-                                    
+
                                     {p.nfOrigem && (
                                         <div className="product-nf" style={{
-                                            background: 'var(--accent-light)',
-                                            color: 'var(--accent)',
+                                            background: 'var(--accent-primary-subtle)',
+                                            color: 'var(--accent-primary)',
                                             padding: '4px 8px',
                                             borderRadius: '6px',
                                             fontSize: '11px',
@@ -3565,6 +3594,15 @@
                                 </div>
                             ))}
                         </div>
+                    )}
+                    {filtered.length > visibleCount && (
+                        <button
+                            className="btn btn-secondary"
+                            style={{width: '100%', marginTop: '12px', justifyContent: 'center'}}
+                            onClick={() => setVisibleCount(v => v + 50)}
+                        >
+                            Mostrar mais ({filtered.length - visibleCount} restantes)
+                        </button>
                     )}
                 </div>
             );
@@ -3951,10 +3989,10 @@
                                 return (
                                     <div
                                         key={cat.id}
+                                        className="category-card-item"
                                         style={{
                                             background: 'var(--bg-secondary)',
-                                            border: '1px solid var(--border)',
-                                            borderLeft: `3px solid ${cat.color}`,
+                                            border: '1px solid var(--border-default)',
                                             borderRadius: 'var(--radius-lg)',
                                             padding: '16px'
                                         }}
@@ -3972,7 +4010,7 @@
                                                     </div>
                                                 )}
                                             </div>
-                                            <div style={{display: 'flex', gap: '4px'}}>
+                                            <div className="category-card-actions" style={{display: 'flex', gap: '4px'}}>
                                                 <button className="btn btn-icon btn-secondary btn-sm" onClick={() => openEditModal(cat)}><Icon name="edit" size={14} /></button>
                                                 <button className="btn btn-icon btn-secondary btn-sm" onClick={() => handleDelete(cat)}><Icon name="delete" size={14} /></button>
                                             </div>

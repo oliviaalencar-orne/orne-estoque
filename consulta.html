@@ -395,11 +395,11 @@
         }
 
         .stat-card.warning { border-left: 3px solid var(--accent-warning); }
-        .stat-card.warning .stat-value { color: var(--accent-warning); }
+        .stat-card.warning .stat-value { color: var(--text-primary); }
         .stat-card.warning .stat-icon { background: var(--accent-warning-subtle); }
 
         .stat-card.danger { border-left: 3px solid var(--accent-error); }
-        .stat-card.danger .stat-value { color: var(--accent-error); }
+        .stat-card.danger .stat-value { color: var(--text-primary); }
         .stat-card.danger .stat-icon { background: var(--accent-error-subtle); }
 
         /* ===================== CATEGORY CARDS ===================== */
@@ -432,7 +432,7 @@
         }
 
         .category-name { font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
-        .category-count { font-size: 26px; font-weight: 700; margin-bottom: 2px; letter-spacing: -0.5px; font-variant-numeric: tabular-nums; }
+        .category-count { font-size: 22px; font-weight: 700; color: var(--text-primary); margin-bottom: 2px; font-variant-numeric: tabular-nums; }
         .category-meta { font-size: 12px; color: var(--text-tertiary); font-weight: 500; }
         .category-alert {
             font-size: 12px;
@@ -602,7 +602,10 @@
             right: 12px;
             display: flex;
             gap: 4px;
+            opacity: 0.5;
+            transition: opacity 0.15s;
         }
+        .product-card:hover .product-actions { opacity: 1; }
 
         .product-category-badge {
             display: inline-block;
@@ -611,7 +614,6 @@
             font-size: 11px;
             font-weight: 600;
             margin-bottom: 10px;
-            color: white;
         }
 
         .product-name {
@@ -642,11 +644,10 @@
         }
 
         .product-quantity {
-            font-size: 32px;
+            font-size: 18px;
             font-weight: 700;
             color: var(--text-primary);
             margin: 12px 0 6px;
-            letter-spacing: -0.5px;
             font-variant-numeric: tabular-nums;
         }
 
@@ -1119,7 +1120,7 @@
         // ==========================================
         // DASHBOARD VIEW (Read-Only)
         // ==========================================
-        function DashboardView({ stock, categories }) {
+        function DashboardView({ stock, categories, isVisible }) {
             const chartRef = React.useRef(null);
             const chartInstance = React.useRef(null);
 
@@ -1145,27 +1146,26 @@
             });
 
             useEffect(() => {
-                if (chartRef.current && stock.length > 0) {
-                    if (chartInstance.current) chartInstance.current.destroy();
-                    const top8 = [...stock].sort((a, b) => b.currentQuantity - a.currentQuantity).slice(0, 8);
-                    chartInstance.current = new Chart(chartRef.current, {
-                        type: 'bar',
-                        data: {
-                            labels: top8.map(p => p.name.length > 15 ? p.name.substring(0, 15) + '...' : p.name),
-                            datasets: [{ data: top8.map(p => p.currentQuantity), backgroundColor: '#F4B08A', borderRadius: 6, barThickness: 28 }]
-                        },
-                        options: {
-                            responsive: true, maintainAspectRatio: false,
-                            plugins: { legend: { display: false }, tooltip: { backgroundColor: '#2C2640', titleFont: { size: 12, weight: '600' }, bodyFont: { size: 11 }, padding: 12, cornerRadius: 8 } },
-                            scales: {
-                                y: { beginAtZero: true, grid: { color: 'var(--border-subtle)', drawBorder: false }, ticks: { font: { size: 11, family: 'Inter' }, color: 'var(--text-tertiary)' } },
-                                x: { grid: { display: false }, ticks: { font: { size: 10, family: 'Inter' }, color: 'var(--text-tertiary)' } }
-                            }
+                if (!isVisible || !chartRef.current || stock.length === 0) return;
+                if (chartInstance.current) chartInstance.current.destroy();
+                const top8 = [...stock].sort((a, b) => b.currentQuantity - a.currentQuantity).slice(0, 8);
+                chartInstance.current = new Chart(chartRef.current, {
+                    type: 'bar',
+                    data: {
+                        labels: top8.map(p => p.name.length > 15 ? p.name.substring(0, 15) + '...' : p.name),
+                        datasets: [{ data: top8.map(p => p.currentQuantity), backgroundColor: '#F4B08A', borderRadius: 6, barThickness: 28 }]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { display: false }, tooltip: { backgroundColor: '#2C2640', titleFont: { size: 12, weight: '600' }, bodyFont: { size: 11 }, padding: 12, cornerRadius: 8 } },
+                        scales: {
+                            y: { beginAtZero: true, grid: { color: 'var(--border-subtle)', drawBorder: false }, ticks: { font: { size: 11, family: 'Inter' }, color: 'var(--text-tertiary)' } },
+                            x: { grid: { display: false }, ticks: { font: { size: 10, family: 'Inter' }, color: 'var(--text-tertiary)' } }
                         }
-                    });
-                }
+                    }
+                });
                 return () => { chartInstance.current?.destroy(); };
-            }, [stock, categories]);
+            }, [stock, categories, isVisible]);
 
             return (
                 <div>
@@ -1228,26 +1228,26 @@
                             </h2>
                             <div style={{height: '280px'}}><canvas ref={chartRef}></canvas></div>
                         </div>
-                        <div className="card" style={{background: 'linear-gradient(135deg, #A52428 0%, #8C1E22 100%)', color: 'white'}}>
-                            <h2 className="card-title" style={{color: 'white', marginBottom: '20px'}}>
+                        <div className="card">
+                            <h2 className="card-title" style={{marginBottom: '20px'}}>
                                 <Icon name="warning" size={16} /> Alertas
                             </h2>
                             {alertProducts.length === 0 ? (
-                                <div style={{textAlign: 'center', padding: '40px 20px', color: 'rgba(255,255,255,0.6)'}}>
+                                <div style={{textAlign: 'center', padding: '40px 20px', color: 'var(--text-tertiary)'}}>
                                     <div style={{marginBottom: '12px'}}><Icon name="check" size={40} /></div>
                                     <div style={{fontSize: '14px'}}>Tudo em ordem!</div>
-                                    <div style={{fontSize: '12px', marginTop: '4px', opacity: 0.7}}>Nenhum produto com estoque critico</div>
+                                    <div style={{fontSize: '12px', marginTop: '4px', opacity: 0.7}}>Nenhum produto com estoque crítico</div>
                                 </div>
                             ) : (
-                                <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
+                                <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
                                     {alertProducts.map((p, idx) => (
-                                        <div key={idx} style={{display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'rgba(255,255,255,0.08)', borderRadius: 'var(--radius)', borderLeft: `3px solid ${p.status === 'empty' ? 'var(--accent-error)' : 'var(--accent-warning)'}`}}>
-                                            <div style={{width: '36px', height: '36px', borderRadius: 'var(--radius)', background: p.status === 'empty' ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                                        <div key={idx} style={{display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'var(--bg-secondary)', borderRadius: 'var(--radius)', border: '1px solid var(--border-default)', borderLeft: `3px solid ${p.status === 'empty' ? 'var(--accent-error)' : 'var(--accent-warning)'}`}}>
+                                            <div style={{width: '36px', height: '36px', borderRadius: 'var(--radius)', background: p.status === 'empty' ? 'var(--accent-error-subtle)' : 'var(--accent-warning-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: p.status === 'empty' ? 'var(--accent-error)' : 'var(--accent-warning)'}}>
                                                 {p.status === 'empty' ? <Icon name="error" size={16} /> : <Icon name="warning" size={16} />}
                                             </div>
                                             <div style={{flex: 1, minWidth: 0}}>
-                                                <div style={{fontSize: '14px', fontWeight: '500', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{p.name}</div>
-                                                <div style={{fontSize: '12px', color: 'rgba(255,255,255,0.6)'}}>{p.status === 'empty' ? 'Sem estoque' : `${p.currentQuantity} un. restantes`}</div>
+                                                <div style={{fontSize: '14px', fontWeight: '500', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{p.name}</div>
+                                                <div style={{fontSize: '12px', color: 'var(--text-tertiary)'}}>{p.status === 'empty' ? 'Sem estoque' : `${p.currentQuantity} un. restantes`}</div>
                                             </div>
                                         </div>
                                     ))}
@@ -1261,11 +1261,11 @@
                         <div className="category-grid">
                             {categoryStats.map(cat => (
                                 <div key={cat.id} className="category-card">
-                                    <div className="category-icon" style={{background: `${cat.color}15`}}>
+                                    <div className="category-icon" style={{background: `${cat.color}08`}}>
                                         <CategoryIcon icon={cat.icon} size={20} color={cat.color} />
                                     </div>
                                     <div className="category-name">{cat.name}</div>
-                                    <div className="category-count" style={{color: cat.color}}>{cat.totalStock.toLocaleString('pt-BR')}</div>
+                                    <div className="category-count">{cat.totalStock.toLocaleString('pt-BR')}</div>
                                     <div className="category-meta">{cat.productCount} produto{cat.productCount !== 1 ? 's' : ''}</div>
                                     {cat.alertCount > 0 && <div className="category-alert">{cat.alertCount} alerta{cat.alertCount !== 1 ? 's' : ''}</div>}
                                 </div>
@@ -1281,17 +1281,17 @@
                                 const percentage = (p.currentQuantity / maxQty) * 100;
                                 return (
                                     <div key={idx} style={{display: 'flex', alignItems: 'center', gap: '16px', padding: '16px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)'}}>
-                                        <div style={{width: '40px', height: '40px', borderRadius: 'var(--radius)', background: idx === 0 ? 'var(--accent-primary)' : 'var(--border-default)', color: idx === 0 ? 'white' : 'var(--text-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700', fontSize: '14px'}}>
+                                        <div style={{width: '40px', height: '40px', borderRadius: 'var(--radius)', background: idx === 0 ? 'var(--text-primary)' : 'var(--bg-tertiary)', color: idx === 0 ? 'white' : 'var(--text-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700', fontSize: '14px'}}>
                                             #{idx + 1}
                                         </div>
                                         <div style={{flex: 1, minWidth: 0}}>
                                             <div style={{fontWeight: '600', fontSize: '15px', marginBottom: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{p.name}</div>
                                             <div style={{height: '6px', background: 'var(--border-default)', borderRadius: '3px', overflow: 'hidden'}}>
-                                                <div style={{height: '100%', width: `${percentage}%`, background: idx === 0 ? 'var(--accent-primary)' : 'var(--accent-primary-subtle)', borderRadius: '3px', transition: 'width 0.5s ease'}}></div>
+                                                <div style={{height: '100%', width: `${percentage}%`, background: idx === 0 ? 'var(--text-secondary)' : idx === 1 ? 'var(--text-tertiary)' : 'var(--border-strong)', borderRadius: '3px', transition: 'width 0.5s ease'}}></div>
                                             </div>
                                         </div>
                                         <div style={{textAlign: 'right'}}>
-                                            <div style={{fontWeight: '700', fontSize: '22px', letterSpacing: '-0.5px', color: 'var(--accent-primary)'}}>{p.currentQuantity.toLocaleString('pt-BR')}</div>
+                                            <div style={{fontWeight: '700', fontSize: '20px', color: 'var(--text-primary)'}}>{p.currentQuantity.toLocaleString('pt-BR')}</div>
                                             <div style={{fontSize: '11px', color: 'var(--text-tertiary)'}}>unidades</div>
                                         </div>
                                     </div>
@@ -1310,6 +1310,10 @@
             const [categoryFilter, setCategoryFilter] = useState('all');
             const [statusFilter, setStatusFilter] = useState('all');
             const [historyProduct, setHistoryProduct] = useState(null);
+            const [visibleCount, setVisibleCount] = useState(50);
+
+            // Reset visible count when filters change
+            useEffect(() => { setVisibleCount(50); }, [searchTerm, categoryFilter, statusFilter]);
 
             const getCategoryName = (catId) => {
                 const cat = categories.find(c => c.id === catId);
@@ -1567,7 +1571,7 @@
 
                     {/* Lista de Produtos */}
                     <div className="products-grid">
-                        {filtered.map(p => {
+                        {filtered.slice(0, visibleCount).map(p => {
                             const catColor = getCategoryColor(p.category);
                             return (
                                 <div key={p.id} className={`product-card ${p.status === 'low' ? 'low' : p.status === 'empty' ? 'empty' : ''}`}>
@@ -1580,9 +1584,9 @@
                                             <Icon name="history" size={14} />
                                         </button>
                                     </div>
-                                    <div className="product-category-badge" style={{background: catColor}}>
+                                    <div className="product-category-badge" style={{color: catColor, background: catColor + '10', border: '1px solid ' + catColor + '20'}}>
                                         <span style={{display: 'inline-flex', alignItems: 'center', gap: '4px'}}>
-                                            <CategoryIcon icon={getCategoryIcon(p.category)} size={12} color="white" /> {getCategoryName(p.category)}
+                                            <CategoryIcon icon={getCategoryIcon(p.category)} size={12} color={catColor} /> {getCategoryName(p.category)}
                                         </span>
                                     </div>
                                     <div className="product-name">{p.name}</div>
@@ -1604,6 +1608,15 @@
                             <h3>Nenhum produto encontrado</h3>
                             <p>Tente ajustar os filtros</p>
                         </div>
+                    )}
+                    {filtered.length > visibleCount && (
+                        <button
+                            className="btn btn-secondary"
+                            style={{width: '100%', marginTop: '12px', justifyContent: 'center'}}
+                            onClick={() => setVisibleCount(v => v + 50)}
+                        >
+                            Mostrar mais ({filtered.length - visibleCount} restantes)
+                        </button>
                     )}
                 </div>
             );
@@ -1982,12 +1995,13 @@
             const tabTitles = { dashboard: 'Dashboard', stock: 'Estoque', shipping: 'Despachos', history: 'Historico' };
 
             const handleTabChange = (tab) => {
+                if (tab === activeTab) return;
                 if (document.startViewTransition) {
                     document.startViewTransition(() => { setActiveTab(tab); });
                 } else {
                     setActiveTab(tab);
                 }
-                setSidebarOpen(false);
+                if (sidebarOpen) setSidebarOpen(false);
             };
 
             // Autenticacao anonima via Supabase
@@ -2188,15 +2202,16 @@
                         </div>
                     </div>
 
-                    {/* Main Content */}
+                    {/* Main Content — tabs kept mounted, hidden via display:none */}
                     <div className="main-content">
-                        {activeTab === 'dashboard' && (
+                        <div style={{display: activeTab === 'dashboard' ? 'block' : 'none'}}>
                             <DashboardView
                                 stock={currentStock}
                                 categories={categories}
+                                isVisible={activeTab === 'dashboard'}
                             />
-                        )}
-                        {activeTab === 'stock' && (
+                        </div>
+                        <div style={{display: activeTab === 'stock' ? 'block' : 'none'}}>
                             <StockView
                                 stock={currentStock}
                                 categories={categories}
@@ -2205,19 +2220,19 @@
                                 entries={entries}
                                 exits={exits}
                             />
-                        )}
-                        {activeTab === 'shipping' && (
+                        </div>
+                        <div style={{display: activeTab === 'shipping' ? 'block' : 'none'}}>
                             <ShippingView
                                 shippings={shippings}
                             />
-                        )}
-                        {activeTab === 'history' && (
+                        </div>
+                        <div style={{display: activeTab === 'history' ? 'block' : 'none'}}>
                             <HistoryView
                                 entries={entries}
                                 exits={exits}
                                 products={products}
                             />
-                        )}
+                        </div>
                     </div>
 
                     {/* Mobile Bottom Nav */}
