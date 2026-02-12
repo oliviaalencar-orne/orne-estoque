@@ -664,6 +664,9 @@
         .status-low { background: var(--accent-warning-subtle); color: var(--accent-warning); }
         .status-empty { background: var(--accent-error-subtle); color: var(--accent-error); }
 
+        .product-price { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+        .product-value { font-size: 13px; font-weight: 500; color: var(--text-primary); margin-top: 4px; }
+
         /* ===================== MODAL ===================== */
         .modal-overlay {
             position: fixed;
@@ -1028,8 +1031,13 @@
             id: row.id, name: row.name, sku: row.sku, ean: row.ean || '',
             category: row.category || '', minStock: row.min_stock || 3,
             observations: row.observations || '', nfOrigem: row.nf_origem || '',
+            unitPrice: row.unit_price || 0,
             createdAt: row.created_at
         });
+
+        const formatBRL = (value) => Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const parseBRL = (str) => parseFloat((str || '0').replace(/\./g, '').replace(',', '.')) || 0;
+
         const mapEntryFromDB = (row) => ({
             id: row.id, type: row.type, sku: row.sku, quantity: row.quantity,
             supplier: row.supplier || '', nf: row.nf || '', localEntrada: row.local_entrada || '',
@@ -1592,8 +1600,10 @@
                                     <div className="product-name">{p.name}</div>
                                     <div className="product-sku">SKU: {p.sku}</div>
                                     {p.ean && <div className="product-sku">EAN: {p.ean}</div>}
+                                    {p.unitPrice > 0 && <div className="product-price">R$ {formatBRL(p.unitPrice)}</div>}
                                     {p.observations && <div className="product-obs">{p.observations}</div>}
                                     <div className="product-quantity">{p.currentQuantity}</div>
+                                    {p.unitPrice > 0 && <div className="product-value">Valor: R$ {formatBRL(p.unitPrice * p.currentQuantity)}</div>}
                                     <span className={`product-status status-${p.status}`}>
                                         {p.status === 'ok' ? 'Em estoque' : p.status === 'low' ? 'Estoque baixo' : 'Sem estoque'}
                                     </span>
