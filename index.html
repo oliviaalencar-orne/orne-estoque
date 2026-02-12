@@ -8885,7 +8885,11 @@
                         type,
                         status: data.success ? 'success' : 'error',
                         message: data.success
-                            ? `${type === 'nfe' ? data.imported : data.synced || data.adjustments || 0} itens processados`
+                            ? type === 'products'
+                                ? data.partial
+                                    ? `${data.synced}/${data.total} produtos sincronizados. Execute novamente para continuar.`
+                                    : `${data.synced || 0} produtos sincronizados${data.prices_updated ? `, ${data.prices_updated} preços atualizados` : ''}.`
+                                : `${type === 'nfe' ? data.imported : data.synced || data.adjustments || 0} itens processados`
                             : (data.error || 'Erro desconhecido'),
                     });
                     await loadSyncLogs();
