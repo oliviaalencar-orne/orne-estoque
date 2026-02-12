@@ -2527,7 +2527,6 @@
                 if (data.minStock !== undefined) mapped.min_stock = data.minStock;
                 if (data.observations !== undefined) mapped.observations = data.observations;
                 if (data.nfOrigem !== undefined) mapped.nf_origem = data.nfOrigem;
-                if (data.unitPrice !== undefined) mapped.unit_price = data.unitPrice;
                 await supabaseClient.from('products').update(mapped).eq('id', productId);
             };
 
@@ -3268,7 +3267,6 @@
                     minStock: product.minStock || 3,
                     observations: product.observations || '',
                     nfOrigem: product.nfOrigem || '',
-                    unitPrice: product.unitPrice ? formatBRL(product.unitPrice) : ''
                 });
                 setEditingProduct(product);
             };
@@ -3288,7 +3286,7 @@
 
             const handleSaveEdit = async () => {
                 if (!editForm.name || !editForm.sku) return;
-                await onUpdate(editingProduct.id, { ...editForm, unitPrice: parseBRL(editForm.unitPrice) });
+                await onUpdate(editingProduct.id, { ...editForm });
                 setEditingProduct(null);
                 setSuccessMsg('Produto atualizado!');
                 setTimeout(() => setSuccessMsg(''), 3000);
@@ -3372,26 +3370,18 @@
                                     </div>
                                 </div>
 
-                                <div className="form-row">
-                                    <div className="form-group">
-                                        <label className="form-label">Preço Unitário (R$)</label>
-                                        <input
-                                            type="text"
-                                            className="form-input"
-                                            value={editForm.unitPrice}
-                                            onChange={(e) => {
-                                                let val = e.target.value.replace(/[^\d,]/g, '');
-                                                setEditForm({...editForm, unitPrice: val});
-                                            }}
-                                            onBlur={(e) => {
-                                                if (e.target.value) setEditForm({...editForm, unitPrice: formatBRL(parseBRL(e.target.value))});
-                                            }}
-                                            placeholder="0,00"
-                                            inputMode="decimal"
-                                        />
+                                {editingProduct && editingProduct.unitPrice > 0 && (
+                                    <div className="form-row">
+                                        <div className="form-group">
+                                            <label className="form-label">Preço Unitário</label>
+                                            <div style={{padding: '8px 0', fontSize: '14px', color: 'var(--text-primary)'}}>
+                                                R$ {formatBRL(editingProduct.unitPrice)}
+                                            </div>
+                                            <span style={{color: 'var(--text-tertiary)', fontSize: '11px'}}>Sincronizado via Tiny ERP</span>
+                                        </div>
+                                        <div className="form-group"></div>
                                     </div>
-                                    <div className="form-group"></div>
-                                </div>
+                                )}
 
                                 <div className="form-group">
                                     <label className="form-label">NF de Origem</label>
@@ -3636,7 +3626,7 @@
                                     <div className="product-name">{p.name}</div>
                                     <div className="product-sku">SKU: {p.sku}</div>
                                     {p.ean && <div className="product-sku">EAN: {p.ean}</div>}
-                                    {p.unitPrice > 0 && <div className="product-price">R$ {formatBRL(p.unitPrice)}</div>}
+                                    <div className="product-price">{p.unitPrice > 0 ? `R$ ${formatBRL(p.unitPrice)}` : 'Preço: não sincronizado'}</div>
 
                                     {p.nfOrigem && (
                                         <div className="product-nf" style={{
@@ -3684,7 +3674,7 @@
         // ==========================================
         function ProductForm({ onSubmit, products, categories }) {
             const [form, setForm] = useState({
-                name: '', sku: '', ean: '', category: '', minStock: '3', unitPrice: '', observations: '', nfOrigem: ''
+                name: '', sku: '', ean: '', category: '', minStock: '3', observations: '', nfOrigem: ''
             });
             const [success, setSuccess] = useState(false);
             const [error, setError] = useState('');
@@ -3707,7 +3697,6 @@
                         ean: form.ean.trim(),
                         category: form.category,
                         minStock: parseInt(form.minStock) || 3,
-                        unitPrice: parseBRL(form.unitPrice),
                         observations: form.observations.trim(),
                         nfOrigem: form.nfOrigem.trim(),
                         quantity: 0,
@@ -3715,7 +3704,7 @@
                     });
 
                     setSuccess(true);
-                    setForm({ name: '', sku: '', ean: '', category: '', minStock: '3', unitPrice: '', observations: '', nfOrigem: '' });
+                    setForm({ name: '', sku: '', ean: '', category: '', minStock: '3', observations: '', nfOrigem: '' });
                     setTimeout(() => setSuccess(false), 3000);
                 } catch (err) {
                     setError('Erro ao cadastrar produto: ' + err.message);
@@ -3796,28 +3785,6 @@
                                     />
                                     <span className="form-help">Alerta quando estoque ficar abaixo</span>
                                 </div>
-                            </div>
-
-                            <div className="form-row">
-                                <div className="form-group">
-                                    <label className="form-label">Preço Unitário (R$)</label>
-                                    <input
-                                        type="text"
-                                        className="form-input"
-                                        value={form.unitPrice}
-                                        onChange={(e) => {
-                                            let val = e.target.value.replace(/[^\d,]/g, '');
-                                            setForm({...form, unitPrice: val});
-                                        }}
-                                        onBlur={(e) => {
-                                            if (e.target.value) setForm({...form, unitPrice: formatBRL(parseBRL(e.target.value))});
-                                        }}
-                                        placeholder="0,00"
-                                        inputMode="decimal"
-                                    />
-                                    <span className="form-help">Valor unitário do produto</span>
-                                </div>
-                                <div className="form-group"></div>
                             </div>
 
                             <div className="form-group">
