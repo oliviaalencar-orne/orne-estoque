@@ -71,15 +71,22 @@
             --shadow: 0 2px 4px rgba(0,0,0,0.06);
             --shadow-md: 0 4px 8px rgba(0,0,0,0.08);
             --shadow-lg: 0 8px 16px rgba(0,0,0,0.08);
+            --shadow-xs: 0 1px 2px rgba(0,0,0,0.04);
+            --shadow-xl: 0 12px 24px rgba(0,0,0,0.1);
+            --shadow-card: 0 0 0 1px var(--border-default);
+            --shadow-card-hover: 0 0 0 1px var(--border-strong);
 
             /* Radii */
+            --radius-xs: 4px;
             --radius-sm: 6px;
             --radius: 8px;
             --radius-lg: 10px;
             --radius-xl: 12px;
+            --radius-2xl: 16px;
 
             /* Transition */
             --transition: all 0.15s ease;
+            --transition-slow: all 0.25s ease;
 
             /* Legacy aliases */
             --bg-dark: #0A0A0A;
@@ -103,6 +110,21 @@
             --danger-dark: var(--accent-error);
             --info: var(--accent-info);
             --info-light: var(--accent-info-subtle);
+
+            /* Nav */
+            --nav-bg: rgba(255, 255, 255, 0.85);
+            --nav-border: #E5E5E5;
+            --nav-icon-default: #A3A3A3;
+            --nav-icon-active: #171717;
+
+            /* Categories */
+            --cat-green: #3D8B5F;
+            --cat-blue: #3B6ECC;
+            --cat-purple: #7928CA;
+            --cat-pink: #C45186;
+            --cat-orange: #C4873B;
+            --cat-teal: #0D9488;
+            --cat-gray: #525252;
         }
 
         /* ===================== DARK MODE ===================== */
@@ -144,6 +166,23 @@
                 --shadow: none;
                 --shadow-md: none;
                 --shadow-lg: none;
+                --shadow-xs: none;
+                --shadow-xl: none;
+                --shadow-card: 0 0 0 1px var(--border-default);
+                --shadow-card-hover: 0 0 0 1px var(--border-strong);
+
+                --nav-bg: rgba(10, 10, 10, 0.88);
+                --nav-border: #262626;
+                --nav-icon-default: #6B6B6B;
+                --nav-icon-active: #EDEDED;
+
+                --cat-green: #5AAE7A;
+                --cat-blue: #5B8DEF;
+                --cat-purple: #A855F7;
+                --cat-pink: #D97090;
+                --cat-orange: #D9A054;
+                --cat-teal: #2DD4BF;
+                --cat-gray: #A1A1A1;
             }
         }
 
@@ -195,26 +234,22 @@
             height: 100vh;
             overflow-y: auto;
             border-right: 1px solid #1A1A1A;
+            display: flex;
+            flex-direction: column;
         }
 
-        .sidebar-logo {
+        .logo-container {
             padding: 0 20px 20px;
             border-bottom: 1px solid rgba(255,255,255,0.08);
-            margin-bottom: 16px;
+            margin-bottom: 8px;
+            text-align: center;
         }
-
-        .sidebar-logo h1 {
-            font-size: 18px;
-            font-weight: 700;
-            color: #FFFFFF;
-            letter-spacing: -0.3px;
-        }
-
-        .sidebar-logo span {
-            font-size: 11px;
-            color: rgba(255,255,255,0.4);
+        .logo {
+            width: 100%;
+            max-width: 90px;
+            filter: brightness(0) invert(1);
+            margin: 0 auto;
             display: block;
-            margin-top: 4px;
         }
 
         .sidebar-badge {
@@ -228,41 +263,39 @@
             font-weight: 500;
         }
 
-        .nav-item {
+        .nav-menu { list-style: none; padding: 0 12px; flex: 1; }
+        .nav-item { margin-bottom: 1px; }
+        .nav-link {
             display: flex;
             align-items: center;
-            padding: 8px 16px;
-            margin: 0 8px;
+            gap: 10px;
+            padding: 8px 12px;
             color: rgba(255,255,255,0.5);
             text-decoration: none;
+            border-radius: var(--radius-sm);
+            font-weight: 400;
+            font-size: 13px;
             transition: var(--transition);
             cursor: pointer;
-            border: none;
-            background: none;
-            width: calc(100% - 16px);
-            text-align: left;
-            font-size: 13px;
-            border-radius: var(--radius-sm);
         }
-
-        .nav-item:hover {
+        .nav-link:hover {
             background: rgba(255,255,255,0.06);
             color: rgba(255,255,255,0.9);
         }
-
-        .nav-item.active {
+        .nav-link.active {
             background: rgba(255,255,255,0.1);
             color: #FFFFFF;
             font-weight: 500;
         }
 
         .nav-icon {
-            margin-right: 10px;
-            width: 16px;
-            height: 16px;
+            width: 18px;
+            height: 18px;
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             color: currentColor;
+            flex-shrink: 0;
         }
         .nav-icon svg { width: 16px; height: 16px; }
 
@@ -305,9 +338,9 @@
         /* ===================== STATS ===================== */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 12px;
-            margin-bottom: 20px;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 20px;
+            margin-bottom: 28px;
         }
 
         .stat-card {
@@ -452,6 +485,24 @@
             gap: 24px;
             margin-bottom: 24px;
         }
+
+        /* ===================== PERIOD TOGGLE ===================== */
+        .period-toggle { display: inline-flex; gap: 4px; background: var(--bg-tertiary); border-radius: var(--radius); padding: 3px; }
+        .period-btn { padding: 5px 12px; border: none; background: transparent; border-radius: var(--radius-sm); font-size: 12px; font-weight: 500; color: var(--text-tertiary); cursor: pointer; transition: var(--transition); font-family: inherit; }
+        .period-btn:hover { color: var(--text-secondary); }
+        .period-btn.active { background: var(--surface-card); color: var(--text-primary); box-shadow: var(--shadow-xs); }
+
+        /* ===================== ANALYTICS GRID ===================== */
+        .dashboard-analytics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 16px; }
+
+        /* ===================== STOCK CATEGORY TABS ===================== */
+        .stock-category-tabs { display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; border-bottom: 1px solid var(--border-default); margin-bottom: 16px; }
+        .stock-category-tabs::-webkit-scrollbar { display: none; }
+        .stock-category-tab { display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; font-size: 13px; font-weight: 400; color: var(--text-secondary); background: transparent; border: none; border-bottom: 2px solid transparent; cursor: pointer; transition: var(--transition); white-space: nowrap; flex-shrink: 0; font-family: inherit; }
+        .stock-category-tab:hover { background: var(--bg-hover); color: var(--text-primary); }
+        .stock-category-tab.active { color: var(--text-primary); font-weight: 600; border-bottom-color: var(--accent-primary); }
+        .stock-category-tab .tab-count { font-weight: 400; color: var(--text-tertiary); font-size: 12px; }
+        .stock-category-tab.active .tab-count { color: var(--text-secondary); }
 
         /* ===================== TABLES ===================== */
         .table-container { overflow-x: auto; }
@@ -822,10 +873,10 @@
                 position: fixed;
                 bottom: 0; left: 0; right: 0;
                 z-index: 9000;
-                background: rgba(255, 255, 255, 0.85);
+                background: var(--nav-bg);
                 backdrop-filter: blur(20px) saturate(180%);
                 -webkit-backdrop-filter: blur(20px) saturate(180%);
-                border-top: 1px solid var(--border-default);
+                border-top: 1px solid var(--nav-border);
                 padding-bottom: env(safe-area-inset-bottom);
                 height: calc(64px + env(safe-area-inset-bottom));
                 justify-content: space-around;
@@ -843,19 +894,19 @@
                 background: none;
                 border: none;
                 cursor: pointer;
-                color: var(--text-tertiary);
+                color: var(--nav-icon-default);
                 font-size: 10px;
                 font-weight: 500;
                 font-family: inherit;
                 -webkit-tap-highlight-color: transparent;
+                position: relative;
+                transition: color 0.15s ease;
             }
-            .nav-tab.active { color: var(--text-primary); font-weight: 600; }
+            .nav-tab.active { color: var(--nav-icon-active); font-weight: 600; }
+            .nav-tab.active::after { content: ''; position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%); width: 4px; height: 4px; border-radius: 50%; background: var(--nav-icon-active); }
             .main-content {
                 padding-bottom: calc(64px + env(safe-area-inset-bottom) + 16px) !important;
             }
-        }
-        @media (prefers-color-scheme: dark) and (max-width: 1023px) {
-            .mobile-bottom-nav { background: rgba(10, 10, 10, 0.85); }
         }
 
         /* ===================== RESPONSIVE ===================== */
@@ -886,6 +937,9 @@
             }
             .filter-tabs::-webkit-scrollbar { display: none; }
             .filter-tab { white-space: nowrap; flex-shrink: 0; min-height: 44px; }
+            .dashboard-analytics-grid { grid-template-columns: 1fr; }
+            .stock-category-tabs { padding: 0 16px; margin: 0 -16px 16px; }
+            .stock-category-tab { padding: 8px 12px; font-size: 12px; min-height: 44px; }
             .modal-overlay { align-items: flex-end; }
             .modal-content {
                 max-width: 100%;
@@ -945,10 +999,10 @@
                 left: 0;
                 right: 0;
                 z-index: 8999;
-                background: rgba(255, 255, 255, 0.85);
+                background: var(--nav-bg);
                 backdrop-filter: blur(20px) saturate(180%);
                 -webkit-backdrop-filter: blur(20px) saturate(180%);
-                border-bottom: 1px solid var(--border-default);
+                border-bottom: 1px solid var(--nav-border);
                 padding-top: env(safe-area-inset-top);
                 height: calc(48px + env(safe-area-inset-top));
                 align-items: center;
@@ -988,6 +1042,7 @@
             .stats-grid { grid-template-columns: repeat(2, 1fr); }
             .products-grid { grid-template-columns: repeat(2, 1fr); }
             .dashboard-main-grid { grid-template-columns: 1fr; }
+            .dashboard-analytics-grid { grid-template-columns: 1fr 1fr; }
         }
 
         /* Desktop: >= 1024px */
@@ -995,16 +1050,9 @@
             .mobile-header, .sidebar-overlay { display: none !important; }
         }
 
-        /* Dark mobile header */
-        @media (prefers-color-scheme: dark) and (max-width: 1023px) {
-            .mobile-header {
-                background: rgba(10, 10, 10, 0.85);
-            }
-        }
-
         /* Touch optimization */
         @media (pointer: coarse) {
-            .btn, .nav-item, .filter-tab { min-height: 44px; }
+            .btn, .nav-link, .filter-tab, .stock-category-tab { min-height: 44px; }
             .btn:active { transform: scale(0.97); }
         }
     </style>
@@ -1098,6 +1146,9 @@
             package: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>',
             arrowLeftRight: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 11 21 7 17 3"/><line x1="21" y1="7" x2="9" y2="7"/><polyline points="7 21 3 17 7 13"/><line x1="3" y1="17" x2="15" y2="17"/></svg>',
             menuIcon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>',
+            dollar: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>',
+            trendingUp: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>',
+            pause: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>',
         };
 
         function Icon({ name, size = 16, className = '', style = {} }) {
@@ -1128,9 +1179,12 @@
         // ==========================================
         // DASHBOARD VIEW (Read-Only)
         // ==========================================
-        function DashboardView({ stock, categories, isVisible }) {
+        function DashboardView({ stock, categories, isVisible, entries, exits }) {
             const chartRef = React.useRef(null);
             const chartInstance = React.useRef(null);
+            const lineChartRef = React.useRef(null);
+            const lineChartInstance = React.useRef(null);
+            const [period, setPeriod] = useState(30);
 
             const totalQty = stock.reduce((s, p) => s + p.currentQuantity, 0);
             const totalProducts = stock.length;
@@ -1153,6 +1207,59 @@
                 };
             });
 
+            // Valor total em estoque
+            const totalValue = stock.reduce((sum, p) => sum + ((p.unitPrice || 0) * (p.currentQuantity || 0)), 0);
+
+            // Period-based calculations
+            const periodCutoff = new Date();
+            periodCutoff.setDate(periodCutoff.getDate() - period);
+            const periodCutoffISO = periodCutoff.toISOString();
+            const periodEntries = (entries || []).filter(e => e.date >= periodCutoffISO);
+            const periodExits = (exits || []).filter(e => e.date >= periodCutoffISO);
+            const totalExitsInPeriod = periodExits.reduce((sum, e) => sum + parseInt(e.quantity || 0), 0);
+            const giroEstoque = totalExitsInPeriod / Math.max(totalQty, 1);
+
+            // Produtos parados (sem movimentacao em 60 dias)
+            const stoppedCutoff = new Date();
+            stoppedCutoff.setDate(stoppedCutoff.getDate() - 60);
+            const stoppedCutoffISO = stoppedCutoff.toISOString();
+            const activeSKUs = new Set([
+                ...(entries || []).filter(e => e.date >= stoppedCutoffISO).map(e => e.sku),
+                ...(exits || []).filter(e => e.date >= stoppedCutoffISO).map(e => e.sku)
+            ]);
+            const stoppedProducts = stock.filter(p => !activeSKUs.has(p.sku));
+
+            // Ultimas 5 movimentacoes
+            const allMovements = [
+                ...(entries || []).map(e => ({ ...e, movType: 'entry' })),
+                ...(exits || []).map(e => ({ ...e, movType: 'exit' }))
+            ].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
+
+            // Valor por categoria
+            const categoryValues = categories.map(cat => {
+                const catProducts = stock.filter(p => p.category === cat.id);
+                const value = catProducts.reduce((sum, p) => sum + ((p.unitPrice || 0) * (p.currentQuantity || 0)), 0);
+                return { ...cat, value };
+            }).filter(c => c.value > 0).sort((a, b) => b.value - a.value);
+
+            // Helper: agregar movimentacoes por dia
+            const aggregateByDay = (items, days) => {
+                const result = {};
+                const now = new Date();
+                for (let i = days - 1; i >= 0; i--) {
+                    const d = new Date(now);
+                    d.setDate(d.getDate() - i);
+                    result[d.toISOString().slice(0, 10)] = 0;
+                }
+                items.forEach(item => {
+                    const key = item.date?.slice(0, 10);
+                    if (key && result[key] !== undefined) {
+                        result[key] += parseInt(item.quantity || 0);
+                    }
+                });
+                return result;
+            };
+
             useEffect(() => {
                 if (!isVisible || !chartRef.current || stock.length === 0) return;
                 if (chartInstance.current) chartInstance.current.destroy();
@@ -1174,6 +1281,91 @@
                 });
                 return () => { chartInstance.current?.destroy(); };
             }, [stock, categories, isVisible]);
+
+            // Line chart - movimentacoes por dia
+            useEffect(() => {
+                if (!isVisible || !lineChartRef.current) return;
+                if (!entries?.length && !exits?.length) return;
+                if (lineChartInstance.current) lineChartInstance.current.destroy();
+
+                const entryAgg = aggregateByDay(entries || [], period);
+                const exitAgg = aggregateByDay(exits || [], period);
+                const labels = Object.keys(entryAgg).map(d => {
+                    const [, m, day] = d.split('-');
+                    return `${day}/${m}`;
+                });
+
+                const rootStyles = getComputedStyle(document.documentElement);
+                const successColor = rootStyles.getPropertyValue('--accent-success').trim() || '#22c55e';
+                const errorColor = rootStyles.getPropertyValue('--accent-error').trim() || '#ef4444';
+                const gridColor = rootStyles.getPropertyValue('--border-default').trim() || '#e5e5e5';
+                const textColor = rootStyles.getPropertyValue('--text-tertiary').trim() || '#999';
+
+                lineChartInstance.current = new Chart(lineChartRef.current, {
+                    type: 'line',
+                    data: {
+                        labels,
+                        datasets: [
+                            {
+                                label: 'Entradas',
+                                data: Object.values(entryAgg),
+                                borderColor: successColor,
+                                backgroundColor: successColor + '18',
+                                fill: true, tension: 0.3, borderWidth: 2,
+                                pointRadius: 0, pointHoverRadius: 4,
+                                pointHoverBackgroundColor: successColor
+                            },
+                            {
+                                label: 'Saidas',
+                                data: Object.values(exitAgg),
+                                borderColor: errorColor,
+                                backgroundColor: errorColor + '18',
+                                fill: true, tension: 0.3, borderWidth: 2,
+                                pointRadius: 0, pointHoverRadius: 4,
+                                pointHoverBackgroundColor: errorColor
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: {
+                            legend: {
+                                display: true, position: 'top', align: 'end',
+                                labels: {
+                                    boxWidth: 12, boxHeight: 12, borderRadius: 3, useBorderRadius: true,
+                                    font: { size: 11, family: 'Inter' },
+                                    color: textColor, padding: 16
+                                }
+                            },
+                            tooltip: {
+                                backgroundColor: '#2C2640',
+                                titleFont: { size: 12, weight: '600' },
+                                bodyFont: { size: 11 },
+                                padding: 12, cornerRadius: 8
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: { color: gridColor, drawBorder: false },
+                                ticks: { font: { size: 11, family: 'Inter' }, color: textColor }
+                            },
+                            x: {
+                                grid: { display: false },
+                                ticks: {
+                                    font: { size: 10, family: 'Inter' },
+                                    color: textColor,
+                                    maxTicksLimit: period <= 15 ? period : 10
+                                }
+                            }
+                        }
+                    }
+                });
+
+                return () => { lineChartInstance.current?.destroy(); };
+            }, [entries, exits, period, isVisible]);
 
             return (
                 <div>
@@ -1227,6 +1419,19 @@
                                 <div className="stat-label">Sem Estoque</div>
                             </div>
                         </div>
+                        <div className="stat-card">
+                            <div className="stat-header">
+                                <div className="stat-icon green"><Icon name="dollar" size={18} /></div>
+                            </div>
+                            <div className="stat-content">
+                                <div className="stat-value" style={{fontSize: totalValue >= 100000 ? '22px' : '28px'}}>
+                                    {totalValue > 0 ? `R$ ${formatBRL(totalValue)}` : 'R$ 0,00'}
+                                </div>
+                                <div className="stat-label">
+                                    {totalValue > 0 ? 'Valor Total em Estoque' : 'Nenhum preco sincronizado via Tiny'}
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div className="dashboard-main-grid">
@@ -1259,6 +1464,175 @@
                                             </div>
                                         </div>
                                     ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Movimentacoes */}
+                    <div className="card">
+                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px'}}>
+                            <h2 className="card-title" style={{marginBottom: 0}}>
+                                <Icon name="chart" size={16} className="card-title-icon" />
+                                Movimentacoes
+                            </h2>
+                            <div className="period-toggle">
+                                {[7, 15, 30, 90].map(d => (
+                                    <button key={d} className={`period-btn ${period === d ? 'active' : ''}`} onClick={() => setPeriod(d)}>
+                                        {d}d
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        {(entries?.length || exits?.length) ? (
+                            <div style={{height: '280px'}}>
+                                <canvas ref={lineChartRef}></canvas>
+                            </div>
+                        ) : (
+                            <div style={{textAlign: 'center', padding: '40px', color: 'var(--text-tertiary)', fontSize: '13px'}}>
+                                Nenhuma movimentacao registrada
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Metricas de Performance */}
+                    <div className="dashboard-analytics-grid">
+                        <div className="card" style={{marginBottom: 0}}>
+                            <h2 className="card-title">
+                                <Icon name="trendingUp" size={16} className="card-title-icon" />
+                                Giro de Estoque
+                            </h2>
+                            <div style={{textAlign: 'center', padding: '16px 0'}}>
+                                <div style={{fontSize: '36px', fontWeight: '700', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums'}}>
+                                    {giroEstoque.toFixed(2)}
+                                </div>
+                                <div style={{fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '4px'}}>
+                                    Saidas / Estoque atual em {period} dias
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="card" style={{marginBottom: 0}}>
+                            <h2 className="card-title" style={{display: 'flex', alignItems: 'center'}}>
+                                <Icon name="pause" size={16} className="card-title-icon" />
+                                Produtos Parados
+                                <span style={{marginLeft: 'auto', fontSize: '20px', fontWeight: '700', color: stoppedProducts.length > 0 ? 'var(--accent-warning)' : 'var(--accent-success)'}}>
+                                    {stoppedProducts.length}
+                                </span>
+                            </h2>
+                            <div style={{fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '12px'}}>
+                                Sem entradas ou saidas nos ultimos 60 dias
+                            </div>
+                            {stoppedProducts.length > 0 ? (
+                                <div style={{display: 'flex', flexDirection: 'column', gap: '6px'}}>
+                                    {stoppedProducts.slice(0, 5).map((p, idx) => (
+                                        <div key={idx} style={{fontSize: '13px', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', padding: '6px 10px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-sm)'}}>
+                                            {p.name}
+                                        </div>
+                                    ))}
+                                    {stoppedProducts.length > 5 && (
+                                        <div style={{fontSize: '12px', color: 'var(--text-tertiary)', textAlign: 'center', marginTop: '4px'}}>
+                                            +{stoppedProducts.length - 5} outros
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <div style={{textAlign: 'center', padding: '16px', color: 'var(--accent-success)', fontSize: '13px'}}>
+                                    Todos os produtos tiveram movimentacao recente
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Ultimas Movimentacoes + Valor por Categoria */}
+                    <div className="dashboard-analytics-grid" style={{marginTop: '4px'}}>
+                        <div className="card" style={{marginBottom: 0}}>
+                            <h2 className="card-title">
+                                <Icon name="history" size={16} className="card-title-icon" />
+                                Ultimas Movimentacoes
+                            </h2>
+                            {allMovements.length > 0 ? (
+                                <div className="table-container">
+                                    <table className="table">
+                                        <thead>
+                                            <tr>
+                                                <th>Data</th>
+                                                <th>Tipo</th>
+                                                <th>Produto</th>
+                                                <th style={{textAlign: 'right'}}>Qtd</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {allMovements.map((m, idx) => {
+                                                const product = stock.find(p => p.sku === m.sku);
+                                                return (
+                                                    <tr key={idx}>
+                                                        <td style={{whiteSpace: 'nowrap'}}>
+                                                            {new Date(m.date).toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit'})}
+                                                            {' '}
+                                                            <span style={{color: 'var(--text-tertiary)', fontSize: '11px'}}>
+                                                                {new Date(m.date).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}
+                                                            </span>
+                                                        </td>
+                                                        <td>
+                                                            <span className={`badge ${m.movType === 'entry' ? 'badge-success' : 'badge-danger'}`}>
+                                                                {m.movType === 'entry' ? 'ENTRADA' : 'SAIDA'}
+                                                            </span>
+                                                        </td>
+                                                        <td style={{maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
+                                                            {product?.name || m.sku}
+                                                        </td>
+                                                        <td style={{textAlign: 'right', fontWeight: '600', fontVariantNumeric: 'tabular-nums'}}>
+                                                            {m.movType === 'entry' ? '+' : '-'}{m.quantity}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ) : (
+                                <div style={{textAlign: 'center', padding: '32px', color: 'var(--text-tertiary)', fontSize: '13px'}}>
+                                    Nenhuma movimentacao registrada
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="card" style={{marginBottom: 0}}>
+                            <h2 className="card-title">
+                                <Icon name="dollar" size={16} className="card-title-icon" />
+                                Valor por Categoria
+                            </h2>
+                            {categoryValues.length > 0 ? (
+                                <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
+                                    {categoryValues.map((cat) => {
+                                        const maxVal = categoryValues[0]?.value || 1;
+                                        const pct = (cat.value / maxVal) * 100;
+                                        return (
+                                            <div key={cat.id} style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
+                                                <div style={{width: '28px', height: '28px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                                                    <CategoryIcon icon={cat.icon} size={18} color={cat.color} />
+                                                </div>
+                                                <div style={{flex: 1, minWidth: 0}}>
+                                                    <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '4px'}}>
+                                                        <span style={{fontSize: '13px', fontWeight: '500', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
+                                                            {cat.name}
+                                                        </span>
+                                                        <span style={{fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', flexShrink: 0, marginLeft: '8px'}}>
+                                                            R$ {formatBRL(cat.value)}
+                                                        </span>
+                                                    </div>
+                                                    <div style={{height: '4px', background: 'var(--border-default)', borderRadius: '2px', overflow: 'hidden'}}>
+                                                        <div style={{height: '100%', width: `${pct}%`, background: cat.color, borderRadius: '2px', transition: 'width 0.5s ease'}}></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                <div style={{textAlign: 'center', padding: '32px', color: 'var(--text-tertiary)', fontSize: '13px'}}>
+                                    Sincronize os produtos via Tiny ERP para ver os valores
                                 </div>
                             )}
                         </div>
@@ -1335,6 +1709,11 @@
                 const cat = categories.find(c => c.id === catId);
                 return cat ? cat.icon : null;
             };
+
+            const categoryCounts = categories.reduce((acc, cat) => {
+                acc[cat.id] = stock.filter(p => p.category === cat.id).length;
+                return acc;
+            }, {});
 
             const filtered = stock
                 .filter(p => categoryFilter === 'all' || p.category === categoryFilter)
@@ -1530,34 +1909,33 @@
                         </div>
                     )}
 
+                    {/* Category Tab Bar */}
+                    <div className="stock-category-tabs">
+                        <button
+                            className={`stock-category-tab ${categoryFilter === 'all' ? 'active' : ''}`}
+                            onClick={() => setCategoryFilter('all')}
+                        >
+                            Todos <span className="tab-count">({stock.length})</span>
+                        </button>
+                        {categories.map(cat => (
+                            <button
+                                key={cat.id}
+                                className={`stock-category-tab ${categoryFilter === cat.id ? 'active' : ''}`}
+                                onClick={() => setCategoryFilter(cat.id)}
+                            >
+                                <CategoryIcon icon={cat.icon} size={14} />
+                                {cat.name} <span className="tab-count">({categoryCounts[cat.id] || 0})</span>
+                            </button>
+                        ))}
+                    </div>
+
                     {/* Filtros */}
                     <div className="card">
                         <div className="filter-tabs">
-                            <button
-                                className={`filter-tab ${categoryFilter === 'all' ? 'active' : ''}`}
-                                onClick={() => setCategoryFilter('all')}
-                            >
-                                Todas ({stock.length})
-                            </button>
-                            {categories.map(cat => (
-                                <button
-                                    key={cat.id}
-                                    className={`filter-tab ${categoryFilter === cat.id ? 'active' : ''}`}
-                                    onClick={() => setCategoryFilter(cat.id)}
-                                >
-                                    <CategoryIcon icon={cat.icon} size={14} /> {cat.name} ({stock.filter(p => p.category === cat.id).length})
-                                </button>
-                            ))}
-                        </div>
-
-                        <div style={{display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap'}}>
-                            {[{key:'all',label:'Todos'},{key:'ok',label:'OK'},{key:'low',label:'Baixo'},{key:'empty',label:'Vazio'}].map(s => (
-                                <button key={s.key}
-                                    className={`btn ${statusFilter === s.key ? 'btn-primary' : 'btn-secondary'}`}
-                                    style={{padding: '4px 12px', fontSize: '12px'}}
-                                    onClick={() => setStatusFilter(s.key)}
-                                >{s.label}</button>
-                            ))}
+                            <button className={`filter-tab ${statusFilter === 'all' ? 'active' : ''}`} onClick={() => setStatusFilter('all')}>Todos</button>
+                            <button className={`filter-tab ${statusFilter === 'ok' ? 'active' : ''}`} onClick={() => setStatusFilter('ok')}>OK</button>
+                            <button className={`filter-tab ${statusFilter === 'low' ? 'active' : ''}`} onClick={() => setStatusFilter('low')}>Baixo</button>
+                            <button className={`filter-tab ${statusFilter === 'empty' ? 'active' : ''}`} onClick={() => setStatusFilter('empty')}>Vazio</button>
                         </div>
 
                         <div className="search-box">
@@ -2158,35 +2536,35 @@
 
                     {/* Sidebar */}
                     <div className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
-                        <div className="sidebar-logo">
-                            <h1>Orne Decor</h1>
-                            <span>Consulta de Estoque <span className="sidebar-badge">LEITURA</span></span>
+                        <div className="logo-container">
+                            <img src="logo-orne.png" alt="Orne" className="logo" onError={(e) => e.target.style.display = 'none'} />
+                            <span style={{fontSize: '11px', color: 'rgba(255,255,255,0.4)', display: 'block', marginTop: '8px'}}>
+                                Consulta de Estoque <span className="sidebar-badge">LEITURA</span>
+                            </span>
                         </div>
 
-                        <nav>
-                            <ul className="nav-menu" style={{listStyle: 'none', padding: 0, margin: 0}}>
-                                <li>
-                                    <a className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => handleTabChange('dashboard')} style={{cursor:'pointer'}}>
-                                        <span className="nav-icon"><Icon name="dashboard" size={16} /></span>Dashboard
-                                    </a>
-                                </li>
-                                <li>
-                                    <a className={`nav-item ${activeTab === 'stock' ? 'active' : ''}`} onClick={() => handleTabChange('stock')} style={{cursor:'pointer'}}>
-                                        <span className="nav-icon"><Icon name="stock" size={16} /></span>Estoque
-                                    </a>
-                                </li>
-                                <li>
-                                    <a className={`nav-item ${activeTab === 'shipping' ? 'active' : ''}`} onClick={() => handleTabChange('shipping')} style={{cursor:'pointer'}}>
-                                        <span className="nav-icon"><Icon name="shipping" size={16} /></span>Despachos
-                                    </a>
-                                </li>
-                                <li>
-                                    <a className={`nav-item ${activeTab === 'history' ? 'active' : ''}`} onClick={() => handleTabChange('history')} style={{cursor:'pointer'}}>
-                                        <span className="nav-icon"><Icon name="clipboard" size={16} /></span>Historico
-                                    </a>
-                                </li>
-                            </ul>
-                        </nav>
+                        <ul className="nav-menu">
+                            <li className="nav-item">
+                                <a className={`nav-link ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => handleTabChange('dashboard')}>
+                                    <span className="nav-icon" dangerouslySetInnerHTML={{__html: ICONS.dashboard}}></span>Dashboard
+                                </a>
+                            </li>
+                            <li className="nav-item">
+                                <a className={`nav-link ${activeTab === 'stock' ? 'active' : ''}`} onClick={() => handleTabChange('stock')}>
+                                    <span className="nav-icon" dangerouslySetInnerHTML={{__html: ICONS.stock}}></span>Estoque
+                                </a>
+                            </li>
+                            <li className="nav-item">
+                                <a className={`nav-link ${activeTab === 'shipping' ? 'active' : ''}`} onClick={() => handleTabChange('shipping')}>
+                                    <span className="nav-icon" dangerouslySetInnerHTML={{__html: ICONS.shipping}}></span>Despachos
+                                </a>
+                            </li>
+                            <li className="nav-item">
+                                <a className={`nav-link ${activeTab === 'history' ? 'active' : ''}`} onClick={() => handleTabChange('history')}>
+                                    <span className="nav-icon" dangerouslySetInnerHTML={{__html: ICONS.clipboard}}></span>Historico
+                                </a>
+                            </li>
+                        </ul>
 
                         <div style={{padding: '16px', marginTop: 'auto', borderTop: '1px solid rgba(255,255,255,0.08)'}}>
                             <div style={{fontSize: '11px', color: 'rgba(255,255,255,0.3)'}}>
@@ -2219,6 +2597,8 @@
                                 stock={currentStock}
                                 categories={categories}
                                 isVisible={activeTab === 'dashboard'}
+                                entries={entries}
+                                exits={exits}
                             />
                         </div>
                         <div style={{display: activeTab === 'stock' ? 'block' : 'none'}}>
@@ -2246,22 +2626,42 @@
                     </div>
 
                     {/* Mobile Bottom Nav */}
-                    <div className="mobile-bottom-nav">
-                        <button className={`nav-tab ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => handleTabChange('dashboard')}>
-                            <Icon name="dashboard" size={20} />
-                            <span>Dashboard</span>
+                    <div className="mobile-bottom-nav" role="navigation" aria-label="Navegação principal">
+                        <button
+                            className={`nav-tab ${activeTab === 'dashboard' ? 'active' : ''}`}
+                            onClick={() => handleTabChange('dashboard')}
+                            aria-current={activeTab === 'dashboard' ? 'page' : undefined}
+                            aria-label="Dashboard"
+                        >
+                            <Icon name="layoutDashboard" size={22} />
+                            <span>Início</span>
                         </button>
-                        <button className={`nav-tab ${activeTab === 'stock' ? 'active' : ''}`} onClick={() => handleTabChange('stock')}>
-                            <Icon name="stock" size={20} />
-                            <span>Estoque</span>
+                        <button
+                            className={`nav-tab ${activeTab === 'stock' ? 'active' : ''}`}
+                            onClick={() => handleTabChange('stock')}
+                            aria-current={activeTab === 'stock' ? 'page' : undefined}
+                            aria-label="Estoque"
+                        >
+                            <Icon name="package" size={22} />
+                            <span>Produtos</span>
                         </button>
-                        <button className={`nav-tab ${activeTab === 'shipping' ? 'active' : ''}`} onClick={() => handleTabChange('shipping')}>
-                            <Icon name="shipping" size={20} />
+                        <button
+                            className={`nav-tab ${activeTab === 'shipping' ? 'active' : ''}`}
+                            onClick={() => handleTabChange('shipping')}
+                            aria-current={activeTab === 'shipping' ? 'page' : undefined}
+                            aria-label="Despachos"
+                        >
+                            <Icon name="shipping" size={22} />
                             <span>Despachos</span>
                         </button>
-                        <button className={`nav-tab ${activeTab === 'history' ? 'active' : ''}`} onClick={() => handleTabChange('history')}>
-                            <Icon name="clipboard" size={20} />
-                            <span>Historico</span>
+                        <button
+                            className={`nav-tab ${activeTab === 'history' ? 'active' : ''}`}
+                            onClick={() => handleTabChange('history')}
+                            aria-current={activeTab === 'history' ? 'page' : undefined}
+                            aria-label="Histórico"
+                        >
+                            <Icon name="clipboard" size={22} />
+                            <span>Histórico</span>
                         </button>
                     </div>
                 </div>
