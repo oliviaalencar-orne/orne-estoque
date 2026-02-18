@@ -2834,10 +2834,13 @@
                             <div style={{display: activeTab === 'history' ? 'block' : 'none'}}>
                                 <History entries={entries} exits={exits} products={products} shippings={shippings} onUpdateEntry={updateEntry} onDeleteEntry={deleteEntry} onUpdateExit={updateExit} onDeleteExit={deleteExit} />
                             </div>
+                            {/* Tiny ERP — kept mounted to preserve connection status & sync progress */}
+                            <div style={{display: activeTab === 'tiny' ? 'block' : 'none'}}>
+                                <TinyERPPage user={user} onDataChanged={refetchData} products={products} entries={entries} exits={exits} stock={currentStock} onAddEntry={addEntry} onAddExit={addExit} onAddProduct={addProduct} categories={categories} locaisOrigem={locaisOrigem} onUpdateLocais={updateLocaisOrigem} />
+                            </div>
                             {/* Rare tabs — mounted on demand */}
                             {activeTab === 'newproduct' && <ProductForm onSubmit={addProduct} products={products} categories={categories} />}
                             {activeTab === 'import' && <ImportHub products={products} onImport={handleImport} onAddProduct={addProduct} categories={categories} locaisOrigem={locaisOrigem} onUpdateLocais={updateLocaisOrigem} entries={entries} exits={exits} stock={currentStock} onAddEntry={addEntry} onAddExit={addExit} />}
-                            {activeTab === 'tiny' && <TinyERPPage user={user} onDataChanged={refetchData} products={products} entries={entries} exits={exits} stock={currentStock} onAddEntry={addEntry} onAddExit={addExit} onAddProduct={addProduct} categories={categories} locaisOrigem={locaisOrigem} onUpdateLocais={updateLocaisOrigem} />}
                             {activeTab === 'admin' && userProfile?.role === 'admin' && <AdminPanel currentUserId={user.id} />}
                         </div>
                     </div>
@@ -9117,6 +9120,7 @@
             const [clientId, setClientId] = useState('');
             const [clientSecret, setClientSecret] = useState('');
             const [status, setStatus] = useState(null);
+            const [statusLoading, setStatusLoading] = useState(true);
             const [loading, setLoading] = useState(false);
             const [testResult, setTestResult] = useState(null);
             const [syncLogs, setSyncLogs] = useState([]);
@@ -9159,10 +9163,13 @@
 
             const loadStatus = async () => {
                 try {
+                    setStatusLoading(true);
                     const data = await callFunction('tiny-auth', { action: 'status' });
                     setStatus(data);
                 } catch (e) {
                     console.error('Failed to load Tiny status:', e);
+                } finally {
+                    setStatusLoading(false);
                 }
             };
 
@@ -9334,7 +9341,7 @@
                                 totalPrices += data.prices_updated || 0;
                                 nextOffset = data.next_offset || (nextOffset + (data.synced || 0));
                                 isPartial = data.partial === true;
-                                if (isPartial) await new Promise(r => setTimeout(r, 2000));
+                                if (isPartial) await new Promise(r => setTimeout(r, 1000));
                             } catch (loopErr) {
                                 const errMsg = loopErr.message || '';
                                 if (errMsg.match(/429/i) && retries429 < MAX_429_RETRIES) {
@@ -9419,7 +9426,12 @@
                                 <h1 className="page-title">Tiny ERP</h1>
                                 <p className="page-subtitle">Integração e sincronização com Tiny ERP (Olist)</p>
                             </div>
-                            {status?.connected && (
+                            {statusLoading ? (
+                                <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                                    <span className="spinner" style={{width: '14px', height: '14px'}}></span>
+                                    <span style={{fontSize: '13px', color: 'var(--text-muted)', fontWeight: '500'}}>Verificando...</span>
+                                </div>
+                            ) : status?.connected && (
                                 <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
                                     <span style={{width: '8px', height: '8px', borderRadius: '50%', background: 'var(--success)', display: 'inline-block'}}></span>
                                     <span style={{fontSize: '13px', color: 'var(--success)', fontWeight: '500'}}>Conectado</span>
@@ -9442,15 +9454,18 @@
                             {/* Status card */}
                             <div style={cardStyle}>
                                 <div style={{display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px'}}>
-                                    <div style={{width: '40px', height: '40px', borderRadius: 'var(--radius-sm)', background: status?.connected ? 'var(--success-light)' : 'var(--bg-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-                                        <Icon name={status?.connected ? 'check' : 'plug'} size={20} style={{color: status?.connected ? 'var(--success)' : 'var(--text-muted)'}} />
+                                    <div style={{width: '40px', height: '40px', borderRadius: 'var(--radius-sm)', background: statusLoading ? 'var(--bg-tertiary)' : status?.connected ? 'var(--success-light)' : 'var(--bg-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                                        {statusLoading
+                                            ? <span className="spinner" style={{width: '20px', height: '20px'}}></span>
+                                            : <Icon name={status?.connected ? 'check' : 'plug'} size={20} style={{color: status?.connected ? 'var(--success)' : 'var(--text-muted)'}} />
+                                        }
                                     </div>
                                     <div>
                                         <div style={{fontWeight: '600', fontSize: '14px'}}>
-                                            {status?.connected ? 'Conectado ao Tiny ERP' : status?.has_credentials ? 'Credenciais salvas, autorização pendente' : 'Não configurado'}
+                                            {statusLoading ? 'Verificando conexão...' : status?.connected ? 'Conectado ao Tiny ERP' : status?.has_credentials ? 'Credenciais salvas, autorização pendente' : 'Não configurado'}
                                         </div>
                                         <div style={{fontSize: '12px', color: 'var(--text-muted)'}}>
-                                            {status?.expires_at ? `Token válido até ${formatDate(status.expires_at)}` : 'Configure suas credenciais OAuth2 abaixo'}
+                                            {statusLoading ? 'Carregando status da integração' : status?.expires_at ? `Token válido até ${formatDate(status.expires_at)}` : 'Configure suas credenciais OAuth2 abaixo'}
                                         </div>
                                     </div>
                                 </div>
