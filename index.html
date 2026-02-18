@@ -9247,7 +9247,17 @@
                     // Refetch entries/exits/products para atualizar o histórico do sistema
                     if (data.success && onDataChanged) await onDataChanged();
                 } catch (e) {
-                    setSyncProgress({ type, status: 'error', message: e.message });
+                    let msg = e.message || 'Erro desconhecido';
+                    if (msg.match(/401|não autorizado/i) || msg.match(/token.*expir/i) || msg.match(/reconecte/i)) {
+                        msg = 'Sessão Tiny expirada. Vá na aba Conexão e clique "Autorizar via OAuth2" para reconectar.';
+                    } else if (msg.match(/429/i)) {
+                        msg = 'Limite de requisições atingido. Aguarde alguns minutos e tente novamente.';
+                    } else if (msg.match(/5\d{2}/i)) {
+                        msg = 'Erro no servidor Tiny. Tente novamente em alguns minutos.';
+                    } else if (msg.match(/failed to fetch|network|rede/i)) {
+                        msg = 'Erro de conexão. Verifique sua internet e tente novamente.';
+                    }
+                    setSyncProgress({ type, status: 'error', message: msg });
                 }
             };
 
