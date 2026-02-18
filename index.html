@@ -9133,7 +9133,13 @@
         // TINY ERP INTEGRATION PAGE
         // ==========================================
         function TinyERPPage({ user, onDataChanged, products, entries, exits, stock, onAddEntry, onAddExit, onAddProduct, categories, locaisOrigem, onUpdateLocais }) {
-            const [activeSection, setActiveSection] = useState('config');
+            const [activeSection, setActiveSectionRaw] = useState(() => {
+                try { return sessionStorage.getItem('tiny_activeSection') || 'config'; } catch(e) { return 'config'; }
+            });
+            const setActiveSection = (section) => {
+                setActiveSectionRaw(section);
+                try { sessionStorage.setItem('tiny_activeSection', section); } catch(e) {}
+            };
             const [clientId, setClientId] = useState('');
             const [clientSecret, setClientSecret] = useState('');
             const [status, setStatus] = useState(null);
