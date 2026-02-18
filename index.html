@@ -1902,6 +1902,26 @@
             return channel;
         }
 
+        // Helper para buscar TODOS os registros de uma tabela (sem limite de 1000)
+        async function fetchAllRows(tableName, selectFields = '*', filters = []) {
+            const PAGE_SIZE = 1000;
+            let allData = [];
+            let from = 0;
+            let hasMore = true;
+            while (hasMore) {
+                let query = supabaseClient.from(tableName).select(selectFields);
+                for (const f of filters) query = f(query);
+                query = query.range(from, from + PAGE_SIZE - 1);
+                const { data, error } = await query;
+                if (error) { console.error(`Erro ao buscar ${tableName}:`, error); break; }
+                if (!data || data.length === 0) break;
+                allData = allData.concat(data);
+                if (data.length < PAGE_SIZE) break;
+                from += PAGE_SIZE;
+            }
+            return allData;
+        }
+
         const generateId = () => Math.random().toString(36).substr(2, 9);
 
         // ==========================================
@@ -2408,14 +2428,11 @@
                     }
                 }));
 
-                // Products — sem Realtime (removido da publication), fetch direto com campos específicos
-                const loadProducts = () => supabaseClient
-                    .from('products')
-                    .select('id, name, sku, ean, category, min_stock, observations, nf_origem, created_at, tiny_id, unit_price')
-                    .neq('sku', '')
-                    .neq('name', '')
-                    .then(({ data, error }) => {
-                        if (error) { console.error('Erro ao buscar products:', error); return; }
+                // Products — sem Realtime, fetch paginado (> 1000 produtos)
+                const PRODUCT_FIELDS = 'id, name, sku, ean, category, min_stock, observations, nf_origem, created_at, tiny_id, unit_price';
+                const PRODUCT_FILTERS = [q => q.neq('sku', ''), q => q.neq('name', '')];
+                const loadProducts = () => fetchAllRows('products', PRODUCT_FIELDS, PRODUCT_FILTERS)
+                    .then(data => {
                         setProducts(data.map(mapProductFromDB));
                         setSyncStatus('online');
                     });
@@ -2564,14 +2581,14 @@
             };
 
             const refetchData = async () => {
-                const [prodRes, entRes, exitRes] = await Promise.all([
-                    supabaseClient.from('products')
-                        .select('id, name, sku, ean, category, min_stock, observations, nf_origem, created_at, tiny_id, unit_price')
-                        .neq('sku', '').neq('name', ''),
+                const PRODUCT_FIELDS = 'id, name, sku, ean, category, min_stock, observations, nf_origem, created_at, tiny_id, unit_price';
+                const PRODUCT_FILTERS = [q => q.neq('sku', ''), q => q.neq('name', '')];
+                const [prodData, entRes, exitRes] = await Promise.all([
+                    fetchAllRows('products', PRODUCT_FIELDS, PRODUCT_FILTERS),
                     supabaseClient.from('entries').select('*'),
                     supabaseClient.from('exits').select('*'),
                 ]);
-                if (prodRes.data) setProducts(prodRes.data.map(mapProductFromDB));
+                if (prodData.length > 0) setProducts(prodData.map(mapProductFromDB));
                 if (entRes.data) setEntries(entRes.data.map(mapEntryFromDB));
                 if (exitRes.data) setExits(exitRes.data.map(mapExitFromDB));
             };
