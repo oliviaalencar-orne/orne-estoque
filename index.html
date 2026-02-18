@@ -9172,10 +9172,43 @@
                 return await res.json();
             };
 
-            // Load status on mount
+            // Load status on mount + retomar polling se sync estava running
             useEffect(() => {
                 loadStatus();
                 loadSyncLogs();
+                // Verificar se há um sync em andamento (backend pode estar rodando)
+                (async () => {
+                    const { data: runningLog } = await supabaseClient
+                        .from('sync_log')
+                        .select('id, status, message, items_synced, items_total, next_offset')
+                        .eq('type', 'products')
+                        .eq('status', 'running')
+                        .order('started_at', { ascending: false })
+                        .limit(1)
+                        .maybeSingle();
+                    if (runningLog) {
+                        setSyncProgress({ type: 'products', status: 'running', message: runningLog.message || 'Sincronização em andamento...' });
+                        // Iniciar polling
+                        const pollInterval = setInterval(async () => {
+                            const { data: log } = await supabaseClient
+                                .from('sync_log')
+                                .select('status, message')
+                                .eq('id', runningLog.id)
+                                .single();
+                            if (!log || log.status === 'success') {
+                                clearInterval(pollInterval);
+                                setSyncProgress(log ? { type: 'products', status: 'success', message: log.message } : null);
+                                await loadSyncLogs();
+                                if (onDataChanged) await onDataChanged();
+                            } else if (log.status === 'error') {
+                                clearInterval(pollInterval);
+                                setSyncProgress({ type: 'products', status: 'error', message: log.message });
+                            } else {
+                                setSyncProgress({ type: 'products', status: 'running', message: log.message || 'Sincronizando...' });
+                            }
+                        }, 3000);
+                    }
+                })();
             }, []);
 
             const loadStatus = async () => {
@@ -9333,51 +9366,36 @@
                 setSyncProgress({ type, status: 'running' });
                 try {
                     if (type === 'products') {
-                        let totalSynced = 0;
-                        let totalPrices = 0;
-                        let nextOffset = 0;
-                        let isPartial = true;
-                        let lastData = null;
-                        let retries429 = 0;
-                        let iterations = 0;
-                        const MAX_ITERATIONS = 200;
-                        const MAX_429_RETRIES = 3;
+                        // UMA chamada inicia o sync — o backend continua sozinho
+                        setSyncProgress({ type, status: 'running', message: 'Iniciando sincronização...' });
+                        const data = await callFunction('tiny-sync-products', {});
+                        if (!data.success) throw new Error(data.error || 'Erro na sincronização');
 
-                        while (isPartial && iterations < MAX_ITERATIONS) {
-                            iterations++;
-                            setSyncProgress({
-                                type, status: 'running',
-                                message: `Sincronizando produtos... ${nextOffset}/${lastData?.total || '?'} (${totalPrices} preços)`
-                            });
-                            try {
-                                const data = await callFunction('tiny-sync-products', { start_offset: nextOffset });
-                                lastData = data;
-                                retries429 = 0; // reset on success
-                                if (!data.success) throw new Error(data.error || 'Erro na sincronização');
-                                totalSynced += data.synced || 0;
-                                totalPrices += data.prices_updated || 0;
-                                nextOffset = data.next_offset || (nextOffset + (data.synced || 0));
-                                isPartial = data.partial === true;
-                                if (isPartial) await new Promise(r => setTimeout(r, 1000));
-                            } catch (loopErr) {
-                                const errMsg = loopErr.message || '';
-                                if (errMsg.match(/429/i) && retries429 < MAX_429_RETRIES) {
-                                    retries429++;
-                                    setSyncProgress({
-                                        type, status: 'running',
-                                        message: `Rate limit atingido. Aguardando 30s... (tentativa ${retries429}/${MAX_429_RETRIES})`
-                                    });
-                                    await new Promise(r => setTimeout(r, 30000));
-                                    continue;
+                        const logId = data.log_id;
+                        if (!logId) {
+                            // Fallback se não retornou log_id
+                            setSyncProgress({ type, status: 'success', message: `${data.synced} produtos sincronizados.` });
+                        } else {
+                            // Polling do sync_log — backend continua independentemente
+                            let finished = data.finished;
+                            while (!finished) {
+                                await new Promise(r => setTimeout(r, 3000));
+                                const { data: log } = await supabaseClient
+                                    .from('sync_log')
+                                    .select('status, message, items_synced, items_total, next_offset')
+                                    .eq('id', logId)
+                                    .single();
+                                if (!log) break;
+                                setSyncProgress({ type, status: 'running', message: log.message || 'Sincronizando...' });
+                                if (log.status === 'success') {
+                                    finished = true;
+                                    setSyncProgress({ type, status: 'success', message: log.message });
+                                } else if (log.status === 'error') {
+                                    throw new Error(log.message || 'Erro na sincronização');
                                 }
-                                throw loopErr; // re-throw non-429 errors or exceeded retries
+                                // status === 'running' → continua polling
                             }
                         }
-
-                        setSyncProgress({
-                            type, status: 'success',
-                            message: `${totalSynced} produtos sincronizados, ${totalPrices} preços (total: ${lastData?.total || nextOffset}).`
-                        });
                     } else if (type === 'stock') {
                         const data = await callFunction('tiny-sync-stock', {});
                         setSyncProgress({ type, status: data.success ? 'success' : 'error',
