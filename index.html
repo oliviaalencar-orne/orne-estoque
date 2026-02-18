@@ -2314,7 +2314,13 @@
         function App() {
             const [user, setUser] = useState(null);
             const [loading, setLoading] = useState(true);
-            const [activeTab, setActiveTab] = useState('dashboard');
+            const [activeTab, setActiveTabRaw] = useState(() => {
+                try { return sessionStorage.getItem('orne_activeTab') || 'dashboard'; } catch(e) { return 'dashboard'; }
+            });
+            const setActiveTab = (tab) => {
+                setActiveTabRaw(tab);
+                try { sessionStorage.setItem('orne_activeTab', tab); } catch(e) {}
+            };
             const [products, setProducts] = useState([]);
             const [entries, setEntries] = useState([]);
             const [exits, setExits] = useState([]);
@@ -9142,11 +9148,17 @@
             };
             const [clientId, setClientId] = useState('');
             const [clientSecret, setClientSecret] = useState('');
-            const [status, setStatus] = useState(null);
-            const [statusLoading, setStatusLoading] = useState(true);
+            const [status, setStatus] = useState(() => {
+                try { const c = sessionStorage.getItem('tiny_status'); return c ? JSON.parse(c) : null; } catch(e) { return null; }
+            });
+            const [statusLoading, setStatusLoading] = useState(() => {
+                try { return !sessionStorage.getItem('tiny_status'); } catch(e) { return true; }
+            });
             const [loading, setLoading] = useState(false);
             const [testResult, setTestResult] = useState(null);
-            const [syncLogs, setSyncLogs] = useState([]);
+            const [syncLogs, setSyncLogs] = useState(() => {
+                try { const c = sessionStorage.getItem('tiny_syncLogs'); return c ? JSON.parse(c) : []; } catch(e) { return []; }
+            });
             const [syncProgress, setSyncProgress] = useState(null);
             const [nfeDateFrom, setNfeDateFrom] = useState('');
             const [nfeDateTo, setNfeDateTo] = useState('');
@@ -9219,9 +9231,11 @@
 
             const loadStatus = async () => {
                 try {
-                    setStatusLoading(true);
+                    // Se já tem cache, não mostra loading (refresh silencioso)
+                    if (!status) setStatusLoading(true);
                     const data = await callFunction('tiny-auth', { action: 'status' });
                     setStatus(data);
+                    try { sessionStorage.setItem('tiny_status', JSON.stringify(data)); } catch(e) {}
                 } catch (e) {
                     console.error('Failed to load Tiny status:', e);
                 } finally {
@@ -9236,7 +9250,10 @@
                         .select('*')
                         .order('started_at', { ascending: false })
                         .limit(50);
-                    if (!error && data) setSyncLogs(data);
+                    if (!error && data) {
+                        setSyncLogs(data);
+                        try { sessionStorage.setItem('tiny_syncLogs', JSON.stringify(data)); } catch(e) {}
+                    }
                 } catch (e) {
                     console.error('Failed to load sync logs:', e);
                 }
