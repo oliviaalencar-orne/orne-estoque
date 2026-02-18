@@ -1755,7 +1755,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
+        const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
         // ==========================================
         // SUPABASE CONFIG
@@ -1794,7 +1794,8 @@
             id: row.id, name: row.name, sku: row.sku, ean: row.ean || '',
             category: row.category || '', minStock: row.min_stock || 3,
             observations: row.observations || '', nfOrigem: row.nf_origem || '',
-            unitPrice: row.unit_price || 0,
+            unitPrice: parseFloat(row.unit_price) || 0,
+            tinyId: row.tiny_id || '',
             createdAt: row.created_at
         });
 
@@ -1822,12 +1823,15 @@
             rastreioInfo: row.rastreio_info || null
         });
 
-        // Helper generico para fetch inicial + realtime subscription
+        // Helper generico para fetch inicial + realtime subscription (com debounce)
         function setupSupabaseCollection(tableName, setState, options = {}) {
-            const { transform, filter, onLoaded } = options;
+            const { transform, filter, onLoaded, selectFields, dbFilter } = options;
 
-            // Fetch inicial
-            supabaseClient.from(tableName).select('*').then(({ data, error }) => {
+            // Fetch inicial com campos específicos e filtros de banco opcionais
+            let query = supabaseClient.from(tableName).select(selectFields || '*');
+            if (dbFilter) query = dbFilter(query);
+
+            query.then(({ data, error }) => {
                 if (error) { console.error('Erro ao buscar ' + tableName + ':', error); return; }
                 const items = transform ? data.map(transform) : data;
                 const filtered = filter ? items.filter(filter) : items;
@@ -1835,28 +1839,62 @@
                 if (onLoaded) onLoaded(filtered, data);
             });
 
-            // Realtime subscription
+            // Realtime com DEBOUNCE — acumula mudanças e aplica em batch
+            let pendingChanges = [];
+            let debounceTimer = null;
+
+            const applyPendingChanges = () => {
+                if (pendingChanges.length === 0) return;
+                const changes = [...pendingChanges];
+                pendingChanges = [];
+
+                // Muitas mudanças (sync em andamento) → refetch completo
+                if (changes.length > 20) {
+                    let refetchQuery = supabaseClient.from(tableName).select(selectFields || '*');
+                    if (dbFilter) refetchQuery = dbFilter(refetchQuery);
+                    refetchQuery.then(({ data }) => {
+                        if (!data) return;
+                        const items = transform ? data.map(transform) : data;
+                        const filtered = filter ? items.filter(filter) : items;
+                        setState(filtered);
+                    });
+                    return;
+                }
+
+                // Poucas mudanças: aplicar incrementalmente
+                setState(prev => {
+                    let updated = [...prev];
+                    for (const { eventType, newRec, oldRec } of changes) {
+                        if (eventType === 'INSERT') {
+                            const item = transform ? transform(newRec) : newRec;
+                            if (!filter || filter(item)) {
+                                if (!updated.find(i => i.id === item.id)) updated.push(item);
+                            }
+                        } else if (eventType === 'UPDATE') {
+                            const item = transform ? transform(newRec) : newRec;
+                            const idx = updated.findIndex(i => i.id === item.id);
+                            if (idx >= 0) updated[idx] = item;
+                            else if (!filter || filter(item)) updated.push(item);
+                        } else if (eventType === 'DELETE') {
+                            updated = updated.filter(i => i.id !== (oldRec && oldRec.id));
+                        }
+                    }
+                    return updated;
+                });
+            };
+
             const channel = supabaseClient
                 .channel(tableName + '-realtime')
                 .on('postgres_changes',
                     { event: '*', schema: 'public', table: tableName },
                     (payload) => {
-                        const { eventType, new: newRec, old: oldRec } = payload;
-                        setState(prev => {
-                            let updated = [...prev];
-                            if (eventType === 'INSERT') {
-                                const item = transform ? transform(newRec) : newRec;
-                                if (!filter || filter(item)) updated.push(item);
-                            } else if (eventType === 'UPDATE') {
-                                const item = transform ? transform(newRec) : newRec;
-                                const idx = updated.findIndex(i => i.id === item.id);
-                                if (idx >= 0) updated[idx] = item;
-                                else if (!filter || filter(item)) updated.push(item);
-                            } else if (eventType === 'DELETE') {
-                                updated = updated.filter(i => i.id !== (oldRec && oldRec.id));
-                            }
-                            return updated;
+                        pendingChanges.push({
+                            eventType: payload.eventType,
+                            newRec: payload.new,
+                            oldRec: payload.old,
                         });
+                        clearTimeout(debounceTimer);
+                        debounceTimer = setTimeout(applyPendingChanges, 500);
                     }
                 )
                 .subscribe();
@@ -2271,6 +2309,7 @@
             // UI-only states (mobile navigation)
             const [sidebarOpen, setSidebarOpen] = useState(false);
             const [mobileSheet, setMobileSheet] = useState(null); // 'movimentacoes' or null
+            const loadProductsRef = useRef(null);
 
             const tabTitles = { dashboard: 'Dashboard', stock: 'Estoque', newproduct: 'Cadastrar', categories: 'Categorias', entry: 'Entrada', exit: 'Saída', shipping: 'Despachos', import: 'Importar', history: 'Histórico', tiny: 'Tiny ERP', admin: 'Usuários' };
 
@@ -2369,12 +2408,19 @@
                     }
                 }));
 
-                // Products
-                channels.push(setupSupabaseCollection('products', setProducts, {
-                    transform: mapProductFromDB,
-                    filter: p => p.name && p.sku,
-                    onLoaded: () => setSyncStatus('online')
-                }));
+                // Products — sem Realtime (removido da publication), fetch direto com campos específicos
+                const loadProducts = () => supabaseClient
+                    .from('products')
+                    .select('id, name, sku, ean, category, min_stock, observations, nf_origem, created_at, tiny_id, unit_price')
+                    .neq('sku', '')
+                    .neq('name', '')
+                    .then(({ data, error }) => {
+                        if (error) { console.error('Erro ao buscar products:', error); return; }
+                        setProducts(data.map(mapProductFromDB));
+                        setSyncStatus('online');
+                    });
+                loadProducts();
+                loadProductsRef.current = loadProducts;
 
                 // Entries
                 channels.push(setupSupabaseCollection('entries', setEntries, {
@@ -2423,23 +2469,29 @@
 
             const handleLogout = () => supabaseClient.auth.signOut();
 
-            const calculateStock = (sku) => {
-                const totalEntries = entries.filter(e => e.sku === sku).reduce((sum, e) => sum + parseInt(e.quantity), 0);
-                const totalExits = exits.filter(e => e.sku === sku).reduce((sum, e) => sum + parseInt(e.quantity), 0);
-                return totalEntries - totalExits;
-            };
+            // Stock calculation com useMemo — O(n) apenas quando entries/exits mudam
+            const stockMap = useMemo(() => {
+                const entryMap = {};
+                const exitMap = {};
+                entries.forEach(e => {
+                    if (!entryMap[e.sku]) entryMap[e.sku] = 0;
+                    entryMap[e.sku] += parseInt(e.quantity) || 0;
+                });
+                exits.forEach(e => {
+                    if (!exitMap[e.sku]) exitMap[e.sku] = 0;
+                    exitMap[e.sku] += parseInt(e.quantity) || 0;
+                });
+                return { entryMap, exitMap };
+            }, [entries, exits]);
 
-            const getCurrentStock = () => products.map(p => ({
-                ...p,
-                currentQuantity: calculateStock(p.sku),
-                status: (() => {
-                    const qty = calculateStock(p.sku);
+            const currentStock = useMemo(() => {
+                const { entryMap, exitMap } = stockMap;
+                return products.map(p => {
+                    const qty = (entryMap[p.sku] || 0) - (exitMap[p.sku] || 0);
                     const min = p.minStock || 3;
-                    return qty === 0 ? 'empty' : qty < min ? 'low' : 'ok';
-                })()
-            }));
-
-            const currentStock = getCurrentStock();
+                    return { ...p, currentQuantity: qty, status: qty === 0 ? 'empty' : qty < min ? 'low' : 'ok' };
+                });
+            }, [products, stockMap]);
 
             const handleImport = async (data) => {
                 const table = data.type === 'entry' || data.type === 'COMPRA' || data.type === 'DEVOLUCAO' || data.type === 'AJUSTE'
@@ -2461,23 +2513,23 @@
                 }
             };
 
-            const addEntry = async (entry) => {
+            const addEntry = useCallback(async (entry) => {
                 await supabaseClient.from('entries').insert({
                     type: entry.type, sku: entry.sku, quantity: entry.quantity,
                     supplier: entry.supplier || '', nf: entry.nf || '',
                     local_entrada: entry.localEntrada || '',
                     date: new Date().toISOString(), user_id: user.email
                 });
-            };
+            }, [user]);
 
-            const addExit = async (exit) => {
+            const addExit = useCallback(async (exit) => {
                 await supabaseClient.from('exits').insert({
                     type: exit.type, sku: exit.sku, quantity: exit.quantity,
                     client: exit.client || '', nf: exit.nf || '',
                     nf_origem: exit.nfOrigem || null,
                     date: new Date().toISOString(), user_id: user.email
                 });
-            };
+            }, [user]);
 
             const updateEntry = async (entryId, data) => {
                 const mapped = {};
@@ -2513,11 +2565,13 @@
 
             const refetchData = async () => {
                 const [prodRes, entRes, exitRes] = await Promise.all([
-                    supabaseClient.from('products').select('*'),
+                    supabaseClient.from('products')
+                        .select('id, name, sku, ean, category, min_stock, observations, nf_origem, created_at, tiny_id, unit_price')
+                        .neq('sku', '').neq('name', ''),
                     supabaseClient.from('entries').select('*'),
                     supabaseClient.from('exits').select('*'),
                 ]);
-                if (prodRes.data) setProducts(prodRes.data.map(mapProductFromDB).filter(p => p.name && p.sku));
+                if (prodRes.data) setProducts(prodRes.data.map(mapProductFromDB));
                 if (entRes.data) setEntries(entRes.data.map(mapEntryFromDB));
                 if (exitRes.data) setExits(exitRes.data.map(mapExitFromDB));
             };
@@ -2965,19 +3019,34 @@
                 return result;
             };
 
+            // Memoizar dados do chart para evitar recriação desnecessária
+            const barChartData = useMemo(() => {
+                if (stock.length === 0) return null;
+                const top8 = [...stock].sort((a, b) => b.currentQuantity - a.currentQuantity).slice(0, 8);
+                return {
+                    labels: top8.map(p => p.name.length > 15 ? p.name.substring(0, 15) + '...' : p.name),
+                    data: top8.map(p => p.currentQuantity)
+                };
+            }, [stock]);
+
             useEffect(() => {
                 // Gráfico de barras — só cria quando tab visível (canvas precisa ter dimensões)
-                if (!isVisible || !chartRef.current || stock.length === 0) return;
-                if (chartInstance.current) chartInstance.current.destroy();
+                if (!isVisible || !chartRef.current || !barChartData) return;
 
-                const top8 = [...stock].sort((a, b) => b.currentQuantity - a.currentQuantity).slice(0, 8);
+                // Se chart já existe, apenas atualizar dados (sem recriar = sem flicker)
+                if (chartInstance.current) {
+                    chartInstance.current.data.labels = barChartData.labels;
+                    chartInstance.current.data.datasets[0].data = barChartData.data;
+                    chartInstance.current.update('none'); // 'none' = sem animação
+                    return;
+                }
 
                 chartInstance.current = new Chart(chartRef.current, {
                     type: 'bar',
                     data: {
-                        labels: top8.map(p => p.name.length > 15 ? p.name.substring(0, 15) + '...' : p.name),
+                        labels: barChartData.labels,
                         datasets: [{
-                            data: top8.map(p => p.currentQuantity),
+                            data: barChartData.data,
                             backgroundColor: '#F4B08A',
                             borderRadius: 6,
                             barThickness: 28
@@ -3011,22 +3080,37 @@
                 });
 
                 return () => {
-                    chartInstance.current?.destroy();
+                    if (chartInstance.current) {
+                        chartInstance.current.destroy();
+                        chartInstance.current = null;
+                    }
                 };
-            }, [stock, categories, isVisible]);
+            }, [barChartData, isVisible]);
 
-            // Gráfico de linhas — movimentações por dia
-            useEffect(() => {
-                if (!isVisible || !lineChartRef.current) return;
-                if (!entries?.length && !exits?.length) return;
-                if (lineChartInstance.current) lineChartInstance.current.destroy();
-
+            // Memoizar dados do gráfico de linhas
+            const lineChartData = useMemo(() => {
+                if (!entries?.length && !exits?.length) return null;
                 const entryAgg = aggregateByDay(entries || [], period);
                 const exitAgg = aggregateByDay(exits || [], period);
                 const labels = Object.keys(entryAgg).map(d => {
                     const [, m, day] = d.split('-');
                     return `${day}/${m}`;
                 });
+                return { labels, entryData: Object.values(entryAgg), exitData: Object.values(exitAgg) };
+            }, [entries, exits, period]);
+
+            // Gráfico de linhas — movimentações por dia
+            useEffect(() => {
+                if (!isVisible || !lineChartRef.current || !lineChartData) return;
+
+                // Se chart já existe, apenas atualizar dados
+                if (lineChartInstance.current) {
+                    lineChartInstance.current.data.labels = lineChartData.labels;
+                    lineChartInstance.current.data.datasets[0].data = lineChartData.entryData;
+                    lineChartInstance.current.data.datasets[1].data = lineChartData.exitData;
+                    lineChartInstance.current.update('none');
+                    return;
+                }
 
                 const rootStyles = getComputedStyle(document.documentElement);
                 const successColor = rootStyles.getPropertyValue('--accent-success').trim() || '#22c55e';
@@ -3037,11 +3121,11 @@
                 lineChartInstance.current = new Chart(lineChartRef.current, {
                     type: 'line',
                     data: {
-                        labels,
+                        labels: lineChartData.labels,
                         datasets: [
                             {
                                 label: 'Entradas',
-                                data: Object.values(entryAgg),
+                                data: lineChartData.entryData,
                                 borderColor: successColor,
                                 backgroundColor: successColor + '18',
                                 fill: true,
@@ -3053,7 +3137,7 @@
                             },
                             {
                                 label: 'Saídas',
-                                data: Object.values(exitAgg),
+                                data: lineChartData.exitData,
                                 borderColor: errorColor,
                                 backgroundColor: errorColor + '18',
                                 fill: true,
@@ -3107,8 +3191,13 @@
                     }
                 });
 
-                return () => { lineChartInstance.current?.destroy(); };
-            }, [entries, exits, period, isVisible]);
+                return () => {
+                    if (lineChartInstance.current) {
+                        lineChartInstance.current.destroy();
+                        lineChartInstance.current = null;
+                    }
+                };
+            }, [lineChartData, isVisible]);
 
             return (
                 <div>
