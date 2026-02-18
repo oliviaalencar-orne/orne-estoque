@@ -9219,36 +9219,51 @@
             const handleSync = async (type) => {
                 setSyncProgress({ type, status: 'running' });
                 try {
-                    if (type === 'products' || type === 'prices') {
+                    if (type === 'products') {
                         let totalSynced = 0;
+                        let totalPrices = 0;
                         let nextOffset = 0;
                         let isPartial = true;
                         let lastData = null;
-                        const funcBody = type === 'prices'
-                            ? (off) => ({ action: 'sync_prices', start_offset: off })
-                            : (off) => ({ start_offset: off });
+                        let retries429 = 0;
+                        let iterations = 0;
+                        const MAX_ITERATIONS = 200;
+                        const MAX_429_RETRIES = 3;
 
-                        while (isPartial) {
+                        while (isPartial && iterations < MAX_ITERATIONS) {
+                            iterations++;
                             setSyncProgress({
                                 type, status: 'running',
-                                message: type === 'prices'
-                                    ? `Sincronizando preços... ${totalSynced} atualizados`
-                                    : `Sincronizando produtos... ${nextOffset}/${lastData?.total || '?'}`
+                                message: `Sincronizando produtos... ${nextOffset}/${lastData?.total || '?'} (${totalPrices} preços)`
                             });
-                            const data = await callFunction('tiny-sync-products', funcBody(nextOffset));
-                            lastData = data;
-                            if (!data.success) throw new Error(data.error || 'Erro na sincronização');
-                            totalSynced += (type === 'prices' ? data.prices_updated : data.synced) || 0;
-                            nextOffset = data.next_offset || (nextOffset + (data.synced || 0));
-                            isPartial = data.partial === true;
-                            if (isPartial) await new Promise(r => setTimeout(r, 2000));
+                            try {
+                                const data = await callFunction('tiny-sync-products', { start_offset: nextOffset });
+                                lastData = data;
+                                retries429 = 0; // reset on success
+                                if (!data.success) throw new Error(data.error || 'Erro na sincronização');
+                                totalSynced += data.synced || 0;
+                                totalPrices += data.prices_updated || 0;
+                                nextOffset = data.next_offset || (nextOffset + (data.synced || 0));
+                                isPartial = data.partial === true;
+                                if (isPartial) await new Promise(r => setTimeout(r, 2000));
+                            } catch (loopErr) {
+                                const errMsg = loopErr.message || '';
+                                if (errMsg.match(/429/i) && retries429 < MAX_429_RETRIES) {
+                                    retries429++;
+                                    setSyncProgress({
+                                        type, status: 'running',
+                                        message: `Rate limit atingido. Aguardando 30s... (tentativa ${retries429}/${MAX_429_RETRIES})`
+                                    });
+                                    await new Promise(r => setTimeout(r, 30000));
+                                    continue;
+                                }
+                                throw loopErr; // re-throw non-429 errors or exceeded retries
+                            }
                         }
 
                         setSyncProgress({
                             type, status: 'success',
-                            message: type === 'prices'
-                                ? `${totalSynced} preços sincronizados.`
-                                : `${totalSynced} produtos sincronizados (total: ${lastData?.total || nextOffset}).`
+                            message: `${totalSynced} produtos sincronizados, ${totalPrices} preços (total: ${lastData?.total || nextOffset}).`
                         });
                     } else if (type === 'stock') {
                         const data = await callFunction('tiny-sync-stock', {});
@@ -9463,8 +9478,7 @@
                                             className="btn btn-primary"
                                             style={{width: '100%'}}
                                             onClick={() => handleSync('products')}
-                                            disabled={(syncProgress?.type === 'products' && syncProgress?.status === 'running')
-                                                   || (syncProgress?.type === 'prices' && syncProgress?.status === 'running')}
+                                            disabled={syncProgress?.type === 'products' && syncProgress?.status === 'running'}
                                         >
                                             {syncProgress?.type === 'products' && syncProgress?.status === 'running'
                                                 ? <><Icon name="spinner" size={14} style={{animation: 'spin 1s linear infinite'}} /> <span style={{marginLeft: '6px'}}>Sincronizando...</span></>
@@ -9485,44 +9499,6 @@
                                             </div>
                                         )}
                                         {syncProgress?.type === 'products' && syncProgress?.status !== 'running' && (
-                                            <div style={{
-                                                marginTop: '12px',
-                                                padding: '8px 12px',
-                                                borderRadius: 'var(--radius-xs)',
-                                                background: syncProgress.status === 'success' ? 'var(--success-light)' : 'var(--danger-light)',
-                                                fontSize: '12px',
-                                                color: syncProgress.status === 'success' ? 'var(--success-dark)' : 'var(--danger-dark)',
-                                            }}>
-                                                {syncProgress.message}
-                                            </div>
-                                        )}
-                                        <button
-                                            className="btn btn-secondary"
-                                            style={{width: '100%', marginTop: '8px'}}
-                                            onClick={() => handleSync('prices')}
-                                            disabled={(syncProgress?.type === 'prices' && syncProgress?.status === 'running')
-                                                   || (syncProgress?.type === 'products' && syncProgress?.status === 'running')}
-                                        >
-                                            {syncProgress?.type === 'prices' && syncProgress?.status === 'running'
-                                                ? <><Icon name="spinner" size={14} style={{animation: 'spin 1s linear infinite'}} />
-                                                   <span style={{marginLeft: '6px'}}>Sincronizando preços...</span></>
-                                                : <><Icon name="dollar" size={14} /> <span style={{marginLeft: '6px'}}>Sincronizar Preços</span></>
-                                            }
-                                        </button>
-                                        {syncProgress?.type === 'prices' && syncProgress?.status === 'running' && syncProgress?.message && (
-                                            <div style={{
-                                                marginTop: '8px',
-                                                padding: '6px 10px',
-                                                borderRadius: 'var(--radius-xs)',
-                                                background: 'var(--accent-bg)',
-                                                fontSize: '11px',
-                                                color: 'var(--accent)',
-                                                fontWeight: '500',
-                                            }}>
-                                                {syncProgress.message}
-                                            </div>
-                                        )}
-                                        {syncProgress?.type === 'prices' && syncProgress?.status !== 'running' && (
                                             <div style={{
                                                 marginTop: '12px',
                                                 padding: '8px 12px',
