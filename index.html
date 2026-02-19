@@ -9314,8 +9314,8 @@
                 if (!clientId || !clientSecret) return;
                 setLoading(true);
                 try {
-                    // Build redirect URI: current origin + a path we'll handle
-                    const redirectUri = window.location.origin + '/tiny-callback';
+                    // Redirect URI fixo: sempre produção (registrado no app Tiny)
+                    const redirectUri = 'https://orne-estoque.vercel.app/tiny-callback';
 
                     const data = await callFunction('tiny-auth', {
                         action: 'get_auth_url',
