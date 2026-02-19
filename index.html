@@ -4250,16 +4250,9 @@
                                     {p.ean && <div className="product-sku">EAN: {p.ean}</div>}
                                     <div className="product-price">{p.unitPrice > 0 ? `R$ ${formatBRL(p.unitPrice)}` : 'Preço: não sincronizado'}</div>
 
-                                    {p.local && (
-                                        <div style={{
-                                            fontSize: '11px',
-                                            color: 'var(--text-secondary)',
-                                            marginTop: '4px',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '4px'
-                                        }}>
-                                            <Icon name="mapPin" size={12} /> {p.local}
+                                    {p.local && p.local.trim() !== '' && (
+                                        <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                                            📍 {p.local}
                                         </div>
                                     )}
 
