@@ -9210,6 +9210,7 @@
                 try { const c = sessionStorage.getItem('tiny_syncLogs'); return c ? JSON.parse(c) : []; } catch(e) { return []; }
             });
             const [syncProgress, setSyncProgress] = useState(null);
+            const [syncLock, setSyncLock] = useState(false);
             const [nfeDateFrom, setNfeDateFrom] = useState('');
             const [nfeDateTo, setNfeDateTo] = useState('');
             const [nfeNumber, setNfeNumber] = useState('');
@@ -9240,10 +9241,18 @@
                 return await res.json();
             };
 
-            // Load status on mount + retomar polling se sync estava running
+            // Load status on mount + retomar polling se sync estava running + cleanup stuck syncs
             useEffect(() => {
                 loadStatus();
                 loadSyncLogs();
+
+                // Auto-cleanup: limpar syncs stuck (>5 min com status running)
+                supabaseClient.from('sync_log')
+                    .update({ status: 'error', message: 'Timeout — limpeza automática', finished_at: new Date().toISOString() })
+                    .eq('status', 'running')
+                    .lt('started_at', new Date(Date.now() - 5 * 60 * 1000).toISOString())
+                    .then(() => loadSyncLogs());
+
                 // Verificar se há um sync em andamento (backend pode estar rodando)
                 (async () => {
                     const { data: runningLog } = await supabaseClient
@@ -9255,6 +9264,7 @@
                         .limit(1)
                         .maybeSingle();
                     if (runningLog) {
+                        setSyncLock(true);
                         setSyncProgress({ type: 'products', status: 'running', message: runningLog.message || 'Sincronização em andamento...' });
                         // Iniciar polling
                         const pollInterval = setInterval(async () => {
@@ -9265,11 +9275,13 @@
                                 .single();
                             if (!log || log.status === 'success') {
                                 clearInterval(pollInterval);
+                                setSyncLock(false);
                                 setSyncProgress(log ? { type: 'products', status: 'success', message: log.message } : null);
                                 await loadSyncLogs();
                                 if (onDataChanged) await onDataChanged();
                             } else if (log.status === 'error') {
                                 clearInterval(pollInterval);
+                                setSyncLock(false);
                                 setSyncProgress({ type: 'products', status: 'error', message: log.message });
                             } else {
                                 setSyncProgress({ type: 'products', status: 'running', message: log.message || 'Sincronizando...' });
@@ -9439,6 +9451,8 @@
             };
 
             const handleSync = async (type) => {
+                if (syncLock) return; // Já tem sync rodando — impede race condition
+                setSyncLock(true);
                 setSyncProgress({ type, status: 'running' });
                 try {
                     if (type === 'products') {
@@ -9499,6 +9513,8 @@
                         msg = 'Erro de conexão. Verifique sua internet e tente novamente.';
                     }
                     setSyncProgress({ type, status: 'error', message: msg });
+                } finally {
+                    setSyncLock(false);
                 }
             };
 
@@ -9693,7 +9709,7 @@
                                             className="btn btn-primary"
                                             style={{width: '100%'}}
                                             onClick={() => handleSync('products')}
-                                            disabled={syncProgress?.type === 'products' && syncProgress?.status === 'running'}
+                                            disabled={syncLock}
                                         >
                                             {syncProgress?.type === 'products' && syncProgress?.status === 'running'
                                                 ? <><Icon name="spinner" size={14} style={{animation: 'spin 1s linear infinite'}} /> <span style={{marginLeft: '6px'}}>Sincronizando...</span></>
@@ -9745,7 +9761,7 @@
                                             className="btn btn-primary"
                                             style={{width: '100%'}}
                                             onClick={() => handleSync('stock')}
-                                            disabled={syncProgress?.type === 'stock' && syncProgress?.status === 'running'}
+                                            disabled={syncLock}
                                         >
                                             {syncProgress?.type === 'stock' && syncProgress?.status === 'running'
                                                 ? <><Icon name="spinner" size={14} style={{animation: 'spin 1s linear infinite'}} /> <span style={{marginLeft: '6px'}}>Sincronizando...</span></>
