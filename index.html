@@ -2611,14 +2611,24 @@
                         return [...prev, mapEntryFromDB(data)];
                     });
                 }
-                // Propagar local da entrada para o produto
+                // Propagar local, nf_origem e category da entrada para o produto
+                const productUpdate = {};
                 if (newRecord.local_entrada && newRecord.local_entrada.trim() !== '') {
+                    productUpdate.local = newRecord.local_entrada;
+                }
+                if (newRecord.nf && newRecord.nf.trim() !== '') {
+                    productUpdate.nf_origem = newRecord.nf;
+                }
+                if (entry.category && entry.category.trim() !== '') {
+                    productUpdate.category = entry.category.trim();
+                }
+                if (Object.keys(productUpdate).length > 0) {
                     await supabaseClient
                         .from('products')
-                        .update({ local: newRecord.local_entrada })
+                        .update(productUpdate)
                         .eq('sku', newRecord.sku);
                     setProducts(prev => prev.map(p =>
-                        p.sku === newRecord.sku ? { ...p, local: newRecord.local_entrada } : p
+                        p.sku === newRecord.sku ? { ...p, ...productUpdate } : p
                     ));
                 }
             }, [user, isStockAdmin]);
@@ -4234,8 +4244,8 @@
                                         </div>
                                     )}
 
-                                    {p.nfOrigem && (
-                                        <div className="product-nf" style={{
+                                    {p.nfOrigem && p.nfOrigem.trim() !== '' && (
+                                        <div style={{
                                             background: 'var(--accent-primary-subtle)',
                                             color: 'var(--accent-primary)',
                                             padding: '4px 8px',
@@ -4245,12 +4255,14 @@
                                             marginTop: '8px',
                                             display: 'inline-block'
                                         }}>
-                                            NF: {p.nfOrigem}
+                                            📄 NF: {p.nfOrigem}
                                         </div>
                                     )}
                                     
-                                    {p.observations && (
-                                        <div className="product-obs">{p.observations}</div>
+                                    {p.observations && p.observations.trim() !== '' && (
+                                        <div style={{ fontSize: '12px', color: '#888', marginTop: '4px', fontStyle: 'italic' }}>
+                                            💬 {p.observations.length > 80 ? p.observations.substring(0, 80) + '...' : p.observations}
+                                        </div>
                                     )}
 
                                     <div className="product-quantity">{p.currentQuantity}</div>
@@ -5073,6 +5085,7 @@
             const [supplier, setSupplier] = useState('');
             const [nf, setNf] = useState('');
             const [localEntrada, setLocalEntrada] = useState(locaisOrigem?.[0] || 'Loja Principal');
+            const [category, setCategory] = useState('');
             const [success, setSuccess] = useState(false);
             const [showNewProductModal, setShowNewProductModal] = useState(false);
             const [newProductData, setNewProductData] = useState({ name: '', sku: '', ean: '', category: '', observations: '', nfOrigem: '' });
@@ -5091,12 +5104,13 @@
 
             const handleSubmit = (e) => {
                 e.preventDefault();
-                onSubmit({ type, sku, quantity: parseInt(quantity), supplier, nf, localEntrada });
+                onSubmit({ type, sku, quantity: parseInt(quantity), supplier, nf, localEntrada, category });
                 setSuccess(true);
                 setSku('');
                 setQuantity('');
                 setSupplier('');
                 setNf('');
+                setCategory('');
                 setProductSearch('');
                 setTimeout(() => setSuccess(false), 3000);
             };
@@ -5109,6 +5123,11 @@
                 } else {
                     setSku(value);
                     setProductSearch('');
+                    // Preencher categoria do produto selecionado
+                    const selectedProduct = products.find(p => p.sku === value);
+                    if (selectedProduct?.category) {
+                        setCategory(selectedProduct.category);
+                    }
                 }
             };
 
@@ -5353,6 +5372,19 @@
                                     </button>
                                 </div>
                                 <span className="form-help">Selecione o depósito onde o produto está sendo armazenado</span>
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label">Categoria</label>
+                                <CategorySelectInline
+                                    categories={categories}
+                                    value={category}
+                                    onChange={setCategory}
+                                    onAddCategory={onAddCategory}
+                                    onUpdateCategory={onUpdateCategory}
+                                    onDeleteCategory={onDeleteCategory}
+                                    products={products}
+                                />
                             </div>
 
                             <div className="btn-group">
@@ -8995,6 +9027,9 @@
             const [showNewProductModal, setShowNewProductModal] = useState(null);
             const [newProductData, setNewProductData] = useState({ name: '', sku: '', ean: '', category: '', observations: '' });
             const [saving, setSaving] = useState(false);
+            const [showInlineCatForm, setShowInlineCatForm] = useState(false);
+            const [newCatName, setNewCatName] = useState('');
+            const [newCatColor, setNewCatColor] = useState('#7A7585');
 
             const isEntry = mode === 'entry' || (mode === 'both' && nfeData?.tipo === 'E');
             const isExit = mode === 'exit' || (mode === 'both' && nfeData?.tipo === 'S');
@@ -9047,6 +9082,7 @@
                             quantity: Math.round(item.quantidade) || 1,
                             localEntrada: locaisOrigem?.[0] || 'Loja Principal',
                             observations: '',
+                            category: matched?.category || '',
                             alreadyRegistered,
                         };
                     });
@@ -9096,6 +9132,14 @@
                 }
             };
 
+            const handleInlineCreateCategory = async () => {
+                if (!newCatName.trim() || !onAddCategory) return;
+                const id = newCatName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_');
+                await onAddCategory({ id, name: newCatName.trim(), icon: 'catSquare', color: newCatColor });
+                setNewCatName('');
+                setShowInlineCatForm(false);
+            };
+
             const handleConfirm = async () => {
                 const selectedItems = itemStates
                     .map((s, i) => ({ ...s, item: nfeData.itens[i], index: i }))
@@ -9121,10 +9165,20 @@
                                 localEntrada: s.localEntrada || '',
                             });
 
-                            // Atualizar category/observations no produto se preenchidos
+                            // UPDATE unificado em products: observations, local, nf_origem, category
                             const updateFields = {};
                             if (s.observations && s.observations.trim() !== '') {
                                 updateFields.observations = s.observations.trim();
+                            }
+                            if (s.localEntrada && s.localEntrada.trim() !== '') {
+                                updateFields.local = s.localEntrada.trim();
+                            }
+                            if (s.category && s.category.trim() !== '') {
+                                updateFields.category = s.category.trim();
+                            }
+                            const nfStr = String(nfeData.numero || '');
+                            if (nfStr.trim() !== '') {
+                                updateFields.nf_origem = nfStr.trim();
                             }
                             if (Object.keys(updateFields).length > 0) {
                                 await supabaseClient
@@ -9211,6 +9265,7 @@
                                             <th>Produto Estoque</th>
                                             <th style={{width: '80px'}}>Qtd</th>
                                             {(isEntry || (mode === 'both' && nfeData.tipo === 'E')) && <th>Local</th>}
+                                            {(isEntry || (mode === 'both' && nfeData.tipo === 'E')) && <th>Categoria</th>}
                                             <th>Obs.</th>
                                             <th style={{width: '100px'}}>Status</th>
                                         </tr>
@@ -9279,6 +9334,25 @@
                                                             </select>
                                                         </td>
                                                     )}
+                                                    {(isEntry || (mode === 'both' && nfeData.tipo === 'E')) && (
+                                                        <td>
+                                                            <div style={{display: 'flex', alignItems: 'center', gap: '4px'}}>
+                                                                <select className="form-select"
+                                                                    value={st.category || ''}
+                                                                    onChange={e => updateItemState(idx, { category: e.target.value })}
+                                                                    style={{padding: '4px 8px', fontSize: '12px', minWidth: '100px'}}>
+                                                                    <option value="">Sem cat.</option>
+                                                                    {(categories || []).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                                                </select>
+                                                                {onAddCategory && (
+                                                                    <button type="button"
+                                                                        onClick={() => setShowInlineCatForm(true)}
+                                                                        style={{padding: '4px 8px', fontSize: '13px', border: '1px solid var(--border)', borderRadius: 'var(--radius)', cursor: 'pointer', background: 'var(--bg-primary)', minWidth: 'auto'}}
+                                                                        title="Criar nova categoria">+</button>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                    )}
                                                     <td>
                                                         <input type="text" className="form-input" placeholder="Observações..."
                                                             value={st.observations || ''}
@@ -9317,6 +9391,27 @@
                                                 : 'Registrar Saída'
                                         )}
                                     </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Mini-form criar categoria inline */}
+                    {showInlineCatForm && onAddCategory && (
+                        <div className="modal-overlay" onClick={() => setShowInlineCatForm(false)}>
+                            <div className="modal-content" onClick={e => e.stopPropagation()} style={{maxWidth: '360px'}}>
+                                <h3 style={{margin: '0 0 16px'}}>Nova Categoria</h3>
+                                <div className="form-group">
+                                    <label className="form-label">Nome *</label>
+                                    <input className="form-input" value={newCatName} onChange={e => setNewCatName(e.target.value)} placeholder="Ex: Abajur, Pendentes..." />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Cor</label>
+                                    <input type="color" value={newCatColor} onChange={e => setNewCatColor(e.target.value)} style={{width: '100%', height: '36px', border: '1px solid var(--border)', borderRadius: 'var(--radius)', cursor: 'pointer'}} />
+                                </div>
+                                <div className="btn-group" style={{marginTop: '16px'}}>
+                                    <button className="btn btn-primary" onClick={handleInlineCreateCategory} disabled={!newCatName.trim()}>Criar</button>
+                                    <button className="btn btn-secondary" onClick={() => { setShowInlineCatForm(false); setNewCatName(''); }}>Cancelar</button>
                                 </div>
                             </div>
                         </div>
