@@ -2368,7 +2368,15 @@
                 });
                 const { data: { subscription } } = supabaseClient.auth.onAuthStateChange(
                     (_event, session) => {
-                        setUser(session?.user ?? null);
+                        const newUser = session?.user ?? null;
+                        // Só atualizar referência se user REALMENTE mudou (login/logout/troca)
+                        // TOKEN_REFRESHED com mesmo user.id mantém referência → evita cascata
+                        setUser(prev => {
+                            if (!prev && !newUser) return prev;
+                            if (!prev || !newUser) return newUser;
+                            if (prev.id === newUser.id) return prev;
+                            return newUser;
+                        });
                     }
                 );
                 return () => subscription.unsubscribe();
@@ -2954,6 +2962,23 @@
         // DASHBOARD - NOVO DESIGN
         // ==========================================
         function Dashboard({ stock, categories, isVisible, entries, exits, onNavigate }) {
+            // Loading state enquanto produtos ainda não carregaram
+            if (stock.length === 0) {
+                return (
+                    <div style={{ padding: '60px 20px', textAlign: 'center' }}>
+                        <div style={{
+                            width: '28px', height: '28px',
+                            border: '2.5px solid var(--border-default)',
+                            borderTopColor: 'var(--accent-primary)',
+                            borderRadius: '50%',
+                            animation: 'spin 0.8s linear infinite',
+                            margin: '0 auto 12px'
+                        }} />
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '13px', margin: 0 }}>Carregando dashboard...</p>
+                    </div>
+                );
+            }
+
             const chartRef = useRef(null);
             const lineChartRef = useRef(null);
             const chartInstance = useRef(null);
@@ -3687,6 +3712,23 @@
         // STOCK VIEW
         // ==========================================
         function StockView({ stock, categories, onUpdate, onDelete, searchTerm, setSearchTerm, entries, exits }) {
+            // Loading state enquanto produtos ainda não carregaram
+            if (stock.length === 0) {
+                return (
+                    <div style={{ padding: '60px 20px', textAlign: 'center' }}>
+                        <div style={{
+                            width: '28px', height: '28px',
+                            border: '2.5px solid var(--border-default)',
+                            borderTopColor: 'var(--accent-primary)',
+                            borderRadius: '50%',
+                            animation: 'spin 0.8s linear infinite',
+                            margin: '0 auto 12px'
+                        }} />
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '13px', margin: 0 }}>Carregando estoque...</p>
+                    </div>
+                );
+            }
+
             const [filter, setFilter] = useState('all');
             const [categoryFilter, setCategoryFilter] = useState('all');
             const [editingProduct, setEditingProduct] = useState(null);
