@@ -2611,7 +2611,7 @@
                         return [...prev, mapEntryFromDB(data)];
                     });
                 }
-                // Propagar local, nf_origem e category da entrada para o produto
+                // Propagar local, nf_origem, category e observations da entrada para o produto
                 const productUpdate = {};
                 if (newRecord.local_entrada && newRecord.local_entrada.trim() !== '') {
                     productUpdate.local = newRecord.local_entrada;
@@ -2621,6 +2621,9 @@
                 }
                 if (entry.category && entry.category.trim() !== '') {
                     productUpdate.category = entry.category.trim();
+                }
+                if (entry.observations && entry.observations.trim() !== '') {
+                    productUpdate.observations = entry.observations.trim();
                 }
                 if (Object.keys(productUpdate).length > 0) {
                     await supabaseClient
@@ -9163,29 +9166,9 @@
                                 supplier: nfeData.cliente?.nome || '',
                                 nf: String(nfeData.numero),
                                 localEntrada: s.localEntrada || '',
+                                observations: s.observations || '',
+                                category: s.category || '',
                             });
-
-                            // UPDATE unificado em products: observations, local, nf_origem, category
-                            const updateFields = {};
-                            if (s.observations && s.observations.trim() !== '') {
-                                updateFields.observations = s.observations.trim();
-                            }
-                            if (s.localEntrada && s.localEntrada.trim() !== '') {
-                                updateFields.local = s.localEntrada.trim();
-                            }
-                            if (s.category && s.category.trim() !== '') {
-                                updateFields.category = s.category.trim();
-                            }
-                            const nfStr = String(nfeData.numero || '');
-                            if (nfStr.trim() !== '') {
-                                updateFields.nf_origem = nfStr.trim();
-                            }
-                            if (Object.keys(updateFields).length > 0) {
-                                await supabaseClient
-                                    .from('products')
-                                    .update(updateFields)
-                                    .eq('sku', s.linkedSku);
-                            }
                         } else {
                             await onSubmitExit({
                                 type: 'VENDA',
