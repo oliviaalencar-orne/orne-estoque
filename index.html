@@ -4247,21 +4247,6 @@
                                         </div>
                                     )}
 
-                                    {p.nfOrigem && p.nfOrigem.trim() !== '' && (
-                                        <div style={{
-                                            background: 'var(--accent-primary-subtle)',
-                                            color: 'var(--accent-primary)',
-                                            padding: '4px 8px',
-                                            borderRadius: '6px',
-                                            fontSize: '11px',
-                                            fontWeight: '600',
-                                            marginTop: '8px',
-                                            display: 'inline-block'
-                                        }}>
-                                            📄 NF: {p.nfOrigem}
-                                        </div>
-                                    )}
-                                    
                                     {p.observations && p.observations.trim() !== '' && (
                                         <div style={{ fontSize: '12px', color: '#888', marginTop: '4px', fontStyle: 'italic' }}>
                                             💬 {p.observations.length > 80 ? p.observations.substring(0, 80) + '...' : p.observations}
