@@ -1796,6 +1796,7 @@
             observations: row.observations || '', nfOrigem: row.nf_origem || '',
             unitPrice: parseFloat(row.unit_price) || 0,
             tinyId: row.tiny_id || '',
+            local: row.local || '',
             createdAt: row.created_at
         });
 
@@ -1994,6 +1995,7 @@
             dollar: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>',
             trendingUp: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>',
             pause: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>',
+            mapPin: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>',
         };
 
         function Icon({ name, size = 16, className = '', style = {} }) {
@@ -2464,7 +2466,7 @@
                 }));
 
                 // Products — sem Realtime, fetch paginado (> 1000 produtos)
-                const PRODUCT_FIELDS = 'id, name, sku, ean, category, min_stock, observations, nf_origem, created_at, tiny_id, unit_price';
+                const PRODUCT_FIELDS = 'id, name, sku, ean, category, min_stock, observations, nf_origem, created_at, tiny_id, unit_price, local';
                 const PRODUCT_FILTERS = [q => q.neq('sku', ''), q => q.neq('name', '')];
                 const loadProducts = () => fetchAllRows('products', PRODUCT_FIELDS, PRODUCT_FILTERS)
                     .then(data => {
@@ -2563,6 +2565,16 @@
                             return [...prev, mapEntryFromDB(inserted)];
                         });
                     }
+                    // Propagar local da entrada para o produto
+                    if (newRecord.local_entrada && newRecord.local_entrada.trim() !== '') {
+                        await supabaseClient
+                            .from('products')
+                            .update({ local: newRecord.local_entrada })
+                            .eq('sku', newRecord.sku);
+                        setProducts(prev => prev.map(p =>
+                            p.sku === newRecord.sku ? { ...p, local: newRecord.local_entrada } : p
+                        ));
+                    }
                 } else {
                     const newRecord = {
                         type: data.type, sku: data.sku, quantity: data.quantity,
@@ -2598,6 +2610,16 @@
                         if (prev.find(e => e.id === data.id)) return prev;
                         return [...prev, mapEntryFromDB(data)];
                     });
+                }
+                // Propagar local da entrada para o produto
+                if (newRecord.local_entrada && newRecord.local_entrada.trim() !== '') {
+                    await supabaseClient
+                        .from('products')
+                        .update({ local: newRecord.local_entrada })
+                        .eq('sku', newRecord.sku);
+                    setProducts(prev => prev.map(p =>
+                        p.sku === newRecord.sku ? { ...p, local: newRecord.local_entrada } : p
+                    ));
                 }
             }, [user, isStockAdmin]);
 
@@ -2658,7 +2680,7 @@
             };
 
             const refetchData = async () => {
-                const PRODUCT_FIELDS = 'id, name, sku, ean, category, min_stock, observations, nf_origem, created_at, tiny_id, unit_price';
+                const PRODUCT_FIELDS = 'id, name, sku, ean, category, min_stock, observations, nf_origem, created_at, tiny_id, unit_price, local';
                 const PRODUCT_FILTERS = [q => q.neq('sku', ''), q => q.neq('name', '')];
                 const [prodData, entRes, exitRes] = await Promise.all([
                     fetchAllRows('products', PRODUCT_FIELDS, PRODUCT_FILTERS),
@@ -2699,6 +2721,7 @@
                 if (data.minStock !== undefined) mapped.min_stock = data.minStock;
                 if (data.observations !== undefined) mapped.observations = data.observations;
                 if (data.nfOrigem !== undefined) mapped.nf_origem = data.nfOrigem;
+                if (data.local !== undefined) mapped.local = data.local;
                 await supabaseClient.from('products').update(mapped).eq('id', productId);
                 // Atualizar state local (products sem Realtime)
                 setProducts(prev => prev.map(p => p.id === productId ? { ...p, ...data } : p));
@@ -2926,7 +2949,7 @@
                                 <Dashboard stock={currentStock} categories={categories} isVisible={activeTab === 'dashboard'} entries={entries} exits={exits} onNavigate={handleTabChange} />
                             </div>
                             <div style={{display: activeTab === 'stock' ? 'block' : 'none'}}>
-                                <StockView stock={currentStock} categories={categories} onUpdate={updateProduct} onDelete={deleteProduct} searchTerm={searchTerm} setSearchTerm={setSearchTerm} entries={entries} exits={exits} />
+                                <StockView stock={currentStock} categories={categories} onUpdate={updateProduct} onDelete={deleteProduct} searchTerm={searchTerm} setSearchTerm={setSearchTerm} entries={entries} exits={exits} locaisOrigem={locaisOrigem} />
                             </div>
                             <div style={{display: activeTab === 'categories' ? 'block' : 'none'}}>
                                 <CategoryManager categories={categories} onAdd={addCategory} onUpdate={updateCategory} onDelete={deleteCategory} products={currentStock} />
@@ -3787,7 +3810,7 @@
         // ==========================================
         // STOCK VIEW
         // ==========================================
-        function StockView({ stock, categories, onUpdate, onDelete, searchTerm, setSearchTerm, entries, exits }) {
+        function StockView({ stock, categories, onUpdate, onDelete, searchTerm, setSearchTerm, entries, exits, locaisOrigem }) {
             // Loading state enquanto produtos ainda não carregaram
             if (stock.length === 0) {
                 return (
@@ -3851,6 +3874,7 @@
                     minStock: product.minStock || 3,
                     observations: product.observations || '',
                     nfOrigem: product.nfOrigem || '',
+                    local: product.local || '',
                 });
                 setEditingProduct(product);
             };
@@ -3952,6 +3976,20 @@
                                             onChange={(e) => setEditForm({...editForm, minStock: e.target.value})}
                                         />
                                     </div>
+                                </div>
+
+                                <div className="form-group">
+                                    <label className="form-label">Local</label>
+                                    <select
+                                        className="form-select"
+                                        value={editForm.local || ''}
+                                        onChange={(e) => setEditForm({...editForm, local: e.target.value})}
+                                    >
+                                        <option value="">Selecione o local</option>
+                                        {(locaisOrigem || []).map(l => (
+                                            <option key={l} value={l}>{l}</option>
+                                        ))}
+                                    </select>
                                 </div>
 
                                 {editingProduct && editingProduct.unitPrice > 0 && (
@@ -4211,6 +4249,19 @@
                                     <div className="product-sku">SKU: {p.sku}</div>
                                     {p.ean && <div className="product-sku">EAN: {p.ean}</div>}
                                     <div className="product-price">{p.unitPrice > 0 ? `R$ ${formatBRL(p.unitPrice)}` : 'Preço: não sincronizado'}</div>
+
+                                    {p.local && (
+                                        <div style={{
+                                            fontSize: '11px',
+                                            color: 'var(--text-secondary)',
+                                            marginTop: '4px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '4px'
+                                        }}>
+                                            <Icon name="mapPin" size={12} /> {p.local}
+                                        </div>
+                                    )}
 
                                     {p.nfOrigem && (
                                         <div className="product-nf" style={{
