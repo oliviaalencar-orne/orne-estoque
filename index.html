@@ -2618,6 +2618,12 @@
                     unit_price: newProduct.unitPrice || 0,
                     created_at: newProduct.createdAt || new Date().toISOString()
                 });
+                // Atualizar state local (products sem Realtime)
+                setProducts(prev => {
+                    const idx = prev.findIndex(p => p.id === newProduct.id);
+                    if (idx >= 0) { const updated = [...prev]; updated[idx] = { ...prev[idx], ...newProduct }; return updated; }
+                    return [...prev, newProduct];
+                });
                 return newProduct;
             };
 
@@ -2631,10 +2637,14 @@
                 if (data.observations !== undefined) mapped.observations = data.observations;
                 if (data.nfOrigem !== undefined) mapped.nf_origem = data.nfOrigem;
                 await supabaseClient.from('products').update(mapped).eq('id', productId);
+                // Atualizar state local (products sem Realtime)
+                setProducts(prev => prev.map(p => p.id === productId ? { ...p, ...data } : p));
             };
 
             const deleteProduct = async (productId) => {
                 await supabaseClient.from('products').delete().eq('id', productId);
+                // Atualizar state local (products sem Realtime)
+                setProducts(prev => prev.filter(p => p.id !== productId));
             };
 
             const addCategory = async (category) => {
@@ -2985,27 +2995,24 @@
             const lineChartInstance = useRef(null);
             const [period, setPeriod] = useState(30);
 
-            const totalQty = stock.reduce((s, p) => s + p.currentQuantity, 0);
-            const totalProducts = stock.length;
-            const lowStock = stock.filter(p => p.status === 'low').length;
-            const emptyStock = stock.filter(p => p.status === 'empty').length;
-            const okStock = stock.filter(p => p.status === 'ok').length;
+            // === Cálculos memoizados do estoque ===
+            const stockStats = useMemo(() => {
+                const totalQty = stock.reduce((s, p) => s + p.currentQuantity, 0);
+                const lowStock = stock.filter(p => p.status === 'low').length;
+                const emptyStock = stock.filter(p => p.status === 'empty').length;
+                const okStock = stock.filter(p => p.status === 'ok').length;
+                const topProducts = [...stock].sort((a, b) => b.currentQuantity - a.currentQuantity).slice(0, 5);
+                const alertProducts = [...stock].filter(p => p.status === 'low' || p.status === 'empty').slice(0, 5);
+                const totalValue = stock.reduce((sum, p) => sum + ((p.unitPrice || 0) * (p.currentQuantity || 0)), 0);
+                return { totalQty, totalProducts: stock.length, lowStock, emptyStock, okStock, topProducts, alertProducts, totalValue };
+            }, [stock]);
+            const { totalQty, totalProducts, lowStock, emptyStock, okStock, topProducts, alertProducts, totalValue } = stockStats;
 
             // Hora atual para saudação
             const hora = new Date().getHours();
             const saudacao = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
 
-            // Top produtos
-            const topProducts = [...stock]
-                .sort((a, b) => b.currentQuantity - a.currentQuantity)
-                .slice(0, 5);
-
-            // Produtos com alerta (baixo ou zerado)
-            const alertProducts = [...stock]
-                .filter(p => p.status === 'low' || p.status === 'empty')
-                .slice(0, 5);
-
-            const categoryStats = categories.map(cat => {
+            const categoryStats = useMemo(() => categories.map(cat => {
                 const catProducts = stock.filter(p => p.category === cat.id);
                 return {
                     ...cat,
@@ -3013,44 +3020,45 @@
                     totalStock: catProducts.reduce((sum, p) => sum + (p.currentQuantity || 0), 0),
                     alertCount: catProducts.filter(p => p.status === 'low' || p.status === 'empty').length
                 };
-            });
+            }), [stock, categories]);
 
-            // === Valor total em estoque ===
-            const totalValue = stock.reduce((sum, p) => sum + ((p.unitPrice || 0) * (p.currentQuantity || 0)), 0);
-
-            // === Period-based calculations ===
-            const periodCutoff = new Date();
-            periodCutoff.setDate(periodCutoff.getDate() - period);
-            const periodCutoffISO = periodCutoff.toISOString();
-
-            const periodEntries = (entries || []).filter(e => e.date >= periodCutoffISO);
-            const periodExits = (exits || []).filter(e => e.date >= periodCutoffISO);
-
-            const totalExitsInPeriod = periodExits.reduce((sum, e) => sum + parseInt(e.quantity || 0), 0);
-            const giroEstoque = totalExitsInPeriod / Math.max(totalQty, 1);
+            // === Cálculos baseados em período (memoizados) ===
+            const periodStats = useMemo(() => {
+                const periodCutoff = new Date();
+                periodCutoff.setDate(periodCutoff.getDate() - period);
+                const periodCutoffISO = periodCutoff.toISOString();
+                const periodEntries = (entries || []).filter(e => e.date >= periodCutoffISO);
+                const periodExits = (exits || []).filter(e => e.date >= periodCutoffISO);
+                const totalExitsInPeriod = periodExits.reduce((sum, e) => sum + parseInt(e.quantity || 0), 0);
+                const giroEstoque = totalExitsInPeriod / Math.max(totalQty, 1);
+                return { periodEntries, periodExits, totalExitsInPeriod, giroEstoque };
+            }, [entries, exits, period, totalQty]);
+            const { periodEntries, periodExits, totalExitsInPeriod, giroEstoque } = periodStats;
 
             // === Produtos parados (sem movimentação em 60 dias) ===
-            const stoppedCutoff = new Date();
-            stoppedCutoff.setDate(stoppedCutoff.getDate() - 60);
-            const stoppedCutoffISO = stoppedCutoff.toISOString();
-            const activeSKUs = new Set([
-                ...(entries || []).filter(e => e.date >= stoppedCutoffISO).map(e => e.sku),
-                ...(exits || []).filter(e => e.date >= stoppedCutoffISO).map(e => e.sku)
-            ]);
-            const stoppedProducts = stock.filter(p => !activeSKUs.has(p.sku));
+            const stoppedProducts = useMemo(() => {
+                const stoppedCutoff = new Date();
+                stoppedCutoff.setDate(stoppedCutoff.getDate() - 60);
+                const stoppedCutoffISO = stoppedCutoff.toISOString();
+                const activeSKUs = new Set([
+                    ...(entries || []).filter(e => e.date >= stoppedCutoffISO).map(e => e.sku),
+                    ...(exits || []).filter(e => e.date >= stoppedCutoffISO).map(e => e.sku)
+                ]);
+                return stock.filter(p => !activeSKUs.has(p.sku));
+            }, [stock, entries, exits]);
 
             // === Últimas 5 movimentações ===
-            const allMovements = [
+            const allMovements = useMemo(() => [
                 ...(entries || []).map(e => ({ ...e, movType: 'entry' })),
                 ...(exits || []).map(e => ({ ...e, movType: 'exit' }))
-            ].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
+            ].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5), [entries, exits]);
 
             // === Valor por categoria ===
-            const categoryValues = categories.map(cat => {
+            const categoryValues = useMemo(() => categories.map(cat => {
                 const catProducts = stock.filter(p => p.category === cat.id);
                 const value = catProducts.reduce((sum, p) => sum + ((p.unitPrice || 0) * (p.currentQuantity || 0)), 0);
                 return { ...cat, value };
-            }).filter(c => c.value > 0).sort((a, b) => b.value - a.value);
+            }).filter(c => c.value > 0).sort((a, b) => b.value - a.value), [stock, categories]);
 
             // === Helper: agregar movimentações por dia ===
             const aggregateByDay = (items, days) => {
