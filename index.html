@@ -1809,7 +1809,7 @@
         });
         const mapExitFromDB = (row) => ({
             id: row.id, type: row.type, sku: row.sku, quantity: row.quantity,
-            client: row.client || '', nf: row.nf || '', nfOrigem: row.nf_origem || '',
+            client: row.client || '', nf: row.nf || '', nfOrigem: row.nf_origem || null,
             date: row.date, userId: row.user_id || ''
         });
         const mapShippingFromDB = (row) => ({
@@ -8643,6 +8643,18 @@
                                 nf: String(nfeData.numero),
                                 localEntrada: s.localEntrada || '',
                             });
+
+                            // Atualizar category/observations no produto se preenchidos
+                            const updateFields = {};
+                            if (s.observations && s.observations.trim() !== '') {
+                                updateFields.observations = s.observations.trim();
+                            }
+                            if (Object.keys(updateFields).length > 0) {
+                                await supabaseClient
+                                    .from('products')
+                                    .update(updateFields)
+                                    .eq('sku', s.linkedSku);
+                            }
                         } else {
                             await onSubmitExit({
                                 type: 'VENDA',
