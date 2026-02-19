@@ -9277,6 +9277,9 @@
                     if (!status) setStatusLoading(true);
                     const data = await callFunction('tiny-auth', { action: 'status' });
                     setStatus(data);
+                    // Pré-preencher credenciais do config compartilhado
+                    if (data.client_id && !clientId) setClientId(data.client_id);
+                    if (data.client_secret && !clientSecret) setClientSecret(data.client_secret);
                     try { sessionStorage.setItem('tiny_status', JSON.stringify(data)); } catch(e) {}
                 } catch (e) {
                     console.error('Failed to load Tiny status:', e);
@@ -9562,10 +9565,10 @@
                                     </div>
                                     <div>
                                         <div style={{fontWeight: '600', fontSize: '14px'}}>
-                                            {statusLoading ? 'Verificando conexão...' : status?.connected ? 'Conectado ao Tiny ERP' : status?.has_credentials ? 'Credenciais salvas, autorização pendente' : 'Não configurado'}
+                                            {statusLoading ? 'Verificando conexão...' : status?.connected ? 'Conectado ao Tiny ERP' : status?.token_expired ? 'Token expirado — reconecte' : status?.has_credentials ? 'Credenciais salvas, autorização pendente' : 'Não configurado'}
                                         </div>
                                         <div style={{fontSize: '12px', color: 'var(--text-muted)'}}>
-                                            {statusLoading ? 'Carregando status da integração' : status?.expires_at ? `Token válido até ${formatDate(status.expires_at)}` : 'Configure suas credenciais OAuth2 abaixo'}
+                                            {statusLoading ? 'Carregando status da integração' : status?.connected ? `Token válido até ${formatDate(status.expires_at)}` : status?.token_expired ? 'Clique em "Autorizar via OAuth2" para reconectar' : 'Configure suas credenciais OAuth2 abaixo'}
                                         </div>
                                     </div>
                                 </div>
