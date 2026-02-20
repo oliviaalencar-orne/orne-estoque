@@ -10295,18 +10295,25 @@
             };
 
             const handleConnect = async () => {
-                if (!clientId || !clientSecret) return;
+                // Se já tem credentials salvos, reconectar sem enviar client_id/secret (usa os do shared)
+                const hasStoredCredentials = status?.has_credentials;
+                if (!hasStoredCredentials && (!clientId || !clientSecret)) return;
                 setLoading(true);
                 try {
                     // Redirect URI fixo: sempre produção (registrado no app Tiny)
                     const redirectUri = 'https://orne-estoque.vercel.app/tiny-callback';
 
-                    const data = await callFunction('tiny-auth', {
+                    const body = {
                         action: 'get_auth_url',
-                        client_id: clientId,
-                        client_secret: clientSecret,
                         redirect_uri: redirectUri,
-                    });
+                    };
+                    // Só envia credentials na primeira configuração
+                    if (!hasStoredCredentials) {
+                        body.client_id = clientId;
+                        body.client_secret = clientSecret;
+                    }
+
+                    const data = await callFunction('tiny-auth', body);
 
                     if (data.url) {
                         // Store redirect_uri for the callback
@@ -10579,8 +10586,10 @@
                                             type="text"
                                             className="form-input"
                                             placeholder="Cole o Client ID do aplicativo Tiny"
-                                            value={clientId}
+                                            value={status?.has_credentials ? clientId : clientId}
                                             onChange={e => setClientId(e.target.value)}
+                                            readOnly={!!status?.has_credentials}
+                                            style={status?.has_credentials ? {background: 'var(--bg-secondary)', cursor: 'not-allowed'} : {}}
                                         />
                                     </div>
                                     <div>
@@ -10589,22 +10598,38 @@
                                             type="password"
                                             className="form-input"
                                             placeholder="Cole o Client Secret"
-                                            value={clientSecret}
-                                            onChange={e => setClientSecret(e.target.value)}
+                                            value={status?.has_credentials ? '••••••••••••••••' : clientSecret}
+                                            onChange={e => { if (!status?.has_credentials) setClientSecret(e.target.value); }}
+                                            readOnly={!!status?.has_credentials}
+                                            style={status?.has_credentials ? {background: 'var(--bg-secondary)', cursor: 'not-allowed'} : {}}
                                         />
+                                        {status?.has_credentials && (
+                                            <div style={{fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px'}}>
+                                                Credenciais salvas. Para alterar, desconecte primeiro.
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
                                 {/* Actions */}
                                 <div style={{display: 'flex', gap: '12px', marginTop: '20px', flexWrap: 'wrap'}}>
-                                    <button className="btn btn-primary" onClick={handleConnect} disabled={loading || !clientId || !clientSecret}>
-                                        {loading ? <Icon name="spinner" size={14} style={{animation: 'spin 1s linear infinite'}} /> : <Icon name="tiny" size={14} />}
-                                        <span style={{marginLeft: '6px'}}>{loading ? 'Conectando...' : 'Autorizar via OAuth2'}</span>
-                                    </button>
-                                    <button className="btn btn-secondary" onClick={handleSaveConfig} disabled={loading || !clientId || !clientSecret}>
-                                        <Icon name="check" size={14} />
-                                        <span style={{marginLeft: '6px'}}>Salvar Credenciais</span>
-                                    </button>
+                                    {!status?.has_credentials ? (
+                                        <React.Fragment>
+                                            <button className="btn btn-primary" onClick={handleConnect} disabled={loading || !clientId || !clientSecret}>
+                                                {loading ? <Icon name="spinner" size={14} style={{animation: 'spin 1s linear infinite'}} /> : <Icon name="tiny" size={14} />}
+                                                <span style={{marginLeft: '6px'}}>{loading ? 'Conectando...' : 'Autorizar via OAuth2'}</span>
+                                            </button>
+                                            <button className="btn btn-secondary" onClick={handleSaveConfig} disabled={loading || !clientId || !clientSecret}>
+                                                <Icon name="check" size={14} />
+                                                <span style={{marginLeft: '6px'}}>Salvar Credenciais</span>
+                                            </button>
+                                        </React.Fragment>
+                                    ) : !status?.connected ? (
+                                        <button className="btn btn-primary" onClick={handleConnect} disabled={loading}>
+                                            {loading ? <Icon name="spinner" size={14} style={{animation: 'spin 1s linear infinite'}} /> : <Icon name="tiny" size={14} />}
+                                            <span style={{marginLeft: '6px'}}>{loading ? 'Conectando...' : 'Reconectar OAuth2'}</span>
+                                        </button>
+                                    ) : null}
                                     {status?.connected && (
                                         <button className="btn btn-secondary" onClick={handleTestConnection} disabled={loading}>
                                             <Icon name="sync" size={14} />
