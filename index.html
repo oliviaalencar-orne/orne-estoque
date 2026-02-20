@@ -2548,7 +2548,7 @@
             }, [products, stockMap]);
 
             const handleImport = async (data) => {
-                if (!isStockAdmin) { alert('Sem permissao para esta acao'); return; }
+                if (!isStockAdmin) { alert('Sem permissão para esta ação'); return; }
                 const isEntry = data.type === 'entry' || data.type === 'COMPRA' || data.type === 'DEVOLUCAO' || data.type === 'AJUSTE';
                 if (isEntry) {
                     const newRecord = {
@@ -2559,7 +2559,8 @@
                     };
                     const { data: inserted, error } = await supabaseClient
                         .from('entries').insert(newRecord).select().single();
-                    if (!error && inserted) {
+                    if (error) { console.error('Erro ao importar entrada:', error); alert('Erro ao importar entrada: ' + error.message); return; }
+                    if (inserted) {
                         setEntries(prev => {
                             if (prev.find(e => e.id === inserted.id)) return prev;
                             return [...prev, mapEntryFromDB(inserted)];
@@ -2584,7 +2585,8 @@
                     };
                     const { data: inserted, error } = await supabaseClient
                         .from('exits').insert(newRecord).select().single();
-                    if (!error && inserted) {
+                    if (error) { console.error('Erro ao importar saída:', error); alert('Erro ao importar saída: ' + error.message); return; }
+                    if (inserted) {
                         setExits(prev => {
                             if (prev.find(e => e.id === inserted.id)) return prev;
                             return [...prev, mapExitFromDB(inserted)];
@@ -2594,7 +2596,7 @@
             };
 
             const addEntry = useCallback(async (entry) => {
-                if (!isStockAdmin) { alert('Sem permissao para esta acao'); return; }
+                if (!isStockAdmin) { alert('Sem permissão para esta ação'); return; }
                 const newRecord = {
                     type: entry.type, sku: entry.sku, quantity: entry.quantity,
                     supplier: entry.supplier || '', nf: entry.nf || '',
@@ -2637,7 +2639,7 @@
             }, [user, isStockAdmin]);
 
             const addExit = useCallback(async (exit) => {
-                if (!isStockAdmin) { alert('Sem permissao para esta acao'); return; }
+                if (!isStockAdmin) { alert('Sem permissão para esta ação'); return; }
                 const newRecord = {
                     type: exit.type, sku: exit.sku, quantity: exit.quantity,
                     client: exit.client || '', nf: exit.nf || '',
@@ -2657,7 +2659,7 @@
             }, [user, isStockAdmin]);
 
             const updateEntry = async (entryId, data) => {
-                if (!isStockAdmin) { alert('Sem permissao para esta acao'); return; }
+                if (!isStockAdmin) { alert('Sem permissão para esta ação'); return; }
                 const mapped = {};
                 if (data.type !== undefined) mapped.type = data.type;
                 if (data.sku !== undefined) mapped.sku = data.sku;
@@ -2666,16 +2668,18 @@
                 if (data.nf !== undefined) mapped.nf = data.nf;
                 if (data.localEntrada !== undefined) mapped.local_entrada = data.localEntrada;
                 if (data.date !== undefined) mapped.date = data.date;
-                await supabaseClient.from('entries').update(mapped).eq('id', entryId);
+                const { error } = await supabaseClient.from('entries').update(mapped).eq('id', entryId);
+                if (error) { console.error('Erro ao atualizar entrada:', error); alert('Erro ao atualizar entrada: ' + error.message); return; }
             };
 
             const deleteEntry = async (entryId) => {
-                if (!isStockAdmin) { alert('Sem permissao para esta acao'); return; }
-                await supabaseClient.from('entries').delete().eq('id', entryId);
+                if (!isStockAdmin) { alert('Sem permissão para esta ação'); return; }
+                const { error } = await supabaseClient.from('entries').delete().eq('id', entryId);
+                if (error) { console.error('Erro ao excluir entrada:', error); alert('Erro ao excluir entrada: ' + error.message); return; }
             };
 
             const updateExit = async (exitId, data) => {
-                if (!isStockAdmin) { alert('Sem permissao para esta acao'); return; }
+                if (!isStockAdmin) { alert('Sem permissão para esta ação'); return; }
                 const mapped = {};
                 if (data.type !== undefined) mapped.type = data.type;
                 if (data.sku !== undefined) mapped.sku = data.sku;
@@ -2684,12 +2688,14 @@
                 if (data.nf !== undefined) mapped.nf = data.nf;
                 if (data.nfOrigem !== undefined) mapped.nf_origem = data.nfOrigem;
                 if (data.date !== undefined) mapped.date = data.date;
-                await supabaseClient.from('exits').update(mapped).eq('id', exitId);
+                const { error } = await supabaseClient.from('exits').update(mapped).eq('id', exitId);
+                if (error) { console.error('Erro ao atualizar saída:', error); alert('Erro ao atualizar saída: ' + error.message); return; }
             };
 
             const deleteExit = async (exitId) => {
-                if (!isStockAdmin) { alert('Sem permissao para esta acao'); return; }
-                await supabaseClient.from('exits').delete().eq('id', exitId);
+                if (!isStockAdmin) { alert('Sem permissão para esta ação'); return; }
+                const { error } = await supabaseClient.from('exits').delete().eq('id', exitId);
+                if (error) { console.error('Erro ao excluir saída:', error); alert('Erro ao excluir saída: ' + error.message); return; }
             };
 
             const refetchData = async () => {
@@ -2706,8 +2712,9 @@
             };
 
             const addProduct = async (product) => {
+                if (!isStockAdmin) { alert('Sem permissão para esta ação'); return; }
                 const newProduct = { ...product, id: product.id || generateId() };
-                await supabaseClient.from('products').upsert({
+                const { error } = await supabaseClient.from('products').upsert({
                     id: newProduct.id, name: newProduct.name, sku: newProduct.sku,
                     ean: newProduct.ean || '', category: newProduct.category || '',
                     min_stock: newProduct.minStock || 3,
@@ -2716,6 +2723,7 @@
                     unit_price: newProduct.unitPrice || 0,
                     created_at: newProduct.createdAt || new Date().toISOString()
                 });
+                if (error) { console.error('Erro ao adicionar produto:', error); alert('Erro ao salvar produto: ' + error.message); return; }
                 // Atualizar state local (products sem Realtime)
                 setProducts(prev => {
                     const idx = prev.findIndex(p => p.id === newProduct.id);
@@ -2726,6 +2734,7 @@
             };
 
             const updateProduct = async (productId, data) => {
+                if (!isStockAdmin) { alert('Sem permissão para esta ação'); return; }
                 const mapped = {};
                 if (data.name !== undefined) mapped.name = data.name;
                 if (data.sku !== undefined) mapped.sku = data.sku;
@@ -2735,36 +2744,45 @@
                 if (data.observations !== undefined) mapped.observations = data.observations;
                 if (data.nfOrigem !== undefined) mapped.nf_origem = data.nfOrigem;
                 if (data.local !== undefined) mapped.local = data.local;
-                await supabaseClient.from('products').update(mapped).eq('id', productId);
+                const { error } = await supabaseClient.from('products').update(mapped).eq('id', productId);
+                if (error) { console.error('Erro ao atualizar produto:', error); alert('Erro ao atualizar produto: ' + error.message); return; }
                 // Atualizar state local (products sem Realtime)
                 setProducts(prev => prev.map(p => p.id === productId ? { ...p, ...data } : p));
             };
 
             const deleteProduct = async (productId) => {
-                await supabaseClient.from('products').delete().eq('id', productId);
+                if (!isStockAdmin) { alert('Sem permissão para esta ação'); return; }
+                const { error } = await supabaseClient.from('products').delete().eq('id', productId);
+                if (error) { console.error('Erro ao excluir produto:', error); alert('Erro ao excluir produto: ' + error.message); return; }
                 // Atualizar state local (products sem Realtime)
                 setProducts(prev => prev.filter(p => p.id !== productId));
             };
 
             const addCategory = async (category) => {
+                if (!isStockAdmin) { alert('Sem permissão para esta ação'); return; }
                 const newCategory = { ...category, id: category.id || generateId() };
-                await supabaseClient.from('categories').upsert({
+                const { error } = await supabaseClient.from('categories').upsert({
                     id: newCategory.id, name: newCategory.name,
                     icon: newCategory.icon || '', color: newCategory.color || ''
                 });
+                if (error) { console.error('Erro ao adicionar categoria:', error); alert('Erro ao salvar categoria: ' + error.message); return; }
                 return newCategory;
             };
 
             const updateCategory = async (categoryId, data) => {
-                await supabaseClient.from('categories').update(data).eq('id', categoryId);
+                if (!isStockAdmin) { alert('Sem permissão para esta ação'); return; }
+                const { error } = await supabaseClient.from('categories').update(data).eq('id', categoryId);
+                if (error) { console.error('Erro ao atualizar categoria:', error); alert('Erro ao atualizar categoria: ' + error.message); return; }
             };
 
             const deleteCategory = async (categoryId) => {
-                await supabaseClient.from('categories').delete().eq('id', categoryId);
+                if (!isStockAdmin) { alert('Sem permissão para esta ação'); return; }
+                const { error } = await supabaseClient.from('categories').delete().eq('id', categoryId);
+                if (error) { console.error('Erro ao excluir categoria:', error); alert('Erro ao excluir categoria: ' + error.message); return; }
             };
 
             const addShipping = async (shipping) => {
-                if (!isStockAdmin) { alert('Sem permissao para esta acao'); return; }
+                if (!isStockAdmin) { alert('Sem permissão para esta ação'); return; }
                 const newShipping = {
                     id: shipping.id || generateId(),
                     nf_numero: shipping.nfNumero || '',
@@ -2781,12 +2799,13 @@
                     date: new Date().toISOString(),
                     user_id: user.email
                 };
-                await supabaseClient.from('shippings').upsert(newShipping);
+                const { error } = await supabaseClient.from('shippings').upsert(newShipping);
+                if (error) { console.error('Erro ao criar despacho:', error); alert('Erro ao criar despacho: ' + error.message); return; }
                 return { ...shipping, id: newShipping.id, date: newShipping.date, userId: user.email, status: newShipping.status };
             };
 
             const updateShipping = async (shippingId, data) => {
-                if (!isStockAdmin) { alert('Sem permissao para esta acao'); return; }
+                if (!isStockAdmin) { alert('Sem permissão para esta ação'); return; }
                 const mapped = {};
                 if (data.nfNumero !== undefined) mapped.nf_numero = data.nfNumero;
                 if (data.cliente !== undefined) mapped.cliente = data.cliente;
@@ -2801,20 +2820,25 @@
                 if (data.status !== undefined) mapped.status = data.status;
                 if (data.ultimaAtualizacaoRastreio !== undefined) mapped.ultima_atualizacao_rastreio = data.ultimaAtualizacaoRastreio;
                 if (data.rastreioInfo !== undefined) mapped.rastreio_info = data.rastreioInfo;
-                await supabaseClient.from('shippings').update(mapped).eq('id', shippingId);
+                const { error } = await supabaseClient.from('shippings').update(mapped).eq('id', shippingId);
+                if (error) { console.error('Erro ao atualizar despacho:', error); alert('Erro ao atualizar despacho: ' + error.message); return; }
             };
 
             const deleteShipping = async (shippingId) => {
-                if (!isStockAdmin) { alert('Sem permissao para esta acao'); return; }
-                await supabaseClient.from('shippings').delete().eq('id', shippingId);
+                if (!isStockAdmin) { alert('Sem permissão para esta ação'); return; }
+                const { error } = await supabaseClient.from('shippings').delete().eq('id', shippingId);
+                if (error) { console.error('Erro ao excluir despacho:', error); alert('Erro ao excluir despacho: ' + error.message); return; }
             };
 
             const updateLocaisOrigem = async (locais) => {
-                await supabaseClient.from('locais_origem').delete().neq('id', 0);
+                if (!isStockAdmin) { alert('Sem permissão para esta ação'); return; }
+                const { error: delError } = await supabaseClient.from('locais_origem').delete().neq('id', 0);
+                if (delError) { console.error('Erro ao limpar locais:', delError); alert('Erro ao atualizar locais: ' + delError.message); return; }
                 if (locais.length > 0) {
-                    await supabaseClient.from('locais_origem').insert(
+                    const { error: insError } = await supabaseClient.from('locais_origem').insert(
                         locais.map(name => ({ name }))
                     );
+                    if (insError) { console.error('Erro ao inserir locais:', insError); alert('Erro ao salvar locais: ' + insError.message); return; }
                 }
             };
 
@@ -10265,7 +10289,8 @@
 
             const deleteSyncLog = async (logId) => {
                 if (!confirm('Excluir este registro de sincronização?')) return;
-                await supabaseClient.from('sync_log').delete().eq('id', logId);
+                const { error } = await supabaseClient.from('sync_log').delete().eq('id', logId);
+                if (error) { console.error('Erro ao excluir log:', error); alert('Erro ao excluir registro: ' + error.message); return; }
                 await loadSyncLogs();
             };
 
