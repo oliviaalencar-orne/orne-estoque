@@ -9697,7 +9697,7 @@
                     display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px',
                     flexWrap: 'wrap', padding: '10px 14px', background: '#f9f9f9', borderRadius: '8px'
                 }}>
-                    <span style={{ fontSize: '13px', color: '#555', fontWeight: 500 }}>Per\u00edodo:</span>
+                    <span style={{ fontSize: '13px', color: '#555', fontWeight: 500 }}>Período:</span>
                     {[
                         { value: '30', label: '30 dias' },
                         { value: '60', label: '60 dias' },
@@ -9726,7 +9726,7 @@
                             className="form-select"
                             style={{ fontSize: '12px', padding: '5px 8px', minWidth: 'auto', width: 'auto' }}
                         >
-                            {['Janeiro','Fevereiro','Mar\u00e7o','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+                            {['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
                                 .map((m, i) => <option key={i} value={i}>{m}</option>)}
                         </select>
                         <select
@@ -10016,7 +10016,7 @@
                                 Entradas
                             </button>
                             <button className={`filter-tab ${filter === 'exit' ? 'active' : ''}`} onClick={() => setFilter('exit')}>
-                                Sa\u00eddas
+                                Saídas
                             </button>
                         </div>
 
@@ -10056,7 +10056,7 @@
                                             <th>Qtd</th>
                                             <th>Local</th>
                                             <th>Info</th>
-                                            <th>Usu\u00e1rio</th>
+                                            <th>Usuário</th>
                                             {isStockAdmin && <th style={{width: '80px'}}></th>}
                                         </tr>
                                     </thead>
@@ -10095,7 +10095,7 @@
                                                 <td style={{fontSize: '12px', color: 'var(--text-muted)'}}>
                                                     {m.supplier || m.client || '-'}
                                                     {m.nf && <div style={{marginTop: '2px'}}><strong>NF: {m.nf}</strong></div>}
-                                                    {m.nfOrigem && <div style={{marginTop: '2px', color: 'var(--warning)'}}>Sa\u00edda da NF: {m.nfOrigem}</div>}
+                                                    {m.nfOrigem && <div style={{marginTop: '2px', color: 'var(--warning)'}}>Saída da NF: {m.nfOrigem}</div>}
                                                 </td>
                                                 <td style={{fontSize: '12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap'}}>
                                                     {formatUserEmail(m.userId)}
@@ -10751,7 +10751,7 @@
                                 <div style={{...cardStyle, textAlign: 'center', padding: '48px 24px'}}>
                                     <Icon name="empty" size={32} style={{color: 'var(--text-muted)', marginBottom: '12px'}} />
                                     <div style={{fontWeight: '600', fontSize: '14px', marginBottom: '4px'}}>Nenhum registro</div>
-                                    <div style={{fontSize: '13px', color: 'var(--text-muted)'}}>Os registros de sincroniza\u00e7\u00e3o aparecer\u00e3o aqui.</div>
+                                    <div style={{fontSize: '13px', color: 'var(--text-muted)'}}>Os registros de sincronização aparecerão aqui.</div>
                                 </div>
                             ) : (
                                 <div className="table-container" style={{border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', overflow: 'hidden'}}>
@@ -10762,7 +10762,7 @@
                                                 <th>Status</th>
                                                 <th>Itens</th>
                                                 <th>Mensagem</th>
-                                                <th>In\u00edcio</th>
+                                                <th>Início</th>
                                                 <th>Fim</th>
                                                 <th style={{width: '50px'}}></th>
                                             </tr>
