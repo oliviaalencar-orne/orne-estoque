@@ -4379,11 +4379,18 @@
                                                 display: 'inline-block'
                                             }}>{'\u25B6'}</span>
                                             {catData ? (
-                                                <span style={{
-                                                    background: catData.color || '#666', color: 'white',
-                                                    padding: '2px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: 600
-                                                }}>
-                                                    <CategoryIcon icon={catData.icon} size={12} /> {catName}
+                                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                                    <span style={{
+                                                        background: catData.color || '#666', color: 'white',
+                                                        width: '24px', height: '24px', borderRadius: '50%',
+                                                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                                        fontSize: '12px'
+                                                    }}>
+                                                        <CategoryIcon icon={catData.icon} size={12} />
+                                                    </span>
+                                                    <span style={{ fontWeight: 600, fontSize: '14px', color: '#333' }}>
+                                                        {catName}
+                                                    </span>
                                                 </span>
                                             ) : (
                                                 <span style={{ fontWeight: 600, fontSize: '14px', color: '#666' }}>{catName}</span>
@@ -6082,6 +6089,9 @@
             const [error, setError] = useState('');
             const [searchTerm, setSearchTerm] = useState('');
             const [statusFilter, setStatusFilter] = useState('all');
+            const [shipPeriodFilter, setShipPeriodFilter] = useState('30');
+            const [shipCustomMonth, setShipCustomMonth] = useState(new Date().getMonth());
+            const [shipCustomYear, setShipCustomYear] = useState(new Date().getFullYear());
             const [editingShipping, setEditingShipping] = useState(null);
             const [showLocaisModal, setShowLocaisModal] = useState(false);
             const [showNewProductModal, setShowNewProductModal] = useState(null); // índice do produto
@@ -6534,16 +6544,18 @@
             };
 
             // Filtrar despachos
-            const filteredShippings = shippings
-                .filter(s => {
+            const filteredShippings = useMemo(() => {
+                let items = filterByPeriod(shippings, shipPeriodFilter, shipCustomMonth, shipCustomYear, 'date');
+                items = items.filter(s => {
                     const search = searchTerm.toLowerCase();
                     const matchesSearch = (s.nfNumero || '').toLowerCase().includes(search) ||
                                          (s.cliente || '').toLowerCase().includes(search) ||
                                          (s.codigoRastreio || '').toLowerCase().includes(search);
                     const matchesStatus = statusFilter === 'all' || s.status === statusFilter;
                     return matchesSearch && matchesStatus;
-                })
-                .sort((a, b) => new Date(b.date) - new Date(a.date));
+                });
+                return items.sort((a, b) => new Date(b.date) - new Date(a.date));
+            }, [shippings, searchTerm, statusFilter, shipPeriodFilter, shipCustomMonth, shipCustomYear]);
 
             // Função auxiliar para extrair texto do XML (lida com namespaces)
             const getXmlText = (xml, selectors) => {
@@ -7187,12 +7199,12 @@
                                 </button>
                             </div>
 
-                            <div className="filter-tabs" style={{marginBottom: '16px'}}>
+                            <div className="filter-tabs" style={{marginBottom: '12px'}}>
                                 <button className={`filter-tab ${statusFilter === 'all' ? 'active' : ''}`} onClick={() => setStatusFilter('all')}>
                                     Todos ({shippings.length})
                                 </button>
                                 {Object.entries(statusList).map(([key, val]) => (
-                                    <button 
+                                    <button
                                         key={key}
                                         className={`filter-tab ${statusFilter === key ? 'active' : ''}`}
                                         onClick={() => setStatusFilter(key)}
@@ -7201,6 +7213,12 @@
                                     </button>
                                 ))}
                             </div>
+
+                            <PeriodFilter
+                                periodFilter={shipPeriodFilter} setPeriodFilter={setShipPeriodFilter}
+                                customMonth={shipCustomMonth} setCustomMonth={setShipCustomMonth}
+                                customYear={shipCustomYear} setCustomYear={setShipCustomYear}
+                            />
 
                             {filteredShippings.length === 0 ? (
                                 <div className="empty-state">
@@ -9671,6 +9689,83 @@
         }
 
         // ==========================================
+        // PERIOD FILTER (componente reutilizável)
+        // ==========================================
+        function PeriodFilter({ periodFilter, setPeriodFilter, customMonth, setCustomMonth, customYear, setCustomYear }) {
+            return (
+                <div style={{
+                    display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px',
+                    flexWrap: 'wrap', padding: '10px 14px', background: '#f9f9f9', borderRadius: '8px'
+                }}>
+                    <span style={{ fontSize: '13px', color: '#555', fontWeight: 500 }}>Per\u00edodo:</span>
+                    {[
+                        { value: '30', label: '30 dias' },
+                        { value: '60', label: '60 dias' },
+                        { value: '90', label: '90 dias' },
+                        { value: 'all', label: 'Todos' },
+                    ].map(opt => (
+                        <button
+                            key={opt.value}
+                            onClick={() => setPeriodFilter(opt.value)}
+                            style={{
+                                padding: '5px 12px', fontSize: '12px', borderRadius: '6px', cursor: 'pointer',
+                                border: periodFilter === opt.value ? '1px solid var(--accent-primary)' : '1px solid #ddd',
+                                background: periodFilter === opt.value ? 'var(--accent-primary)' : 'white',
+                                color: periodFilter === opt.value ? 'white' : '#333',
+                                fontWeight: periodFilter === opt.value ? 600 : 400,
+                            }}
+                        >
+                            {opt.label}
+                        </button>
+                    ))}
+                    <span style={{ color: '#ddd' }}>|</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <select
+                            value={customMonth}
+                            onChange={e => { setCustomMonth(parseInt(e.target.value)); setPeriodFilter('custom'); }}
+                            className="form-select"
+                            style={{ fontSize: '12px', padding: '5px 8px', minWidth: 'auto', width: 'auto' }}
+                        >
+                            {['Janeiro','Fevereiro','Mar\u00e7o','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+                                .map((m, i) => <option key={i} value={i}>{m}</option>)}
+                        </select>
+                        <select
+                            value={customYear}
+                            onChange={e => { setCustomYear(parseInt(e.target.value)); setPeriodFilter('custom'); }}
+                            className="form-select"
+                            style={{ fontSize: '12px', padding: '5px 8px', minWidth: 'auto', width: 'auto' }}
+                        >
+                            {[2024, 2025, 2026].map(y => <option key={y} value={y}>{y}</option>)}
+                        </select>
+                    </div>
+                </div>
+            );
+        }
+
+        // Função auxiliar: filtrar itens por período
+        function filterByPeriod(items, periodFilter, customMonth, customYear, dateField) {
+            if (periodFilter === 'all') return items;
+            if (periodFilter === 'custom') {
+                const startDate = new Date(customYear, customMonth, 1);
+                const endDate = new Date(customYear, customMonth + 1, 0, 23, 59, 59);
+                return items.filter(item => {
+                    const d = new Date(item[dateField]);
+                    return d >= startDate && d <= endDate;
+                });
+            }
+            const days = parseInt(periodFilter);
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() - days);
+            return items.filter(item => new Date(item[dateField]) >= startDate);
+        }
+
+        // Função auxiliar: formatar email de usuário
+        function formatUserEmail(email) {
+            if (!email) return '\u2014';
+            return email.split('@')[0];
+        }
+
+        // ==========================================
         // HISTORY
         // ==========================================
         function History({ entries, exits, products, onUpdateEntry, onDeleteEntry, onUpdateExit, onDeleteExit, isStockAdmin }) {
@@ -9680,29 +9775,45 @@
             const [deleteConfirm, setDeleteConfirm] = useState(null);
             const [editForm, setEditForm] = useState({});
             const [saving, setSaving] = useState(false);
-
-            const allMovements = [
-                ...entries.map(e => ({...e, movType: 'entry'})),
-                ...exits.map(e => ({...e, movType: 'exit'}))
-            ].sort((a, b) => new Date(b.date) - new Date(a.date));
+            const [periodFilter, setPeriodFilter] = useState('30');
+            const [customMonth, setCustomMonth] = useState(new Date().getMonth());
+            const [customYear, setCustomYear] = useState(new Date().getFullYear());
 
             const getProductName = (sku) => products.find(p => p.sku === sku)?.name || sku;
 
-            const filtered = allMovements.filter(m => {
-                const matchesType = filter === 'all' || m.movType === filter;
-                if (!searchTerm) return matchesType;
-                const search = searchTerm.toLowerCase();
-                const productName = getProductName(m.sku).toLowerCase();
-                const matchesSearch =
-                    productName.includes(search) ||
-                    (m.sku || '').toLowerCase().includes(search) ||
-                    (m.nf || '').toLowerCase().includes(search) ||
-                    (m.nfOrigem || '').toLowerCase().includes(search) ||
-                    (m.supplier || '').toLowerCase().includes(search) ||
-                    (m.client || '').toLowerCase().includes(search) ||
-                    (m.localEntrada || '').toLowerCase().includes(search);
-                return matchesType && matchesSearch;
-            });
+            const filtered = useMemo(() => {
+                let items = [
+                    ...entries.map(e => ({...e, movType: 'entry'})),
+                    ...exits.map(e => ({...e, movType: 'exit'}))
+                ];
+
+                // Filtro por período
+                items = filterByPeriod(items, periodFilter, customMonth, customYear, 'date');
+
+                // Filtro por tipo
+                if (filter !== 'all') {
+                    items = items.filter(m => m.movType === filter);
+                }
+
+                // Filtro por busca
+                if (searchTerm) {
+                    const search = searchTerm.toLowerCase();
+                    items = items.filter(m => {
+                        const productName = getProductName(m.sku).toLowerCase();
+                        return productName.includes(search) ||
+                            (m.sku || '').toLowerCase().includes(search) ||
+                            (m.nf || '').toLowerCase().includes(search) ||
+                            (m.nfOrigem || '').toLowerCase().includes(search) ||
+                            (m.supplier || '').toLowerCase().includes(search) ||
+                            (m.client || '').toLowerCase().includes(search) ||
+                            (m.localEntrada || '').toLowerCase().includes(search) ||
+                            (m.userId || '').toLowerCase().includes(search);
+                    });
+                }
+
+                items.sort((a, b) => new Date(b.date) - new Date(a.date));
+                return items;
+            }, [entries, exits, filter, searchTerm, periodFilter, customMonth, customYear]);
 
             const handleEdit = (m) => {
                 setEditForm({
@@ -9897,19 +10008,25 @@
                             )}
                         </div>
 
-                        <div className="filter-tabs">
+                        <div className="filter-tabs" style={{marginBottom: '12px'}}>
                             <button className={`filter-tab ${filter === 'all' ? 'active' : ''}`} onClick={() => setFilter('all')}>
-                                Todas ({allMovements.length})
+                                Todas
                             </button>
                             <button className={`filter-tab ${filter === 'entry' ? 'active' : ''}`} onClick={() => setFilter('entry')}>
-                                Entradas ({entries.length})
+                                Entradas
                             </button>
                             <button className={`filter-tab ${filter === 'exit' ? 'active' : ''}`} onClick={() => setFilter('exit')}>
-                                Saídas ({exits.length})
+                                Sa\u00eddas
                             </button>
                         </div>
 
-                        {searchTerm && (
+                        <PeriodFilter
+                            periodFilter={periodFilter} setPeriodFilter={setPeriodFilter}
+                            customMonth={customMonth} setCustomMonth={setCustomMonth}
+                            customYear={customYear} setCustomYear={setCustomYear}
+                        />
+
+                        {(searchTerm || periodFilter !== 'all') && (
                             <div style={{
                                 padding: '8px 12px',
                                 background: 'var(--accent-bg)',
@@ -9918,7 +10035,7 @@
                                 fontSize: '13px',
                                 color: 'var(--accent)'
                             }}>
-                                {filtered.length} resultado(s) para "{searchTerm}"
+                                {filtered.length} resultado(s){searchTerm ? ` para "${searchTerm}"` : ''}
                             </div>
                         )}
 
@@ -9939,6 +10056,7 @@
                                             <th>Qtd</th>
                                             <th>Local</th>
                                             <th>Info</th>
+                                            <th>Usu\u00e1rio</th>
                                             {isStockAdmin && <th style={{width: '80px'}}></th>}
                                         </tr>
                                     </thead>
@@ -9977,7 +10095,10 @@
                                                 <td style={{fontSize: '12px', color: 'var(--text-muted)'}}>
                                                     {m.supplier || m.client || '-'}
                                                     {m.nf && <div style={{marginTop: '2px'}}><strong>NF: {m.nf}</strong></div>}
-                                                    {m.nfOrigem && <div style={{marginTop: '2px', color: 'var(--warning)'}}>Saída da NF: {m.nfOrigem}</div>}
+                                                    {m.nfOrigem && <div style={{marginTop: '2px', color: 'var(--warning)'}}>Sa\u00edda da NF: {m.nfOrigem}</div>}
+                                                </td>
+                                                <td style={{fontSize: '12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap'}}>
+                                                    {formatUserEmail(m.userId)}
                                                 </td>
                                                 {isStockAdmin && (<td>
                                                     <div style={{display: 'flex', gap: '4px'}}>
@@ -10026,6 +10147,9 @@
             });
             const [syncProgress, setSyncProgress] = useState(null);
             const [syncLock, setSyncLock] = useState(false);
+            const [histPeriodFilter, setHistPeriodFilter] = useState('30');
+            const [histCustomMonth, setHistCustomMonth] = useState(new Date().getMonth());
+            const [histCustomYear, setHistCustomYear] = useState(new Date().getFullYear());
             const [nfeDateFrom, setNfeDateFrom] = useState('');
             const [nfeDateTo, setNfeDateTo] = useState('');
             const [nfeNumber, setNfeNumber] = useState('');
@@ -10605,7 +10729,10 @@
                     {/* NF-e TAB removida — funcionalidade integrada em Entrada/Saída */}
 
                     {/* === HISTORY TAB === */}
-                    {activeSection === 'history' && (
+                    {activeSection === 'history' && (() => {
+                        const filteredLogs = filterByPeriod(syncLogs, histPeriodFilter, histCustomMonth, histCustomYear, 'started_at')
+                            .sort((a, b) => new Date(b.started_at) - new Date(a.started_at));
+                        return (
                         <div>
                             <div style={{display: 'flex', justifyContent: 'flex-end', marginBottom: '16px'}}>
                                 <button className="btn btn-secondary" onClick={loadSyncLogs}>
@@ -10614,11 +10741,17 @@
                                 </button>
                             </div>
 
-                            {syncLogs.length === 0 ? (
+                            <PeriodFilter
+                                periodFilter={histPeriodFilter} setPeriodFilter={setHistPeriodFilter}
+                                customMonth={histCustomMonth} setCustomMonth={setHistCustomMonth}
+                                customYear={histCustomYear} setCustomYear={setHistCustomYear}
+                            />
+
+                            {filteredLogs.length === 0 ? (
                                 <div style={{...cardStyle, textAlign: 'center', padding: '48px 24px'}}>
                                     <Icon name="empty" size={32} style={{color: 'var(--text-muted)', marginBottom: '12px'}} />
                                     <div style={{fontWeight: '600', fontSize: '14px', marginBottom: '4px'}}>Nenhum registro</div>
-                                    <div style={{fontSize: '13px', color: 'var(--text-muted)'}}>Os registros de sincronização aparecerão aqui.</div>
+                                    <div style={{fontSize: '13px', color: 'var(--text-muted)'}}>Os registros de sincroniza\u00e7\u00e3o aparecer\u00e3o aqui.</div>
                                 </div>
                             ) : (
                                 <div className="table-container" style={{border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', overflow: 'hidden'}}>
@@ -10629,13 +10762,13 @@
                                                 <th>Status</th>
                                                 <th>Itens</th>
                                                 <th>Mensagem</th>
-                                                <th>Início</th>
+                                                <th>In\u00edcio</th>
                                                 <th>Fim</th>
                                                 <th style={{width: '50px'}}></th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {syncLogs.map(log => (
+                                            {filteredLogs.map(log => (
                                                 <tr key={log.id}>
                                                     <td>
                                                         <span className={`badge ${log.type === 'products' ? 'badge-info' : log.type === 'stock' ? 'badge-success' : 'badge-purple'}`} style={log.type === 'nfe' ? {background: 'var(--purple-bg)', color: 'var(--purple)'} : {}}>
@@ -10679,7 +10812,8 @@
                                 </div>
                             )}
                         </div>
-                    )}
+                        );
+                    })()}
                 </div>
             );
         }
