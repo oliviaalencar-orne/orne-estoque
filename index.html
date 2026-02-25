@@ -2639,7 +2639,7 @@
             }, [user, isStockAdmin]);
 
             const addExit = useCallback(async (exit) => {
-                if (!isStockAdmin) { alert('Sem permissão para esta ação'); return; }
+                if (!isStockAdmin) { alert('Sem permissão para esta ação'); return null; }
                 const newRecord = {
                     type: exit.type, sku: exit.sku, quantity: exit.quantity,
                     client: exit.client || '', nf: exit.nf || '',
@@ -2651,11 +2651,14 @@
                 if (error) throw error;
                 // Atualizar state IMEDIATAMENTE sem esperar Realtime
                 if (data) {
+                    const mappedExit = mapExitFromDB(data);
                     setExits(prev => {
                         if (prev.find(e => e.id === data.id)) return prev;
-                        return [...prev, mapExitFromDB(data)];
+                        return [...prev, mappedExit];
                     });
+                    return mappedExit;
                 }
+                return null;
             }, [user, isStockAdmin]);
 
             const updateEntry = async (entryId, data) => {
@@ -6507,7 +6510,7 @@
                     setBatchProgress({ current: i + 1, total: selecionados.length });
                     
                     try {
-                        await onAdd({
+                        const savedShipping = await onAdd({
                             nfNumero: despacho.nfNumero,
                             cliente: despacho.cliente,
                             destino: despacho.destino,
@@ -6521,6 +6524,45 @@
                             status: 'PENDENTE'
                         });
                         salvos++;
+
+                        // Criar saídas de estoque para produtos vinculados
+                        const shippingId = savedShipping?.id || null;
+                        const produtosComExit = [...despacho.produtos];
+                        let temExit = false;
+                        for (let j = 0; j < despacho.produtos.length; j++) {
+                            const prod = despacho.produtos[j];
+                            if (prod.produtoEstoque && prod.baixarEstoque) {
+                                try {
+                                    const exitResult = await onAddExit({
+                                        type: 'VENDA',
+                                        sku: prod.produtoEstoque.sku,
+                                        quantity: prod.quantidade,
+                                        client: despacho.cliente || '',
+                                        nf: despacho.nfNumero || '',
+                                        nfOrigem: (prod.nfOrigem && prod.nfOrigem !== 'Sem NF' && prod.nfOrigem !== 'SEM_NF')
+                                            ? prod.nfOrigem : null,
+                                    });
+                                    if (exitResult?.id) {
+                                        produtosComExit[j] = {
+                                            ...produtosComExit[j],
+                                            exitId: exitResult.id,
+                                            baixouEstoque: true,
+                                        };
+                                        temExit = true;
+                                    }
+                                } catch (exitErr) {
+                                    console.error('Erro ao registrar saída de estoque:', prod.produtoEstoque.sku, exitErr);
+                                }
+                            }
+                        }
+                        // Atualizar JSONB do shipping com exitIds
+                        if (temExit && shippingId) {
+                            try {
+                                await onUpdate(shippingId, { produtos: produtosComExit });
+                            } catch (updateErr) {
+                                console.error('Erro ao atualizar JSONB com exitId:', despacho.nfNumero, updateErr);
+                            }
+                        }
                     } catch (err) {
                         console.error('Erro ao salvar:', despacho.nfNumero, err);
                         erros++;
@@ -7073,10 +7115,47 @@
                         status: 'PENDENTE'
                     };
 
-                    await onAdd(shippingData);
+                    const savedShipping = await onAdd(shippingData);
+                    const shippingId = savedShipping?.id || null;
 
                     // Se marcado para baixar do estoque, registrar saídas
-                    if (form.baixarEstoque) {
+                    if (form.baixarEstoque && shippingId) {
+                        const produtosComExit = [...shippingData.produtos];
+                        let temExit = false;
+                        for (let i = 0; i < form.produtos.length; i++) {
+                            const prod = form.produtos[i];
+                            if (prod.produtoEstoque && prod.baixarEstoque) {
+                                try {
+                                    const exitResult = await onAddExit({
+                                        type: 'VENDA',
+                                        sku: prod.produtoEstoque.sku,
+                                        quantity: prod.quantidade,
+                                        client: form.cliente,
+                                        nf: form.nfNumero,
+                                        nfOrigem: prod.nfOrigem || null,
+                                    });
+                                    if (exitResult?.id) {
+                                        produtosComExit[i] = {
+                                            ...produtosComExit[i],
+                                            exitId: exitResult.id,
+                                            baixouEstoque: true,
+                                        };
+                                        temExit = true;
+                                    }
+                                } catch (exitErr) {
+                                    console.error('Erro exit:', prod.produtoEstoque.sku, exitErr);
+                                }
+                            }
+                        }
+                        if (temExit) {
+                            try {
+                                await onUpdate(shippingId, { produtos: produtosComExit });
+                            } catch (updateErr) {
+                                console.error('Erro ao atualizar JSONB com exitId:', updateErr);
+                            }
+                        }
+                    } else if (form.baixarEstoque) {
+                        // Fallback: shipping sem ID retornado — criar exits sem linkage
                         for (const prod of form.produtos) {
                             if (prod.produtoEstoque && prod.baixarEstoque) {
                                 await onAddExit({
@@ -7085,8 +7164,7 @@
                                     quantity: prod.quantidade,
                                     client: form.cliente,
                                     nf: form.nfNumero,
-                                    nfOrigem: prod.nfOrigem || null, // NF de entrada de onde o produto está saindo
-                                    despachoId: shippingData.id || null
+                                    nfOrigem: prod.nfOrigem || null,
                                 });
                             }
                         }
@@ -9227,6 +9305,72 @@
             const isEntry = mode === 'entry' || (mode === 'both' && nfeData?.tipo === 'E');
             const isExit = mode === 'exit' || (mode === 'both' && nfeData?.tipo === 'S');
 
+            // Normalizar chave de NF: null, '', 'Sem NF', 'SEM_NF' → 'SEM_NF'
+            const normalizeNfKey = (nf) => {
+                if (!nf || nf === 'Sem NF' || nf === 'SEM_NF') return 'SEM_NF';
+                return nf;
+            };
+
+            // Calcular estoque disponível por NF de entrada (FIFO)
+            const getEstoquePorNF = (produtoSku) => {
+                if (!produtoSku || !entries || !exits) return [];
+
+                const entradasProduto = entries
+                    .filter(e => e.sku === produtoSku)
+                    .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                const saidasProduto = exits.filter(e => e.sku === produtoSku);
+
+                const saidasComNF = saidasProduto.filter(s =>
+                    s.nfOrigem && s.nfOrigem !== 'Sem NF' && s.nfOrigem !== 'SEM_NF'
+                );
+                const saidasSemNF = saidasProduto.filter(s =>
+                    !s.nfOrigem || s.nfOrigem === 'Sem NF' || s.nfOrigem === 'SEM_NF'
+                );
+
+                const porNF = {};
+                entradasProduto.forEach(e => {
+                    const nfKey = normalizeNfKey(e.nf);
+                    if (!porNF[nfKey]) {
+                        porNF[nfKey] = {
+                            nf: e.nf || 'Sem NF',
+                            entradas: 0,
+                            saidas: 0,
+                            data: e.date,
+                            localEntrada: e.localEntrada || '-'
+                        };
+                    }
+                    porNF[nfKey].entradas += (e.quantity || 0);
+                });
+
+                saidasComNF.forEach(s => {
+                    const nfKey = normalizeNfKey(s.nfOrigem);
+                    if (porNF[nfKey]) {
+                        porNF[nfKey].saidas += (s.quantity || 0);
+                    }
+                });
+
+                let saidasRestantes = saidasSemNF.reduce((sum, s) => sum + (s.quantity || 0), 0);
+                const nfKeys = Object.keys(porNF).sort((a, b) =>
+                    new Date(porNF[a].data) - new Date(porNF[b].data)
+                );
+
+                for (const nfKey of nfKeys) {
+                    if (saidasRestantes <= 0) break;
+                    const disponivel = porNF[nfKey].entradas - porNF[nfKey].saidas;
+                    const descontar = Math.min(disponivel, saidasRestantes);
+                    porNF[nfKey].saidas += descontar;
+                    saidasRestantes -= descontar;
+                }
+
+                return Object.values(porNF)
+                    .map(item => ({
+                        ...item,
+                        quantidade: item.entradas - item.saidas
+                    }))
+                    .filter(item => item.quantidade > 0);
+            };
+
             const fetchNFe = async () => {
                 if (!nfNumber.trim()) { setError('Informe o número da NF.'); return; }
                 setLoading(true);
@@ -9268,6 +9412,7 @@
                         const alreadyInExits = exits.some(e => e.nf === nfStr && (e.sku === item.codigo || (matched && e.sku === matched.sku)));
                         const alreadyRegistered = alreadyInEntries || alreadyInExits;
 
+                        const isExitNfe = mode === 'exit' || (mode === 'both' && nfe.tipo === 'S');
                         return {
                             selected: !alreadyRegistered,
                             linkedSku: matched?.sku || '',
@@ -9277,6 +9422,8 @@
                             observations: '',
                             category: matched?.category || '',
                             alreadyRegistered,
+                            baixarEstoque: !!matched && isExitNfe,
+                            nfOrigem: '',
                         };
                     });
                     setItemStates(states);
@@ -9293,7 +9440,12 @@
 
             const handleVincular = (idx, sku) => {
                 const prod = products.find(p => (p.sku || '').toLowerCase() === (sku || '').toLowerCase());
-                updateItemState(idx, { linkedSku: sku, linkedProduct: prod || null });
+                updateItemState(idx, {
+                    linkedSku: sku,
+                    linkedProduct: prod || null,
+                    baixarEstoque: !!prod && isExit,
+                    nfOrigem: '',
+                });
                 setShowVincularModal(null);
                 setVincularSearch('');
             };
@@ -9317,6 +9469,8 @@
                     updateItemState(idx, {
                         linkedSku: newProductData.sku.trim(),
                         linkedProduct: { name: newProductData.name.trim(), sku: newProductData.sku.trim() },
+                        baixarEstoque: isExit,
+                        nfOrigem: '',
                     });
                     setShowNewProductModal(null);
                     setNewProductData({ name: '', sku: '', ean: '', category: '', observations: '' });
@@ -9343,6 +9497,20 @@
                     return;
                 }
 
+                // Validar quantidades vs estoque disponível por NF de origem
+                if (isExit) {
+                    for (const s of selectedItems) {
+                        if (s.baixarEstoque && s.nfOrigem) {
+                            const nfsDisponiveis = getEstoquePorNF(s.linkedSku);
+                            const nfSel = nfsDisponiveis.find(n => n.nf === s.nfOrigem);
+                            if (nfSel && s.quantity > nfSel.quantidade) {
+                                setError(`Produto ${s.linkedSku}: quantidade (${s.quantity}) excede disponível na NF ${s.nfOrigem} (${nfSel.quantidade}un)`);
+                                return;
+                            }
+                        }
+                    }
+                }
+
                 setSaving(true);
                 setError('');
                 let count = 0;
@@ -9360,13 +9528,15 @@
                                 category: s.category || '',
                             });
                         } else {
+                            const nfOrigemValue = (s.baixarEstoque && s.nfOrigem && s.nfOrigem !== 'Sem NF' && s.nfOrigem !== 'SEM_NF')
+                                ? s.nfOrigem : null;
                             await onSubmitExit({
                                 type: 'VENDA',
                                 sku: s.linkedSku,
                                 quantity: s.quantity,
                                 client: nfeData.cliente?.nome || '',
                                 nf: String(nfeData.numero),
-                                nfOrigem: '',
+                                nfOrigem: nfOrigemValue,
                             });
                         }
                         count++;
@@ -9437,6 +9607,7 @@
                                             <th>Produto NF</th>
                                             <th>Produto Estoque</th>
                                             <th style={{width: '80px'}}>Qtd</th>
+                                            {isExit && <th style={{minWidth: '140px'}}>Estoque</th>}
                                             {(isEntry || (mode === 'both' && nfeData.tipo === 'E')) && <th>Local</th>}
                                             {(isEntry || (mode === 'both' && nfeData.tipo === 'E')) && <th>Categoria</th>}
                                             <th>Obs.</th>
@@ -9497,6 +9668,71 @@
                                                             onChange={e => updateItemState(idx, { quantity: parseInt(e.target.value) || 0 })}
                                                             style={{width: '70px', padding: '4px 8px', fontSize: '13px'}} />
                                                     </td>
+                                                    {isExit && (
+                                                        <td>
+                                                            {st.linkedProduct ? (
+                                                                <div>
+                                                                    <label style={{display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', cursor: 'pointer', marginBottom: '4px'}}>
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            checked={!!st.baixarEstoque}
+                                                                            onChange={e => updateItemState(idx, {
+                                                                                baixarEstoque: e.target.checked,
+                                                                                nfOrigem: e.target.checked ? st.nfOrigem : ''
+                                                                            })}
+                                                                        />
+                                                                        Baixar estoque
+                                                                    </label>
+                                                                    {st.baixarEstoque && (() => {
+                                                                        const nfsDisponiveis = getEstoquePorNF(st.linkedSku);
+                                                                        return nfsDisponiveis.length > 0 ? (
+                                                                            <div>
+                                                                                <select
+                                                                                    className="form-select"
+                                                                                    value={st.nfOrigem || ''}
+                                                                                    onChange={e => updateItemState(idx, { nfOrigem: e.target.value })}
+                                                                                    style={{
+                                                                                        fontSize: '10px',
+                                                                                        padding: '4px 6px',
+                                                                                        minWidth: '100px',
+                                                                                        background: st.nfOrigem ? 'var(--accent-bg)' : 'white'
+                                                                                    }}
+                                                                                >
+                                                                                    <option value="">Selecionar NF...</option>
+                                                                                    {nfsDisponiveis.map((nf, nfIdx) => (
+                                                                                        <option
+                                                                                            key={nfIdx}
+                                                                                            value={nf.nf}
+                                                                                            disabled={nf.quantidade < st.quantity}
+                                                                                        >
+                                                                                            NF {nf.nf} ({nf.quantidade}un)
+                                                                                        </option>
+                                                                                    ))}
+                                                                                </select>
+                                                                                {st.nfOrigem && (() => {
+                                                                                    const nfSel = nfsDisponiveis.find(n => n.nf === st.nfOrigem);
+                                                                                    if (nfSel && st.quantity > nfSel.quantidade) {
+                                                                                        return (
+                                                                                            <div style={{fontSize: '10px', color: 'var(--danger)', marginTop: '2px'}}>
+                                                                                                Qtd excede disponível ({nfSel.quantidade}un)
+                                                                                            </div>
+                                                                                        );
+                                                                                    }
+                                                                                    return null;
+                                                                                })()}
+                                                                            </div>
+                                                                        ) : (
+                                                                            <span style={{fontSize: '10px', color: 'var(--danger)'}}>
+                                                                                Sem estoque registrado
+                                                                            </span>
+                                                                        );
+                                                                    })()}
+                                                                </div>
+                                                            ) : (
+                                                                <span style={{fontSize: '10px', color: 'var(--text-muted)', fontStyle: 'italic'}}>-</span>
+                                                            )}
+                                                        </td>
+                                                    )}
                                                     {(isEntry || (mode === 'both' && nfeData.tipo === 'E')) && (
                                                         <td>
                                                             <select className="form-select"
