@@ -7089,6 +7089,26 @@
                 }
             };
 
+            // Callback para quando TinyNFeImport prepara dados para despacho
+            const handlePrepareShippingFromTiny = (data) => {
+                setForm(prevForm => ({
+                    ...prevForm,
+                    nfNumero: data.nfNumero || '',
+                    cliente: data.cliente || '',
+                    destino: data.destino || '',
+                    produtos: data.produtos || [],
+                    codigoRastreio: '',
+                    linkRastreio: '',
+                }));
+                setNfData({
+                    nfNumero: data.nfNumero || '',
+                    cliente: data.cliente || '',
+                    destino: data.destino || '',
+                    produtos: data.produtos || [],
+                });
+                setActiveView('register');
+            };
+
             // Registrar despacho
             const handleSubmit = async (e) => {
                 e.preventDefault();
@@ -7885,6 +7905,7 @@
                             onAddCategory={onAddCategory}
                             onUpdateCategory={onUpdateCategory}
                             onDeleteCategory={onDeleteCategory}
+                            onPrepareShipping={handlePrepareShippingFromTiny}
                         />
                     )}
 
@@ -9286,7 +9307,7 @@
         // ==========================================
         // TINY NF-e IMPORT (Buscar → Revisar → Confirmar)
         // ==========================================
-        function TinyNFeImport({ products, onSubmitEntry, onSubmitExit, onAddProduct, categories, locaisOrigem, onUpdateLocais, entries, exits, stock, mode, onAddCategory, onUpdateCategory, onDeleteCategory }) {
+        function TinyNFeImport({ products, onSubmitEntry, onSubmitExit, onAddProduct, categories, locaisOrigem, onUpdateLocais, entries, exits, stock, mode, onAddCategory, onUpdateCategory, onDeleteCategory, onPrepareShipping }) {
             const [nfNumber, setNfNumber] = useState('');
             const [loading, setLoading] = useState(false);
             const [error, setError] = useState('');
@@ -9509,6 +9530,36 @@
                             }
                         }
                     }
+                }
+
+                // Se tem callback de preparar shipping (contexto Despachos),
+                // desviar para o formulário de despacho em vez de criar exits direto
+                if (onPrepareShipping && isExit) {
+                    const produtos = selectedItems.map(s => ({
+                        sku: s.item.codigo || '',
+                        nome: s.item.descricao || '',
+                        quantidade: s.quantity,
+                        ean: s.item.ean || '',
+                        baixarEstoque: !!s.baixarEstoque,
+                        nfOrigem: s.nfOrigem || '',
+                        produtoEstoque: s.linkedProduct || null,
+                        autoVinculado: !!s.linkedProduct,
+                    }));
+
+                    onPrepareShipping({
+                        nfNumero: String(nfeData.numero || ''),
+                        cliente: nfeData.cliente?.nome || '',
+                        destino: '',
+                        produtos: produtos,
+                    });
+
+                    // Limpar estado do import
+                    setNfeData(null);
+                    setItemStates([]);
+                    setNfNumber('');
+                    setSuccess('NF importada! Preencha os dados do despacho.');
+                    setTimeout(() => setSuccess(''), 5000);
+                    return;
                 }
 
                 setSaving(true);
