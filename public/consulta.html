@@ -1,0 +1,2677 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0A0A0A" media="(prefers-color-scheme: dark)">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>Orne Decor - Consulta de Estoque</title>
+    
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    
+    <!-- React -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Inter Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            /* Backgrounds */
+            --bg-primary: #FFFFFF;
+            --bg-secondary: #FAFAFA;
+            --bg-tertiary: #F5F5F5;
+            --bg-hover: #F0F0F0;
+            --bg-active: #E8E8E8;
+            --bg-elevated: #FFFFFF;
+
+            /* Text */
+            --text-primary: #171717;
+            --text-secondary: #525252;
+            --text-tertiary: #A3A3A3;
+            --text-disabled: #D4D4D4;
+            --text-heading: #000000;
+
+            /* Borders */
+            --border-default: #E5E5E5;
+            --border-subtle: #EBEBEB;
+            --border-strong: #D4D4D4;
+
+            /* Accents */
+            --accent-primary: #3B6ECC;
+            --accent-primary-subtle: rgba(59, 110, 204, 0.08);
+            --accent-success: #3D8B5F;
+            --accent-success-subtle: rgba(61, 139, 95, 0.08);
+            --accent-warning: #C4873B;
+            --accent-warning-subtle: rgba(196, 135, 59, 0.08);
+            --accent-error: #C45151;
+            --accent-error-subtle: rgba(196, 81, 81, 0.08);
+            --accent-info: #5B8DB8;
+            --accent-info-subtle: rgba(91, 141, 184, 0.08);
+
+            /* Surfaces */
+            --surface-overlay: rgba(0, 0, 0, 0.4);
+            --surface-card: #FFFFFF;
+            --surface-input: #FFFFFF;
+
+            /* Shadows */
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+            --shadow: 0 2px 4px rgba(0,0,0,0.06);
+            --shadow-md: 0 4px 8px rgba(0,0,0,0.08);
+            --shadow-lg: 0 8px 16px rgba(0,0,0,0.08);
+            --shadow-xs: 0 1px 2px rgba(0,0,0,0.04);
+            --shadow-xl: 0 12px 24px rgba(0,0,0,0.1);
+            --shadow-card: 0 0 0 1px var(--border-default);
+            --shadow-card-hover: 0 0 0 1px var(--border-strong);
+
+            /* Radii */
+            --radius-xs: 4px;
+            --radius-sm: 6px;
+            --radius: 8px;
+            --radius-lg: 10px;
+            --radius-xl: 12px;
+            --radius-2xl: 16px;
+
+            /* Transition */
+            --transition: all 0.15s ease;
+            --transition-slow: all 0.25s ease;
+
+            /* Legacy aliases */
+            --bg-dark: #0A0A0A;
+            --bg-darker: #000000;
+            --text-muted: var(--text-tertiary);
+            --text-light: var(--text-disabled);
+            --border: var(--border-default);
+            --border-light: var(--border-subtle);
+            --border-focus: var(--accent-primary);
+            --accent: var(--accent-primary);
+            --accent-light: var(--accent-primary-subtle);
+            --accent-bg: var(--accent-primary-subtle);
+            --success: var(--accent-success);
+            --success-light: var(--accent-success-subtle);
+            --success-dark: var(--accent-success);
+            --warning: var(--accent-warning);
+            --warning-light: var(--accent-warning-subtle);
+            --warning-dark: var(--accent-warning);
+            --danger: var(--accent-error);
+            --danger-light: var(--accent-error-subtle);
+            --danger-dark: var(--accent-error);
+            --info: var(--accent-info);
+            --info-light: var(--accent-info-subtle);
+
+            /* Nav */
+            --nav-bg: rgba(255, 255, 255, 0.85);
+            --nav-border: #E5E5E5;
+            --nav-icon-default: #A3A3A3;
+            --nav-icon-active: #171717;
+
+            /* Categories */
+            --cat-green: #3D8B5F;
+            --cat-blue: #3B6ECC;
+            --cat-purple: #7928CA;
+            --cat-pink: #C45186;
+            --cat-orange: #C4873B;
+            --cat-teal: #0D9488;
+            --cat-gray: #525252;
+        }
+
+        /* ===================== DARK MODE ===================== */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-primary: #0A0A0A;
+                --bg-secondary: #111111;
+                --bg-tertiary: #171717;
+                --bg-hover: #1A1A1A;
+                --bg-active: #222222;
+                --bg-elevated: #171717;
+
+                --text-primary: #EDEDED;
+                --text-secondary: #A3A3A3;
+                --text-tertiary: #737373;
+                --text-disabled: #404040;
+                --text-heading: #FFFFFF;
+
+                --border-default: #262626;
+                --border-subtle: #1F1F1F;
+                --border-strong: #333333;
+
+                --accent-primary: #5B8DEF;
+                --accent-primary-subtle: rgba(91, 141, 239, 0.12);
+                --accent-success: #5AAE7A;
+                --accent-success-subtle: rgba(90, 174, 122, 0.12);
+                --accent-warning: #D9A054;
+                --accent-warning-subtle: rgba(217, 160, 84, 0.12);
+                --accent-error: #D97070;
+                --accent-error-subtle: rgba(217, 112, 112, 0.12);
+                --accent-info: #7AAFDB;
+                --accent-info-subtle: rgba(122, 175, 219, 0.12);
+
+                --surface-overlay: rgba(0, 0, 0, 0.6);
+                --surface-card: #111111;
+                --surface-input: #111111;
+
+                --shadow-sm: none;
+                --shadow: none;
+                --shadow-md: none;
+                --shadow-lg: none;
+                --shadow-xs: none;
+                --shadow-xl: none;
+                --shadow-card: 0 0 0 1px var(--border-default);
+                --shadow-card-hover: 0 0 0 1px var(--border-strong);
+
+                --nav-bg: rgba(10, 10, 10, 0.88);
+                --nav-border: #262626;
+                --nav-icon-default: #6B6B6B;
+                --nav-icon-active: #EDEDED;
+
+                --cat-green: #5AAE7A;
+                --cat-blue: #5B8DEF;
+                --cat-purple: #A855F7;
+                --cat-pink: #D97090;
+                --cat-orange: #D9A054;
+                --cat-teal: #2DD4BF;
+                --cat-gray: #A1A1A1;
+            }
+        }
+
+        .icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .icon svg { width: 100%; height: 100%; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.5;
+            font-size: 14px;
+            -webkit-font-smoothing: antialiased;
+            -webkit-tap-highlight-color: transparent;
+            padding-left: env(safe-area-inset-left);
+            padding-right: env(safe-area-inset-right);
+        }
+
+        /* Focus & Accessibility */
+        :focus-visible {
+            outline: 2px solid var(--accent-primary);
+            outline-offset: 2px;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* ===================== LAYOUT ===================== */
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 240px;
+            background: #0A0A0A;
+            color: white;
+            padding: 20px 0;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            border-right: 1px solid #1A1A1A;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .logo-container {
+            padding: 0 20px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            margin-bottom: 8px;
+            text-align: center;
+        }
+        .logo {
+            width: 100%;
+            max-width: 90px;
+            filter: brightness(0) invert(1);
+            margin: 0 auto;
+            display: block;
+        }
+
+        .sidebar-badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.15);
+            color: rgba(255,255,255,0.7);
+            font-size: 9px;
+            padding: 2px 6px;
+            border-radius: 999px;
+            margin-left: 6px;
+            font-weight: 500;
+        }
+
+        .nav-menu { list-style: none; padding: 0 12px; flex: 1; }
+        .nav-item { margin-bottom: 1px; }
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            color: rgba(255,255,255,0.5);
+            text-decoration: none;
+            border-radius: var(--radius-sm);
+            font-weight: 400;
+            font-size: 13px;
+            transition: var(--transition);
+            cursor: pointer;
+        }
+        .nav-link:hover {
+            background: rgba(255,255,255,0.06);
+            color: rgba(255,255,255,0.9);
+        }
+        .nav-link.active {
+            background: rgba(255,255,255,0.1);
+            color: #FFFFFF;
+            font-weight: 500;
+        }
+
+        .nav-icon {
+            width: 18px;
+            height: 18px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: currentColor;
+            flex-shrink: 0;
+        }
+        .nav-icon svg { width: 16px; height: 16px; }
+
+        .main-content {
+            flex: 1;
+            margin-left: 240px;
+            padding: 24px 28px;
+            max-width: calc(100% - 240px);
+        }
+
+        /* ===================== CARDS ===================== */
+        .card {
+            background: var(--surface-card);
+            border-radius: var(--radius-xl);
+            padding: 24px;
+            margin-bottom: 16px;
+            border: 1px solid var(--border-default);
+            box-shadow: none;
+        }
+
+        .card:hover { border-color: var(--border-strong); }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            letter-spacing: -0.1px;
+        }
+
+        .card-title-icon {
+            width: 16px;
+            height: 16px;
+            display: inline-flex;
+            color: var(--text-secondary);
+        }
+
+        /* ===================== STATS ===================== */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 20px;
+            margin-bottom: 28px;
+        }
+
+        .stat-card {
+            background: var(--surface-card);
+            border-radius: var(--radius-lg);
+            padding: 16px;
+            border: 1px solid var(--border-default);
+            box-shadow: none;
+        }
+
+        .stat-card-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+
+        .stat-card-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: -0.5px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .stat-card-subtitle {
+            font-size: 11px;
+            color: var(--text-tertiary);
+            margin-top: 4px;
+        }
+
+        /* ===================== STAT CARD VARIANTS ===================== */
+        .stat-card.accent {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-default);
+            color: var(--text-primary);
+        }
+        .stat-card.accent .stat-label { color: var(--text-tertiary); }
+        .stat-card.accent .stat-value { color: var(--text-primary); }
+        .stat-card.accent .stat-icon { background: var(--bg-tertiary); }
+
+        .stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .stat-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius);
+            background: var(--bg-tertiary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: var(--text-secondary);
+        }
+
+        .stat-icon.green { background: var(--accent-success-subtle); color: var(--accent-success); }
+        .stat-icon.red { background: var(--accent-error-subtle); color: var(--accent-error); }
+        .stat-icon.yellow { background: var(--accent-warning-subtle); color: var(--accent-warning); }
+        .stat-icon.blue { background: var(--accent-info-subtle); color: var(--accent-info); }
+        .stat-icon.purple { background: rgba(123, 110, 237, 0.1); color: #7B6EED; }
+
+        .stat-content { margin-top: auto; }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.1;
+            margin-bottom: 2px;
+            letter-spacing: -0.5px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: var(--text-tertiary);
+            font-weight: 500;
+        }
+
+        .stat-card.warning { border-left: 3px solid var(--accent-warning); }
+        .stat-card.warning .stat-value { color: var(--text-primary); }
+        .stat-card.warning .stat-icon { background: var(--accent-warning-subtle); }
+
+        .stat-card.danger { border-left: 3px solid var(--accent-error); }
+        .stat-card.danger .stat-value { color: var(--text-primary); }
+        .stat-card.danger .stat-icon { background: var(--accent-error-subtle); }
+
+        /* ===================== CATEGORY CARDS ===================== */
+        .category-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 12px;
+        }
+
+        .category-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+            padding: 16px;
+            text-align: center;
+            transition: var(--transition);
+        }
+        .category-card:hover { border-color: var(--border-strong); }
+
+        .category-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius);
+            background: var(--bg-tertiary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            margin: 0 auto 10px;
+        }
+
+        .category-name { font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
+        .category-count { font-size: 22px; font-weight: 700; color: var(--text-primary); margin-bottom: 2px; font-variant-numeric: tabular-nums; }
+        .category-meta { font-size: 12px; color: var(--text-tertiary); font-weight: 500; }
+        .category-alert {
+            font-size: 12px;
+            color: var(--accent-warning);
+            background: var(--accent-warning-subtle);
+            padding: 4px 8px;
+            border-radius: var(--radius-sm);
+            margin-top: 8px;
+            display: inline-block;
+            font-weight: 600;
+        }
+
+        /* ===================== DASHBOARD GRID ===================== */
+        .dashboard-main-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        /* ===================== PERIOD TOGGLE ===================== */
+        .period-toggle { display: inline-flex; gap: 4px; background: var(--bg-tertiary); border-radius: var(--radius); padding: 3px; }
+        .period-btn { padding: 5px 12px; border: none; background: transparent; border-radius: var(--radius-sm); font-size: 12px; font-weight: 500; color: var(--text-tertiary); cursor: pointer; transition: var(--transition); font-family: inherit; }
+        .period-btn:hover { color: var(--text-secondary); }
+        .period-btn.active { background: var(--surface-card); color: var(--text-primary); box-shadow: var(--shadow-xs); }
+
+        /* ===================== ANALYTICS GRID ===================== */
+        .dashboard-analytics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 16px; }
+
+        /* ===================== STOCK CATEGORY TABS ===================== */
+        .stock-category-tabs { display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; border-bottom: 1px solid var(--border-default); margin-bottom: 16px; }
+        .stock-category-tabs::-webkit-scrollbar { display: none; }
+        .stock-category-tab { display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; font-size: 13px; font-weight: 400; color: var(--text-secondary); background: transparent; border: none; border-bottom: 2px solid transparent; cursor: pointer; transition: var(--transition); white-space: nowrap; flex-shrink: 0; font-family: inherit; }
+        .stock-category-tab:hover { background: var(--bg-hover); color: var(--text-primary); }
+        .stock-category-tab.active { color: var(--text-primary); font-weight: 600; border-bottom-color: var(--accent-primary); }
+        .stock-category-tab .tab-count { font-weight: 400; color: var(--text-tertiary); font-size: 12px; }
+        .stock-category-tab.active .tab-count { color: var(--text-secondary); }
+
+        /* ===================== TABLES ===================== */
+        .table-container { overflow-x: auto; }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .table th,
+        .table td {
+            padding: 8px 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .table th {
+            background: var(--bg-tertiary);
+            font-weight: 600;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border-default);
+        }
+
+        .table tr:hover { background: var(--bg-tertiary); }
+
+        /* ===================== BADGES ===================== */
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .badge-success { background: var(--accent-success-subtle); color: var(--accent-success); border: 1px solid rgba(61, 139, 95, 0.2); }
+        .badge-warning { background: var(--accent-warning-subtle); color: var(--accent-warning); border: 1px solid rgba(196, 135, 59, 0.2); }
+        .badge-danger { background: var(--accent-error-subtle); color: var(--accent-error); border: 1px solid rgba(196, 81, 81, 0.2); }
+        .badge-info { background: var(--accent-info-subtle); color: var(--accent-info); border: 1px solid rgba(91, 141, 184, 0.2); }
+
+        /* ===================== SEARCH ===================== */
+        .search-box {
+            position: relative;
+            margin-bottom: 16px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 8px 12px 8px 32px;
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            transition: var(--transition);
+            background: var(--surface-input);
+            color: var(--text-primary);
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 1px var(--accent-primary);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-tertiary);
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+        }
+
+        /* ===================== FILTERS ===================== */
+        .filter-tabs {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+            border-bottom: 1px solid var(--border-default);
+        }
+
+        .filter-tab {
+            padding: 8px 14px;
+            border: none;
+            border-bottom: 2px solid transparent;
+            border-radius: 0;
+            background: transparent;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: var(--transition);
+            color: var(--text-tertiary);
+            margin-bottom: -1px;
+            font-family: inherit;
+        }
+
+        .filter-tab:hover { color: var(--text-primary); }
+
+        .filter-tab.active {
+            background: transparent;
+            color: var(--text-primary);
+            border-bottom-color: var(--text-primary);
+        }
+
+        /* ===================== EMPTY STATE ===================== */
+        .empty-state {
+            text-align: center;
+            padding: 48px 24px;
+            color: var(--text-tertiary);
+        }
+
+        .empty-state-icon {
+            margin-bottom: 16px;
+            color: var(--text-disabled);
+            display: flex;
+            justify-content: center;
+        }
+
+        /* ===================== PRODUCTS ===================== */
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 12px;
+        }
+
+        .product-card {
+            background: var(--surface-card);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+            padding: 16px;
+            transition: var(--transition);
+            position: relative;
+            box-shadow: none;
+        }
+        .product-card:hover { border-color: var(--border-strong); }
+        .product-card.low { border-left: 3px solid var(--accent-warning); }
+        .product-card.empty { border-left: 3px solid var(--accent-error); }
+
+        .product-actions {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            display: flex;
+            gap: 4px;
+            opacity: 0.5;
+            transition: opacity 0.15s;
+        }
+        .product-card:hover .product-actions { opacity: 1; }
+
+        .product-category-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .product-name {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+            line-height: 1.4;
+            padding-right: 70px;
+        }
+
+        .product-sku {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            margin-bottom: 4px;
+            font-family: monospace;
+        }
+
+        .product-obs {
+            font-size: 11px;
+            color: var(--text-secondary);
+            background: var(--bg-tertiary);
+            padding: 8px 10px;
+            border-radius: var(--radius-sm);
+            margin: 10px 0;
+            font-style: italic;
+            border-left: 2px solid var(--border-default);
+        }
+
+        .product-quantity {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin: 12px 0 6px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .product-status {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-ok { background: var(--accent-success-subtle); color: var(--accent-success); }
+        .status-low { background: var(--accent-warning-subtle); color: var(--accent-warning); }
+        .status-empty { background: var(--accent-error-subtle); color: var(--accent-error); }
+
+        .product-price { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+        .product-value { font-size: 13px; font-weight: 500; color: var(--text-primary); margin-top: 4px; }
+
+        /* ===================== MODAL ===================== */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: var(--surface-overlay);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: var(--surface-card);
+            border-radius: var(--radius-xl);
+            padding: 24px;
+            max-width: 600px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            border: 1px solid var(--border-default);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .modal-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            letter-spacing: -0.2px;
+            color: var(--text-heading);
+        }
+
+        .modal-subtitle {
+            color: var(--text-tertiary);
+            font-size: 13px;
+            font-weight: 400;
+            margin-bottom: 20px;
+        }
+
+        /* ===================== BUTTONS ===================== */
+        .btn {
+            padding: 8px 16px;
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            border: 1px solid transparent;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-family: inherit;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle, rgba(0,0,0,0.1) 10%, transparent 10.01%);
+            transform: scale(10);
+            opacity: 0;
+            transition: transform 0.4s, opacity 0.5s;
+        }
+        .btn:active::after {
+            transform: scale(0);
+            opacity: 1;
+            transition: 0s;
+        }
+
+        .btn-primary {
+            background: var(--text-primary);
+            color: var(--bg-primary);
+            border-color: var(--text-primary);
+        }
+        .btn-primary:hover { opacity: 0.85; }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--text-primary);
+            border: 1px solid var(--border-default);
+        }
+        .btn-secondary:hover { background: var(--bg-tertiary); border-color: var(--border-strong); }
+
+        .btn-icon {
+            width: 32px; height: 32px; padding: 0;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: var(--radius-sm);
+            background: transparent;
+            border: 1px solid var(--border-default);
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+        .btn-icon:hover { background: var(--bg-tertiary); }
+
+        .btn-group {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        /* ===================== LOADING ===================== */
+        .loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: var(--bg-primary);
+        }
+
+        .loading-spinner {
+            width: 32px;
+            height: 32px;
+            border: 2px solid var(--border-default);
+            border-top-color: var(--text-primary);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ===================== PAGE HEADER ===================== */
+        .page-header {
+            margin-bottom: 20px;
+        }
+
+        .page-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-heading);
+            letter-spacing: -0.5px;
+            line-height: 1.2;
+        }
+
+        .page-subtitle {
+            color: var(--text-tertiary);
+            font-size: 14px;
+            font-weight: 400;
+            margin-top: 4px;
+            line-height: 1.5;
+        }
+
+        /* ===================== MOBILE HEADER ===================== */
+        .mobile-header { display: none; }
+
+        /* ===================== MOBILE BOTTOM NAV ===================== */
+        .mobile-bottom-nav { display: none; }
+        @media (max-width: 1023px) {
+            .mobile-bottom-nav {
+                display: flex;
+                position: fixed;
+                bottom: 0; left: 0; right: 0;
+                z-index: 9000;
+                background: var(--nav-bg);
+                backdrop-filter: blur(20px) saturate(180%);
+                -webkit-backdrop-filter: blur(20px) saturate(180%);
+                border-top: 1px solid var(--nav-border);
+                padding-bottom: env(safe-area-inset-bottom);
+                height: calc(64px + env(safe-area-inset-bottom));
+                justify-content: space-around;
+                align-items: center;
+            }
+            .nav-tab {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 2px;
+                padding: 8px 0;
+                min-width: 56px;
+                min-height: 44px;
+                background: none;
+                border: none;
+                cursor: pointer;
+                color: var(--nav-icon-default);
+                font-size: 10px;
+                font-weight: 500;
+                font-family: inherit;
+                -webkit-tap-highlight-color: transparent;
+                position: relative;
+                transition: color 0.15s ease;
+            }
+            .nav-tab.active { color: var(--nav-icon-active); font-weight: 600; }
+            .nav-tab.active::after { content: ''; position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%); width: 4px; height: 4px; border-radius: 50%; background: var(--nav-icon-active); }
+            .main-content {
+                padding-bottom: calc(64px + env(safe-area-inset-bottom) + 16px) !important;
+            }
+        }
+
+        /* ===================== RESPONSIVE ===================== */
+        /* Mobile: < 640px */
+        @media (max-width: 639px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+            .stat-card { padding: 12px; }
+            .stat-card-value { font-size: 20px; }
+            .products-grid { grid-template-columns: 1fr; gap: 10px; }
+            .product-card { padding: 14px; }
+            .dashboard-main-grid { grid-template-columns: 1fr; }
+            .category-grid { grid-template-columns: repeat(2, 1fr); }
+            .table-container { margin: 0 -16px; border-radius: 0; }
+            .table th, .table td { padding: 8px 10px; font-size: 12px; }
+            .table th:first-child, .table td:first-child { padding-left: 16px; }
+            .search-input { height: 44px; font-size: 16px; }
+            .btn { min-height: 44px; }
+            .btn-group { flex-direction: column; }
+            .btn-group .btn { width: 100%; }
+            .filter-tabs {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                flex-wrap: nowrap;
+                gap: 0;
+                padding: 0 16px;
+                margin: 0 -16px;
+            }
+            .filter-tabs::-webkit-scrollbar { display: none; }
+            .filter-tab { white-space: nowrap; flex-shrink: 0; min-height: 44px; }
+            .dashboard-analytics-grid { grid-template-columns: 1fr; }
+            .stock-category-tabs { padding: 0 16px; margin: 0 -16px 16px; }
+            .stock-category-tab { padding: 8px 12px; font-size: 12px; min-height: 44px; }
+            .modal-overlay { align-items: flex-end; }
+            .modal-content {
+                max-width: 100%;
+                width: 100%;
+                border-radius: 16px 16px 0 0;
+                max-height: 85vh;
+                margin: 0;
+                padding-bottom: calc(20px + env(safe-area-inset-bottom));
+            }
+            .modal-content::before {
+                content: '';
+                display: block;
+                width: 36px;
+                height: 4px;
+                border-radius: 2px;
+                background: var(--border-strong);
+                margin: 0 auto 16px;
+            }
+            .page-title { font-size: 22px; }
+        }
+
+        /* Mobile + Tablet: < 1024px */
+        @media (max-width: 1023px) {
+            .sidebar {
+                position: fixed;
+                left: -280px;
+                top: 0;
+                bottom: 0;
+                width: 280px;
+                z-index: 10000;
+                transition: left 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+            }
+            .sidebar.open { left: 0; }
+            .sidebar-overlay {
+                position: fixed;
+                inset: 0;
+                background: var(--surface-overlay);
+                z-index: 9999;
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.25s ease;
+            }
+            .sidebar-overlay.visible {
+                opacity: 1;
+                pointer-events: auto;
+            }
+            .main-content {
+                margin-left: 0 !important;
+                max-width: 100% !important;
+                padding: 16px !important;
+                padding-top: calc(48px + env(safe-area-inset-top) + 16px) !important;
+            }
+            .mobile-header {
+                display: flex;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                z-index: 8999;
+                background: var(--nav-bg);
+                backdrop-filter: blur(20px) saturate(180%);
+                -webkit-backdrop-filter: blur(20px) saturate(180%);
+                border-bottom: 1px solid var(--nav-border);
+                padding-top: env(safe-area-inset-top);
+                height: calc(48px + env(safe-area-inset-top));
+                align-items: center;
+                justify-content: space-between;
+                padding-left: 16px;
+                padding-right: 16px;
+            }
+            .mobile-header-title {
+                font-size: 18px;
+                font-weight: 600;
+                color: var(--text-primary);
+            }
+            .mobile-header-actions {
+                display: flex;
+                gap: 12px;
+                align-items: center;
+            }
+            .mobile-menu-btn {
+                width: 36px;
+                height: 36px;
+                border: none;
+                background: none;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: var(--text-primary);
+                border-radius: var(--radius-sm);
+                -webkit-tap-highlight-color: transparent;
+            }
+            .mobile-menu-btn:active { background: var(--bg-active); }
+        }
+
+        /* Tablet: 640-1023px */
+        @media (min-width: 640px) and (max-width: 1023px) {
+            .main-content { padding: 24px !important; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .products-grid { grid-template-columns: repeat(2, 1fr); }
+            .dashboard-main-grid { grid-template-columns: 1fr; }
+            .dashboard-analytics-grid { grid-template-columns: 1fr 1fr; }
+        }
+
+        /* Desktop: >= 1024px */
+        @media (min-width: 1024px) {
+            .mobile-header, .sidebar-overlay { display: none !important; }
+        }
+
+        /* Touch optimization */
+        @media (pointer: coarse) {
+            .btn, .nav-link, .filter-tab, .stock-category-tab { min-height: 44px; }
+            .btn:active { transform: scale(0.97); }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // Supabase Config
+        const SUPABASE_URL = 'https://ppslljqxsdsdmwfiayok.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBwc2xsanF4c2RzZG13ZmlheW9rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA2NDUzNjQsImV4cCI6MjA4NjIyMTM2NH0.-7oJxDaw2nwc2uN410OGwavefzjZ-AjfmkK8QxpB7cM';
+
+        let supabaseClient;
+        try {
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        } catch (error) {
+            console.error('Erro ao inicializar Supabase:', error);
+        }
+
+        // Mapeamento snake_case -> camelCase para leitura
+        const mapProductFromDB = (row) => ({
+            id: row.id, name: row.name, sku: row.sku, ean: row.ean || '',
+            category: row.category || '', minStock: row.min_stock || 3,
+            observations: row.observations || '', nfOrigem: row.nf_origem || '',
+            unitPrice: row.unit_price || 0,
+            createdAt: row.created_at
+        });
+
+        const formatBRL = (value) => Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const parseBRL = (str) => parseFloat((str || '0').replace(/\./g, '').replace(',', '.')) || 0;
+
+        const mapEntryFromDB = (row) => ({
+            id: row.id, type: row.type, sku: row.sku, quantity: row.quantity,
+            supplier: row.supplier || '', nf: row.nf || '', localEntrada: row.local_entrada || '',
+            date: row.date, userId: row.user_id || ''
+        });
+        const mapExitFromDB = (row) => ({
+            id: row.id, type: row.type, sku: row.sku, quantity: row.quantity,
+            client: row.client || '', nf: row.nf || '', nfOrigem: row.nf_origem || '',
+            date: row.date, userId: row.user_id || ''
+        });
+        const mapShippingFromDB = (row) => ({
+            id: row.id, nfNumero: row.nf_numero || '', cliente: row.cliente || '',
+            destino: row.destino || '', localOrigem: row.local_origem || '',
+            transportadora: row.transportadora || '', codigoRastreio: row.codigo_rastreio || '',
+            linkRastreio: row.link_rastreio || '', melhorEnvioId: row.melhor_envio_id || '',
+            produtos: row.produtos || [], observacoes: row.observacoes || '',
+            status: row.status || 'PENDENTE', date: row.date, userId: row.user_id || ''
+        });
+
+        // ==========================================
+        // SVG ICON SYSTEM
+        // ==========================================
+        const ICONS = {
+            stock: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16.5 9.4l-9-5.19M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>',
+            shipping: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>',
+            clipboard: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="12" y2="18"/></svg>',
+            search: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>',
+            warning: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+            check: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+            success: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+            error: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
+            boxOpen: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/><path d="M7.5 4.5L16.5 9.5"/></svg>',
+            refresh: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>',
+            link: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>',
+            history: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+            // Category icons
+            catLamp: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 00-4 12.7V17h8v-2.3A7 7 0 0012 2z"/></svg>',
+            catChandelier: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="5"/><path d="M5 5h14"/><line x1="5" y1="5" x2="5" y2="9"/><line x1="12" y1="5" x2="12" y2="9"/><line x1="19" y1="5" x2="19" y2="9"/><circle cx="5" cy="11" r="2"/><circle cx="12" cy="11" r="2"/><circle cx="19" cy="11" r="2"/></svg>',
+            catWallLight: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="4" height="12" rx="1"/><path d="M7 12h3l4-6h4"/><path d="M10 12l4 6h4"/><line x1="18" y1="6" x2="18" y2="18"/></svg>',
+            catPendant: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="8"/><path d="M6 8h12l-2 10H8L6 8z"/><line x1="9" y1="21" x2="15" y2="21"/></svg>',
+            catCeiling: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="2" x2="20" y2="2"/><line x1="12" y1="2" x2="12" y2="6"/><ellipse cx="12" cy="10" rx="8" ry="4"/><path d="M4 10v2a8 4 0 0016 0v-2"/></svg>',
+            catSpot: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 5V3"/><path d="M17 7l1.4-1.4"/><path d="M19 12h2"/><path d="M17 17l1.4 1.4"/><path d="M12 19v2"/><path d="M7 17l-1.4 1.4"/><path d="M5 12H3"/><path d="M7 7L5.6 5.6"/></svg>',
+            catOther: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>',
+            catStar: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
+            catCircle: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/></svg>',
+            catHexagon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>',
+            catDiamond: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="4.5" width="15" height="15" rx="1" transform="rotate(45 12 12)"/></svg>',
+            catTriangle: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>',
+            catSquare: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>',
+            dashboard: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>',
+            categories: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>',
+            edit: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',
+            close: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+            chart: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
+            lightbulb: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/></svg>',
+            empty: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><line x1="3.27" y1="6.96" x2="12" y2="12.01"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>',
+            layoutDashboard: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>',
+            package: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>',
+            arrowLeftRight: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 11 21 7 17 3"/><line x1="21" y1="7" x2="9" y2="7"/><polyline points="7 21 3 17 7 13"/><line x1="3" y1="17" x2="15" y2="17"/></svg>',
+            menuIcon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>',
+            dollar: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>',
+            trendingUp: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>',
+            pause: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>',
+        };
+
+        function Icon({ name, size = 16, className = '', style = {} }) {
+            return <span className={`icon ${className}`}
+                style={{width: size, height: size, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, ...style}}
+                dangerouslySetInnerHTML={{__html: ICONS[name] || ''}} />;
+        }
+
+        const UNICODE_TO_SVG = {
+            '◐': 'catLamp', '◑': 'catWallLight', '◇': 'catPendant', '✦': 'catChandelier',
+            '○': 'catCeiling', '◉': 'catSpot', '◻': 'catSquare', '△': 'catTriangle',
+            '▽': 'catDiamond', '◈': 'catStar', '⬡': 'catHexagon', '▣': 'catOther',
+        };
+
+        function resolveCatIcon(icon) {
+            if (!icon) return 'catSquare';
+            if (ICONS[icon]) return icon;
+            return UNICODE_TO_SVG[icon] || 'catSquare';
+        }
+
+        function CategoryIcon({ icon, size = 18, color, style = {} }) {
+            const resolved = resolveCatIcon(icon);
+            return <span className="icon"
+                style={{width: size, height: size, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: color || 'currentColor', ...style}}
+                dangerouslySetInnerHTML={{__html: ICONS[resolved] || ''}} />;
+        }
+
+        // ==========================================
+        // DASHBOARD VIEW (Read-Only)
+        // ==========================================
+        function DashboardView({ stock, categories, isVisible, entries, exits }) {
+            const chartRef = React.useRef(null);
+            const chartInstance = React.useRef(null);
+            const lineChartRef = React.useRef(null);
+            const lineChartInstance = React.useRef(null);
+            const [period, setPeriod] = useState(30);
+
+            const totalQty = stock.reduce((s, p) => s + p.currentQuantity, 0);
+            const totalProducts = stock.length;
+            const lowStock = stock.filter(p => p.status === 'low').length;
+            const emptyStock = stock.filter(p => p.status === 'empty').length;
+
+            const hora = new Date().getHours();
+            const saudacao = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
+
+            const topProducts = [...stock].sort((a, b) => b.currentQuantity - a.currentQuantity).slice(0, 5);
+            const alertProducts = [...stock].filter(p => p.status === 'low' || p.status === 'empty').slice(0, 5);
+
+            const categoryStats = categories.map(cat => {
+                const catProducts = stock.filter(p => p.category === cat.id);
+                return {
+                    ...cat,
+                    productCount: catProducts.length,
+                    totalStock: catProducts.reduce((sum, p) => sum + (p.currentQuantity || 0), 0),
+                    alertCount: catProducts.filter(p => p.status === 'low' || p.status === 'empty').length
+                };
+            });
+
+            // Valor total em estoque
+            const totalValue = stock.reduce((sum, p) => sum + ((p.unitPrice || 0) * (p.currentQuantity || 0)), 0);
+
+            // Period-based calculations
+            const periodCutoff = new Date();
+            periodCutoff.setDate(periodCutoff.getDate() - period);
+            const periodCutoffISO = periodCutoff.toISOString();
+            const periodEntries = (entries || []).filter(e => e.date >= periodCutoffISO);
+            const periodExits = (exits || []).filter(e => e.date >= periodCutoffISO);
+            const totalExitsInPeriod = periodExits.reduce((sum, e) => sum + parseInt(e.quantity || 0), 0);
+            const giroEstoque = totalExitsInPeriod / Math.max(totalQty, 1);
+
+            // Produtos parados (sem movimentacao em 60 dias)
+            const stoppedCutoff = new Date();
+            stoppedCutoff.setDate(stoppedCutoff.getDate() - 60);
+            const stoppedCutoffISO = stoppedCutoff.toISOString();
+            const activeSKUs = new Set([
+                ...(entries || []).filter(e => e.date >= stoppedCutoffISO).map(e => e.sku),
+                ...(exits || []).filter(e => e.date >= stoppedCutoffISO).map(e => e.sku)
+            ]);
+            const stoppedProducts = stock.filter(p => !activeSKUs.has(p.sku));
+
+            // Ultimas 5 movimentacoes
+            const allMovements = [
+                ...(entries || []).map(e => ({ ...e, movType: 'entry' })),
+                ...(exits || []).map(e => ({ ...e, movType: 'exit' }))
+            ].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
+
+            // Valor por categoria
+            const categoryValues = categories.map(cat => {
+                const catProducts = stock.filter(p => p.category === cat.id);
+                const value = catProducts.reduce((sum, p) => sum + ((p.unitPrice || 0) * (p.currentQuantity || 0)), 0);
+                return { ...cat, value };
+            }).filter(c => c.value > 0).sort((a, b) => b.value - a.value);
+
+            // Helper: agregar movimentacoes por dia
+            const aggregateByDay = (items, days) => {
+                const result = {};
+                const now = new Date();
+                for (let i = days - 1; i >= 0; i--) {
+                    const d = new Date(now);
+                    d.setDate(d.getDate() - i);
+                    result[d.toISOString().slice(0, 10)] = 0;
+                }
+                items.forEach(item => {
+                    const key = item.date?.slice(0, 10);
+                    if (key && result[key] !== undefined) {
+                        result[key] += parseInt(item.quantity || 0);
+                    }
+                });
+                return result;
+            };
+
+            useEffect(() => {
+                if (!isVisible || !chartRef.current || stock.length === 0) return;
+                if (chartInstance.current) chartInstance.current.destroy();
+                const top8 = [...stock].sort((a, b) => b.currentQuantity - a.currentQuantity).slice(0, 8);
+                chartInstance.current = new Chart(chartRef.current, {
+                    type: 'bar',
+                    data: {
+                        labels: top8.map(p => p.name.length > 15 ? p.name.substring(0, 15) + '...' : p.name),
+                        datasets: [{ data: top8.map(p => p.currentQuantity), backgroundColor: '#F4B08A', borderRadius: 6, barThickness: 28 }]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { display: false }, tooltip: { backgroundColor: '#2C2640', titleFont: { size: 12, weight: '600' }, bodyFont: { size: 11 }, padding: 12, cornerRadius: 8 } },
+                        scales: {
+                            y: { beginAtZero: true, grid: { color: 'var(--border-subtle)', drawBorder: false }, ticks: { font: { size: 11, family: 'Inter' }, color: 'var(--text-tertiary)' } },
+                            x: { grid: { display: false }, ticks: { font: { size: 10, family: 'Inter' }, color: 'var(--text-tertiary)' } }
+                        }
+                    }
+                });
+                return () => { chartInstance.current?.destroy(); };
+            }, [stock, categories, isVisible]);
+
+            // Line chart - movimentacoes por dia
+            useEffect(() => {
+                if (!isVisible || !lineChartRef.current) return;
+                if (!entries?.length && !exits?.length) return;
+                if (lineChartInstance.current) lineChartInstance.current.destroy();
+
+                const entryAgg = aggregateByDay(entries || [], period);
+                const exitAgg = aggregateByDay(exits || [], period);
+                const labels = Object.keys(entryAgg).map(d => {
+                    const [, m, day] = d.split('-');
+                    return `${day}/${m}`;
+                });
+
+                const rootStyles = getComputedStyle(document.documentElement);
+                const successColor = rootStyles.getPropertyValue('--accent-success').trim() || '#22c55e';
+                const errorColor = rootStyles.getPropertyValue('--accent-error').trim() || '#ef4444';
+                const gridColor = rootStyles.getPropertyValue('--border-default').trim() || '#e5e5e5';
+                const textColor = rootStyles.getPropertyValue('--text-tertiary').trim() || '#999';
+
+                lineChartInstance.current = new Chart(lineChartRef.current, {
+                    type: 'line',
+                    data: {
+                        labels,
+                        datasets: [
+                            {
+                                label: 'Entradas',
+                                data: Object.values(entryAgg),
+                                borderColor: successColor,
+                                backgroundColor: successColor + '18',
+                                fill: true, tension: 0.3, borderWidth: 2,
+                                pointRadius: 0, pointHoverRadius: 4,
+                                pointHoverBackgroundColor: successColor
+                            },
+                            {
+                                label: 'Saidas',
+                                data: Object.values(exitAgg),
+                                borderColor: errorColor,
+                                backgroundColor: errorColor + '18',
+                                fill: true, tension: 0.3, borderWidth: 2,
+                                pointRadius: 0, pointHoverRadius: 4,
+                                pointHoverBackgroundColor: errorColor
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: {
+                            legend: {
+                                display: true, position: 'top', align: 'end',
+                                labels: {
+                                    boxWidth: 12, boxHeight: 12, borderRadius: 3, useBorderRadius: true,
+                                    font: { size: 11, family: 'Inter' },
+                                    color: textColor, padding: 16
+                                }
+                            },
+                            tooltip: {
+                                backgroundColor: '#2C2640',
+                                titleFont: { size: 12, weight: '600' },
+                                bodyFont: { size: 11 },
+                                padding: 12, cornerRadius: 8
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: { color: gridColor, drawBorder: false },
+                                ticks: { font: { size: 11, family: 'Inter' }, color: textColor }
+                            },
+                            x: {
+                                grid: { display: false },
+                                ticks: {
+                                    font: { size: 10, family: 'Inter' },
+                                    color: textColor,
+                                    maxTicksLimit: period <= 15 ? period : 10
+                                }
+                            }
+                        }
+                    }
+                });
+
+                return () => { lineChartInstance.current?.destroy(); };
+            }, [entries, exits, period, isVisible]);
+
+            return (
+                <div>
+                    <div className="page-header" style={{marginBottom: '32px'}}>
+                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}}>
+                            <div>
+                                <p style={{fontSize: '14px', color: 'var(--text-tertiary)', marginBottom: '4px'}}>{saudacao}!</p>
+                                <h1 className="page-title">Dashboard</h1>
+                                <p className="page-subtitle">Visao geral do estoque em tempo real</p>
+                            </div>
+                            <div style={{background: 'var(--bg-secondary)', padding: '10px 16px', borderRadius: 'var(--radius-lg)', fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '8px'}}>
+                                {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'short' })}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="stats-grid">
+                        <div className="stat-card accent">
+                            <div className="stat-header">
+                                <div className="stat-icon"><Icon name="stock" size={18} /></div>
+                            </div>
+                            <div className="stat-content">
+                                <div className="stat-value">{totalQty.toLocaleString('pt-BR')}</div>
+                                <div className="stat-label">Unidades em Estoque</div>
+                            </div>
+                        </div>
+                        <div className="stat-card">
+                            <div className="stat-header">
+                                <div className="stat-icon purple"><Icon name="categories" size={18} /></div>
+                            </div>
+                            <div className="stat-content">
+                                <div className="stat-value">{totalProducts}</div>
+                                <div className="stat-label">Produtos Cadastrados</div>
+                            </div>
+                        </div>
+                        <div className="stat-card warning">
+                            <div className="stat-header">
+                                <div className="stat-icon yellow"><Icon name="warning" size={18} /></div>
+                            </div>
+                            <div className="stat-content">
+                                <div className="stat-value">{lowStock}</div>
+                                <div className="stat-label">Estoque Baixo</div>
+                            </div>
+                        </div>
+                        <div className="stat-card danger">
+                            <div className="stat-header">
+                                <div className="stat-icon red"><Icon name="error" size={18} /></div>
+                            </div>
+                            <div className="stat-content">
+                                <div className="stat-value">{emptyStock}</div>
+                                <div className="stat-label">Sem Estoque</div>
+                            </div>
+                        </div>
+                        <div className="stat-card">
+                            <div className="stat-header">
+                                <div className="stat-icon green"><Icon name="dollar" size={18} /></div>
+                            </div>
+                            <div className="stat-content">
+                                <div className="stat-value" style={{fontSize: totalValue >= 100000 ? '22px' : '28px'}}>
+                                    {totalValue > 0 ? `R$ ${formatBRL(totalValue)}` : 'R$ 0,00'}
+                                </div>
+                                <div className="stat-label">
+                                    {totalValue > 0 ? 'Valor Total em Estoque' : 'Nenhum preco sincronizado via Tiny'}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="dashboard-main-grid">
+                        <div className="card">
+                            <h2 className="card-title" style={{marginBottom: '20px'}}>
+                                <span className="card-title-icon"><Icon name="chart" size={16} /></span> Produtos com Maior Estoque
+                            </h2>
+                            <div style={{height: '280px'}}><canvas ref={chartRef}></canvas></div>
+                        </div>
+                        <div className="card">
+                            <h2 className="card-title" style={{marginBottom: '20px'}}>
+                                <Icon name="warning" size={16} /> Alertas
+                            </h2>
+                            {alertProducts.length === 0 ? (
+                                <div style={{textAlign: 'center', padding: '40px 20px', color: 'var(--text-tertiary)'}}>
+                                    <div style={{marginBottom: '12px'}}><Icon name="check" size={40} /></div>
+                                    <div style={{fontSize: '14px'}}>Tudo em ordem!</div>
+                                    <div style={{fontSize: '12px', marginTop: '4px', opacity: 0.7}}>Nenhum produto com estoque crítico</div>
+                                </div>
+                            ) : (
+                                <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
+                                    {alertProducts.map((p, idx) => (
+                                        <div key={idx} style={{display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'var(--bg-secondary)', borderRadius: 'var(--radius)', border: '1px solid var(--border-default)', borderLeft: `3px solid ${p.status === 'empty' ? 'var(--accent-error)' : 'var(--accent-warning)'}`}}>
+                                            <div style={{width: '36px', height: '36px', borderRadius: 'var(--radius)', background: p.status === 'empty' ? 'var(--accent-error-subtle)' : 'var(--accent-warning-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: p.status === 'empty' ? 'var(--accent-error)' : 'var(--accent-warning)'}}>
+                                                {p.status === 'empty' ? <Icon name="error" size={16} /> : <Icon name="warning" size={16} />}
+                                            </div>
+                                            <div style={{flex: 1, minWidth: 0}}>
+                                                <div style={{fontSize: '14px', fontWeight: '500', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{p.name}</div>
+                                                <div style={{fontSize: '12px', color: 'var(--text-tertiary)'}}>{p.status === 'empty' ? 'Sem estoque' : `${p.currentQuantity} un. restantes`}</div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Movimentacoes */}
+                    <div className="card">
+                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px'}}>
+                            <h2 className="card-title" style={{marginBottom: 0}}>
+                                <Icon name="chart" size={16} className="card-title-icon" />
+                                Movimentacoes
+                            </h2>
+                            <div className="period-toggle">
+                                {[7, 15, 30, 90].map(d => (
+                                    <button key={d} className={`period-btn ${period === d ? 'active' : ''}`} onClick={() => setPeriod(d)}>
+                                        {d}d
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        {(entries?.length || exits?.length) ? (
+                            <div style={{height: '280px'}}>
+                                <canvas ref={lineChartRef}></canvas>
+                            </div>
+                        ) : (
+                            <div style={{textAlign: 'center', padding: '40px', color: 'var(--text-tertiary)', fontSize: '13px'}}>
+                                Nenhuma movimentacao registrada
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Metricas de Performance */}
+                    <div className="dashboard-analytics-grid">
+                        <div className="card" style={{marginBottom: 0}}>
+                            <h2 className="card-title">
+                                <Icon name="trendingUp" size={16} className="card-title-icon" />
+                                Giro de Estoque
+                            </h2>
+                            <div style={{textAlign: 'center', padding: '16px 0'}}>
+                                <div style={{fontSize: '36px', fontWeight: '700', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums'}}>
+                                    {giroEstoque.toFixed(2)}
+                                </div>
+                                <div style={{fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '4px'}}>
+                                    Saidas / Estoque atual em {period} dias
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="card" style={{marginBottom: 0}}>
+                            <h2 className="card-title" style={{display: 'flex', alignItems: 'center'}}>
+                                <Icon name="pause" size={16} className="card-title-icon" />
+                                Produtos Parados
+                                <span style={{marginLeft: 'auto', fontSize: '20px', fontWeight: '700', color: stoppedProducts.length > 0 ? 'var(--accent-warning)' : 'var(--accent-success)'}}>
+                                    {stoppedProducts.length}
+                                </span>
+                            </h2>
+                            <div style={{fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '12px'}}>
+                                Sem entradas ou saidas nos ultimos 60 dias
+                            </div>
+                            {stoppedProducts.length > 0 ? (
+                                <div style={{display: 'flex', flexDirection: 'column', gap: '6px'}}>
+                                    {stoppedProducts.slice(0, 5).map((p, idx) => (
+                                        <div key={idx} style={{fontSize: '13px', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', padding: '6px 10px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-sm)'}}>
+                                            {p.name}
+                                        </div>
+                                    ))}
+                                    {stoppedProducts.length > 5 && (
+                                        <div style={{fontSize: '12px', color: 'var(--text-tertiary)', textAlign: 'center', marginTop: '4px'}}>
+                                            +{stoppedProducts.length - 5} outros
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <div style={{textAlign: 'center', padding: '16px', color: 'var(--accent-success)', fontSize: '13px'}}>
+                                    Todos os produtos tiveram movimentacao recente
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Ultimas Movimentacoes + Valor por Categoria */}
+                    <div className="dashboard-analytics-grid" style={{marginTop: '4px'}}>
+                        <div className="card" style={{marginBottom: 0}}>
+                            <h2 className="card-title">
+                                <Icon name="history" size={16} className="card-title-icon" />
+                                Ultimas Movimentacoes
+                            </h2>
+                            {allMovements.length > 0 ? (
+                                <div className="table-container">
+                                    <table className="table">
+                                        <thead>
+                                            <tr>
+                                                <th>Data</th>
+                                                <th>Tipo</th>
+                                                <th>Produto</th>
+                                                <th style={{textAlign: 'right'}}>Qtd</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {allMovements.map((m, idx) => {
+                                                const product = stock.find(p => p.sku === m.sku);
+                                                return (
+                                                    <tr key={idx}>
+                                                        <td style={{whiteSpace: 'nowrap'}}>
+                                                            {new Date(m.date).toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit'})}
+                                                            {' '}
+                                                            <span style={{color: 'var(--text-tertiary)', fontSize: '11px'}}>
+                                                                {new Date(m.date).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}
+                                                            </span>
+                                                        </td>
+                                                        <td>
+                                                            <span className={`badge ${m.movType === 'entry' ? 'badge-success' : 'badge-danger'}`}>
+                                                                {m.movType === 'entry' ? 'ENTRADA' : 'SAIDA'}
+                                                            </span>
+                                                        </td>
+                                                        <td style={{maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
+                                                            {product?.name || m.sku}
+                                                        </td>
+                                                        <td style={{textAlign: 'right', fontWeight: '600', fontVariantNumeric: 'tabular-nums'}}>
+                                                            {m.movType === 'entry' ? '+' : '-'}{m.quantity}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ) : (
+                                <div style={{textAlign: 'center', padding: '32px', color: 'var(--text-tertiary)', fontSize: '13px'}}>
+                                    Nenhuma movimentacao registrada
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="card" style={{marginBottom: 0}}>
+                            <h2 className="card-title">
+                                <Icon name="dollar" size={16} className="card-title-icon" />
+                                Valor por Categoria
+                            </h2>
+                            {categoryValues.length > 0 ? (
+                                <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
+                                    {categoryValues.map((cat) => {
+                                        const maxVal = categoryValues[0]?.value || 1;
+                                        const pct = (cat.value / maxVal) * 100;
+                                        return (
+                                            <div key={cat.id} style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
+                                                <div style={{width: '28px', height: '28px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                                                    <CategoryIcon icon={cat.icon} size={18} color={cat.color} />
+                                                </div>
+                                                <div style={{flex: 1, minWidth: 0}}>
+                                                    <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '4px'}}>
+                                                        <span style={{fontSize: '13px', fontWeight: '500', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
+                                                            {cat.name}
+                                                        </span>
+                                                        <span style={{fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', flexShrink: 0, marginLeft: '8px'}}>
+                                                            R$ {formatBRL(cat.value)}
+                                                        </span>
+                                                    </div>
+                                                    <div style={{height: '4px', background: 'var(--border-default)', borderRadius: '2px', overflow: 'hidden'}}>
+                                                        <div style={{height: '100%', width: `${pct}%`, background: cat.color, borderRadius: '2px', transition: 'width 0.5s ease'}}></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                <div style={{textAlign: 'center', padding: '32px', color: 'var(--text-tertiary)', fontSize: '13px'}}>
+                                    Sincronize os produtos via Tiny ERP para ver os valores
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="card">
+                        <h2 className="card-title"><Icon name="categories" size={16} /> Estoque por Categoria</h2>
+                        <div className="category-grid">
+                            {categoryStats.map(cat => (
+                                <div key={cat.id} className="category-card">
+                                    <div className="category-icon" style={{background: `${cat.color}08`}}>
+                                        <CategoryIcon icon={cat.icon} size={20} color={cat.color} />
+                                    </div>
+                                    <div className="category-name">{cat.name}</div>
+                                    <div className="category-count">{cat.totalStock.toLocaleString('pt-BR')}</div>
+                                    <div className="category-meta">{cat.productCount} produto{cat.productCount !== 1 ? 's' : ''}</div>
+                                    {cat.alertCount > 0 && <div className="category-alert">{cat.alertCount} alerta{cat.alertCount !== 1 ? 's' : ''}</div>}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="card">
+                        <h2 className="card-title"><span className="card-title-icon"><Icon name="stock" size={16} /></span> Top 5 Produtos em Estoque</h2>
+                        <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
+                            {topProducts.map((p, idx) => {
+                                const maxQty = topProducts[0]?.currentQuantity || 1;
+                                const percentage = (p.currentQuantity / maxQty) * 100;
+                                return (
+                                    <div key={idx} style={{display: 'flex', alignItems: 'center', gap: '16px', padding: '16px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)'}}>
+                                        <div style={{width: '40px', height: '40px', borderRadius: 'var(--radius)', background: idx === 0 ? 'var(--text-primary)' : 'var(--bg-tertiary)', color: idx === 0 ? 'white' : 'var(--text-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700', fontSize: '14px'}}>
+                                            #{idx + 1}
+                                        </div>
+                                        <div style={{flex: 1, minWidth: 0}}>
+                                            <div style={{fontWeight: '600', fontSize: '15px', marginBottom: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{p.name}</div>
+                                            <div style={{height: '6px', background: 'var(--border-default)', borderRadius: '3px', overflow: 'hidden'}}>
+                                                <div style={{height: '100%', width: `${percentage}%`, background: idx === 0 ? 'var(--text-secondary)' : idx === 1 ? 'var(--text-tertiary)' : 'var(--border-strong)', borderRadius: '3px', transition: 'width 0.5s ease'}}></div>
+                                            </div>
+                                        </div>
+                                        <div style={{textAlign: 'right'}}>
+                                            <div style={{fontWeight: '700', fontSize: '20px', color: 'var(--text-primary)'}}>{p.currentQuantity.toLocaleString('pt-BR')}</div>
+                                            <div style={{fontSize: '11px', color: 'var(--text-tertiary)'}}>unidades</div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // ==========================================
+        // ESTOQUE (SOMENTE LEITURA)
+        // ==========================================
+        function StockView({ stock, categories, searchTerm, setSearchTerm, entries, exits }) {
+            const [categoryFilter, setCategoryFilter] = useState('all');
+            const [statusFilter, setStatusFilter] = useState('all');
+            const [historyProduct, setHistoryProduct] = useState(null);
+            const [visibleCount, setVisibleCount] = useState(50);
+
+            // Reset visible count when filters change
+            useEffect(() => { setVisibleCount(50); }, [searchTerm, categoryFilter, statusFilter]);
+
+            const getCategoryName = (catId) => {
+                const cat = categories.find(c => c.id === catId);
+                return cat ? cat.name : 'Sem categoria';
+            };
+            const getCategoryColor = (catId) => {
+                const cat = categories.find(c => c.id === catId);
+                return cat ? cat.color : '#888';
+            };
+            const getCategoryIcon = (catId) => {
+                const cat = categories.find(c => c.id === catId);
+                return cat ? cat.icon : null;
+            };
+
+            const categoryCounts = categories.reduce((acc, cat) => {
+                acc[cat.id] = stock.filter(p => p.category === cat.id).length;
+                return acc;
+            }, {});
+
+            const filtered = stock
+                .filter(p => categoryFilter === 'all' || p.category === categoryFilter)
+                .filter(p => statusFilter === 'all' || p.status === statusFilter)
+                .filter(p => {
+                    if (!searchTerm) return true;
+                    const search = searchTerm.toLowerCase();
+                    return (p.name || '').toLowerCase().includes(search) ||
+                           (p.sku || '').toLowerCase().includes(search) ||
+                           (p.ean || '').toLowerCase().includes(search) ||
+                           (p.nfOrigem || '').toLowerCase().includes(search);
+                })
+                .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+            const getProductHistory = (sku) => {
+                const productEntries = (entries || []).filter(e => e.sku === sku).map(e => ({...e, movimento: 'ENTRADA'}));
+                const productExits = (exits || []).filter(e => e.sku === sku).map(e => ({...e, movimento: 'SAIDA'}));
+                return [...productEntries, ...productExits].sort((a, b) => new Date(b.date) - new Date(a.date));
+            };
+
+            const formatDate = (dateStr) => {
+                if (!dateStr) return '-';
+                const date = new Date(dateStr);
+                return date.toLocaleDateString('pt-BR') + ' ' + date.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'});
+            };
+
+            // Stats
+            const totalProducts = stock.length;
+            const totalUnits = stock.reduce((sum, p) => sum + (p.currentQuantity || 0), 0);
+            const lowStock = stock.filter(p => p.status === 'low').length;
+            const emptyStock = stock.filter(p => p.status === 'empty').length;
+
+            return (
+                <div>
+                    <div className="page-header">
+                        <h1 className="page-title">Estoque</h1>
+                        <p className="page-subtitle">{totalProducts} produtos cadastrados</p>
+                    </div>
+
+                    {/* Stats */}
+                    <div className="stats-grid">
+                        <div className="stat-card accent">
+                            <div className="stat-header">
+                                <div className="stat-icon"><Icon name="stock" size={18} /></div>
+                            </div>
+                            <div className="stat-content">
+                                <div className="stat-value">{totalUnits.toLocaleString('pt-BR')}</div>
+                                <div className="stat-label">Unidades em Estoque</div>
+                            </div>
+                        </div>
+                        <div className="stat-card">
+                            <div className="stat-header">
+                                <div className="stat-icon purple"><Icon name="categories" size={18} /></div>
+                            </div>
+                            <div className="stat-content">
+                                <div className="stat-value">{totalProducts}</div>
+                                <div className="stat-label">Produtos</div>
+                            </div>
+                        </div>
+                        <div className="stat-card warning">
+                            <div className="stat-header">
+                                <div className="stat-icon yellow"><Icon name="warning" size={18} /></div>
+                            </div>
+                            <div className="stat-content">
+                                <div className="stat-value">{lowStock}</div>
+                                <div className="stat-label">Estoque Baixo</div>
+                            </div>
+                        </div>
+                        <div className="stat-card danger">
+                            <div className="stat-header">
+                                <div className="stat-icon red"><Icon name="error" size={18} /></div>
+                            </div>
+                            <div className="stat-content">
+                                <div className="stat-value">{emptyStock}</div>
+                                <div className="stat-label">Sem Estoque</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Modal de Historico */}
+                    {historyProduct && (
+                        <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setHistoryProduct(null); }}>
+                            <div className="modal-content" style={{maxWidth: '800px'}}>
+                                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px'}}>
+                                    <div>
+                                        <h2 className="modal-title">Historico de Movimentacoes</h2>
+                                        <p className="modal-subtitle" style={{marginBottom: 0}}>{historyProduct.name}</p>
+                                    </div>
+                                    <button className="btn-icon" onClick={() => setHistoryProduct(null)}><Icon name="close" size={16} /></button>
+                                </div>
+
+                                <div style={{background: 'var(--bg-tertiary)', padding: '12px', borderRadius: 'var(--radius)', marginBottom: '16px'}}>
+                                    <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', fontSize: '13px'}}>
+                                        <div><span style={{color: 'var(--text-tertiary)'}}>SKU:</span> <strong>{historyProduct.sku}</strong></div>
+                                        {historyProduct.ean && <div><span style={{color: 'var(--text-tertiary)'}}>EAN:</span> <strong>{historyProduct.ean}</strong></div>}
+                                        <div><span style={{color: 'var(--text-tertiary)'}}>Estoque:</span> <strong>{historyProduct.currentQuantity} un.</strong></div>
+                                    </div>
+                                </div>
+
+                                {(() => {
+                                    const history = getProductHistory(historyProduct.sku);
+                                    if (history.length === 0) {
+                                        return (
+                                            <div style={{textAlign: 'center', padding: '24px', color: 'var(--text-tertiary)'}}>
+                                                Nenhuma movimentacao registrada
+                                            </div>
+                                        );
+                                    }
+                                    return (
+                                        <div className="table-container" style={{maxHeight: '350px', overflowY: 'auto'}}>
+                                            <table className="table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Data</th>
+                                                        <th>Tipo</th>
+                                                        <th>Qtd</th>
+                                                        <th>NF Entrada</th>
+                                                        <th>NF Saida</th>
+                                                        <th>Fornecedor/Cliente</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {history.map((mov, idx) => (
+                                                        <tr key={idx}>
+                                                            <td style={{fontSize: '11px', whiteSpace: 'nowrap'}}>{formatDate(mov.date)}</td>
+                                                            <td>
+                                                                <span className={`badge ${mov.movimento === 'ENTRADA' ? 'badge-success' : 'badge-danger'}`}>
+                                                                    {mov.movimento}
+                                                                </span>
+                                                            </td>
+                                                            <td style={{fontWeight: '600'}}>{mov.quantity}</td>
+                                                            <td style={{fontFamily: 'monospace', fontSize: '11px'}}>
+                                                                {mov.movimento === 'ENTRADA' ? (mov.nf || '-') : (mov.nfOrigem || '-')}
+                                                            </td>
+                                                            <td style={{fontFamily: 'monospace', fontSize: '11px'}}>
+                                                                {mov.movimento === 'SAIDA' ? (mov.nf || '-') : '-'}
+                                                            </td>
+                                                            <td style={{fontSize: '12px'}}>{mov.supplier || mov.client || '-'}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    );
+                                })()}
+
+                                {/* Resumo por NF */}
+                                {(() => {
+                                    const history = getProductHistory(historyProduct.sku);
+                                    const entradas = history.filter(h => h.movimento === 'ENTRADA');
+                                    const saidas = history.filter(h => h.movimento === 'SAIDA');
+
+                                    const saldoPorNF = {};
+                                    entradas.forEach(e => {
+                                        const nfKey = e.nf || 'SEM_NF';
+                                        if (!saldoPorNF[nfKey]) saldoPorNF[nfKey] = { entradas: 0, saidas: 0 };
+                                        saldoPorNF[nfKey].entradas += e.quantity;
+                                    });
+                                    saidas.forEach(s => {
+                                        const nfKey = s.nfOrigem || 'SEM_NF';
+                                        if (!saldoPorNF[nfKey]) saldoPorNF[nfKey] = { entradas: 0, saidas: 0 };
+                                        saldoPorNF[nfKey].saidas += s.quantity;
+                                    });
+
+                                    const nfsComSaldo = Object.entries(saldoPorNF).filter(([nf, dados]) => dados.entradas - dados.saidas > 0);
+
+                                    if (nfsComSaldo.length === 0) return null;
+
+                                    return (
+                                        <div style={{marginTop: '16px', padding: '12px', background: 'var(--accent-info-subtle)', borderRadius: 'var(--radius)'}}>
+                                            <div style={{fontWeight: '600', marginBottom: '8px', fontSize: '13px'}}>Estoque por NF de Entrada:</div>
+                                            <div style={{display: 'flex', flexWrap: 'wrap', gap: '8px'}}>
+                                                {nfsComSaldo.map(([nf, dados]) => (
+                                                    <div key={nf} style={{
+                                                        background: 'var(--surface-card)',
+                                                        padding: '6px 12px',
+                                                        borderRadius: 'var(--radius)',
+                                                        fontSize: '12px',
+                                                        border: '1px solid var(--border-default)'
+                                                    }}>
+                                                        <strong>NF {nf === 'SEM_NF' ? '(sem NF)' : nf}:</strong> {dados.entradas - dados.saidas} un.
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
+
+                                <div className="btn-group" style={{marginTop: '16px'}}>
+                                    <button className="btn btn-secondary" onClick={() => setHistoryProduct(null)}>Fechar</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Category Tab Bar */}
+                    <div className="stock-category-tabs">
+                        <button
+                            className={`stock-category-tab ${categoryFilter === 'all' ? 'active' : ''}`}
+                            onClick={() => setCategoryFilter('all')}
+                        >
+                            Todos <span className="tab-count">({stock.length})</span>
+                        </button>
+                        {categories.map(cat => (
+                            <button
+                                key={cat.id}
+                                className={`stock-category-tab ${categoryFilter === cat.id ? 'active' : ''}`}
+                                onClick={() => setCategoryFilter(cat.id)}
+                            >
+                                <CategoryIcon icon={cat.icon} size={14} />
+                                {cat.name} <span className="tab-count">({categoryCounts[cat.id] || 0})</span>
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Filtros */}
+                    <div className="card">
+                        <div className="filter-tabs">
+                            <button className={`filter-tab ${statusFilter === 'all' ? 'active' : ''}`} onClick={() => setStatusFilter('all')}>Todos</button>
+                            <button className={`filter-tab ${statusFilter === 'ok' ? 'active' : ''}`} onClick={() => setStatusFilter('ok')}>OK</button>
+                            <button className={`filter-tab ${statusFilter === 'low' ? 'active' : ''}`} onClick={() => setStatusFilter('low')}>Baixo</button>
+                            <button className={`filter-tab ${statusFilter === 'empty' ? 'active' : ''}`} onClick={() => setStatusFilter('empty')}>Vazio</button>
+                        </div>
+
+                        <div className="search-box">
+                            <span className="search-icon"><Icon name="search" size={14} /></span>
+                            <input
+                                type="text"
+                                className="search-input"
+                                placeholder="Buscar por nome, SKU, EAN ou NF..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                            {searchTerm && (
+                                <button onClick={() => setSearchTerm('')} style={{position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: '4px'}}>
+                                    <Icon name="close" size={14} />
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Lista de Produtos */}
+                    <div className="products-grid">
+                        {filtered.slice(0, visibleCount).map(p => {
+                            const catColor = getCategoryColor(p.category);
+                            return (
+                                <div key={p.id} className={`product-card ${p.status === 'low' ? 'low' : p.status === 'empty' ? 'empty' : ''}`}>
+                                    <div className="product-actions">
+                                        <button
+                                            className="btn-icon"
+                                            onClick={() => setHistoryProduct(p)}
+                                            title="Ver historico"
+                                        >
+                                            <Icon name="history" size={14} />
+                                        </button>
+                                    </div>
+                                    <div className="product-category-badge" style={{color: catColor, background: catColor + '10', border: '1px solid ' + catColor + '20'}}>
+                                        <span style={{display: 'inline-flex', alignItems: 'center', gap: '4px'}}>
+                                            <CategoryIcon icon={getCategoryIcon(p.category)} size={12} color={catColor} /> {getCategoryName(p.category)}
+                                        </span>
+                                    </div>
+                                    <div className="product-name">{p.name}</div>
+                                    <div className="product-sku">SKU: {p.sku}</div>
+                                    {p.ean && <div className="product-sku">EAN: {p.ean}</div>}
+                                    <div className="product-price">{p.unitPrice > 0 ? `R$ ${formatBRL(p.unitPrice)}` : 'Preço: não sincronizado'}</div>
+                                    {p.observations && <div className="product-obs">{p.observations}</div>}
+                                    <div className="product-quantity">{p.currentQuantity}</div>
+                                    {p.unitPrice > 0 && <div className="product-value">Valor: R$ {formatBRL(p.unitPrice * p.currentQuantity)}</div>}
+                                    <span className={`product-status status-${p.status}`}>
+                                        {p.status === 'ok' ? 'Em estoque' : p.status === 'low' ? 'Estoque baixo' : 'Sem estoque'}
+                                    </span>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {filtered.length === 0 && (
+                        <div className="empty-state">
+                            <div className="empty-state-icon"><Icon name="empty" size={48} /></div>
+                            <h3>Nenhum produto encontrado</h3>
+                            <p>Tente ajustar os filtros</p>
+                        </div>
+                    )}
+                    {filtered.length > visibleCount && (
+                        <button
+                            className="btn btn-secondary"
+                            style={{width: '100%', marginTop: '12px', justifyContent: 'center'}}
+                            onClick={() => setVisibleCount(v => v + 50)}
+                        >
+                            Mostrar mais ({filtered.length - visibleCount} restantes)
+                        </button>
+                    )}
+                </div>
+            );
+        }
+
+        // ==========================================
+        // DESPACHOS (SOMENTE LEITURA)
+        // ==========================================
+        function ShippingView({ shippings }) {
+            const [searchTerm, setSearchTerm] = useState('');
+            const [statusFilter, setStatusFilter] = useState('all');
+
+            const statusList = {
+                'PENDENTE':       { label: 'Pendente',       color: '#C4873B', bg: 'rgba(196,135,59,0.08)' },
+                'EM_TRANSITO':    { label: 'Em transito',    color: '#5B8DB8', bg: 'rgba(91,141,184,0.08)' },
+                'ENTREGUE':       { label: 'Entregue',       color: '#3D8B5F', bg: 'rgba(61,139,95,0.08)' },
+                'PROBLEMA':       { label: 'Problema',       color: '#C45151', bg: 'rgba(196,81,81,0.08)' },
+                'DEVOLVIDO':      { label: 'Devolvido',      color: '#8B5CF6', bg: 'rgba(139,92,246,0.08)' },
+                'CANCELADO':      { label: 'Cancelado',      color: '#737373', bg: 'rgba(115,115,115,0.08)' },
+                'SAIU_ENTREGA':   { label: 'Saiu p/ Entrega',color: '#0EA5E9', bg: 'rgba(14,165,233,0.08)' },
+            };
+
+            const filtered = shippings
+                .filter(s => statusFilter === 'all' || s.status === statusFilter)
+                .filter(s => {
+                    if (!searchTerm) return true;
+                    const search = searchTerm.toLowerCase();
+                    return (s.nfNumero || '').toLowerCase().includes(search) ||
+                           (s.cliente || '').toLowerCase().includes(search) ||
+                           (s.codigoRastreio || '').toLowerCase().includes(search) ||
+                           (s.transportadora || '').toLowerCase().includes(search) ||
+                           (s.localOrigem || '').toLowerCase().includes(search);
+                })
+                .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+
+            const totalShippings = shippings.length;
+            const pendingCount = shippings.filter(s => s.status === 'PENDENTE').length;
+            const transitCount = shippings.filter(s => s.status === 'EM_TRANSITO' || s.status === 'SAIU_ENTREGA').length;
+            const deliveredCount = shippings.filter(s => s.status === 'ENTREGUE').length;
+
+            return (
+                <div>
+                    <div className="page-header">
+                        <h1 className="page-title">Despachos</h1>
+                        <p className="page-subtitle">Acompanhe os envios e rastreamentos</p>
+                    </div>
+
+                    {/* Stats */}
+                    <div className="stats-grid">
+                        <div className="stat-card accent">
+                            <div className="stat-header">
+                                <div className="stat-icon"><Icon name="shipping" size={18} /></div>
+                            </div>
+                            <div className="stat-content">
+                                <div className="stat-value">{totalShippings}</div>
+                                <div className="stat-label">Total de Despachos</div>
+                            </div>
+                        </div>
+                        <div className="stat-card warning">
+                            <div className="stat-header">
+                                <div className="stat-icon yellow"><Icon name="warning" size={18} /></div>
+                            </div>
+                            <div className="stat-content">
+                                <div className="stat-value">{pendingCount}</div>
+                                <div className="stat-label">Pendentes</div>
+                            </div>
+                        </div>
+                        <div className="stat-card">
+                            <div className="stat-header">
+                                <div className="stat-icon blue"><Icon name="shipping" size={18} /></div>
+                            </div>
+                            <div className="stat-content">
+                                <div className="stat-value">{transitCount}</div>
+                                <div className="stat-label">Em Transito</div>
+                            </div>
+                        </div>
+                        <div className="stat-card">
+                            <div className="stat-header">
+                                <div className="stat-icon green"><Icon name="check" size={18} /></div>
+                            </div>
+                            <div className="stat-content">
+                                <div className="stat-value">{deliveredCount}</div>
+                                <div className="stat-label">Entregues</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="card">
+                        {/* Filtros */}
+                        <div style={{display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap'}}>
+                            <div className="search-box" style={{flex: 1, minWidth: '200px', marginBottom: 0}}>
+                                <span className="search-icon"><Icon name="search" size={14} /></span>
+                                <input
+                                    type="text"
+                                    className="search-input"
+                                    placeholder="Buscar por NF, cliente, rastreio ou transportadora..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
+                                {searchTerm && (
+                                    <button onClick={() => setSearchTerm('')} style={{position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: '4px'}}>
+                                        <Icon name="close" size={14} />
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="filter-tabs" style={{marginBottom: '16px'}}>
+                            <button className={`filter-tab ${statusFilter === 'all' ? 'active' : ''}`} onClick={() => setStatusFilter('all')}>
+                                Todos ({shippings.length})
+                            </button>
+                            {Object.entries(statusList).map(([key, val]) => {
+                                const count = shippings.filter(s => s.status === key).length;
+                                if (count === 0) return null;
+                                return (
+                                    <button
+                                        key={key}
+                                        className={`filter-tab ${statusFilter === key ? 'active' : ''}`}
+                                        onClick={() => setStatusFilter(key)}
+                                    >
+                                        {val.label} ({count})
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        {filtered.length === 0 ? (
+                            <div className="empty-state">
+                                <div className="empty-state-icon"><Icon name="shipping" size={48} /></div>
+                                <h3>Nenhum despacho encontrado</h3>
+                            </div>
+                        ) : (
+                            <div className="table-container">
+                                <table className="table">
+                                    <thead>
+                                        <tr>
+                                            <th>NF</th>
+                                            <th>Cliente</th>
+                                            <th>Origem</th>
+                                            <th>Transportadora</th>
+                                            <th>Rastreio</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {filtered.map(s => {
+                                            const st = statusList[s.status] || statusList['PENDENTE'];
+                                            return (
+                                                <tr key={s.id}>
+                                                    <td>
+                                                        <div style={{fontWeight: '600'}}>{s.nfNumero || '-'}</div>
+                                                        <div style={{fontSize: '11px', color: 'var(--text-tertiary)'}}>
+                                                            {s.date ? new Date(s.date).toLocaleDateString('pt-BR') : '-'}
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <div style={{fontWeight: '500'}}>{s.cliente || '-'}</div>
+                                                        {s.destino && <div style={{fontSize: '11px', color: 'var(--text-tertiary)', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{s.destino}</div>}
+                                                    </td>
+                                                    <td style={{fontSize: '12px'}}>{s.localOrigem || '-'}</td>
+                                                    <td style={{fontSize: '12px'}}>{s.transportadora || '-'}</td>
+                                                    <td>
+                                                        {s.codigoRastreio ? (
+                                                            s.linkRastreio ? (
+                                                                <a
+                                                                    href={s.linkRastreio}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    style={{color: 'var(--accent-primary)', fontFamily: 'monospace', fontSize: '12px', textDecoration: 'none'}}
+                                                                >
+                                                                    {s.codigoRastreio} <Icon name="link" size={10} />
+                                                                </a>
+                                                            ) : (
+                                                                <span style={{fontFamily: 'monospace', fontSize: '12px'}}>{s.codigoRastreio}</span>
+                                                            )
+                                                        ) : (
+                                                            <span style={{color: 'var(--text-tertiary)'}}>-</span>
+                                                        )}
+                                                    </td>
+                                                    <td>
+                                                        <span style={{
+                                                            display: 'inline-block',
+                                                            padding: '3px 10px',
+                                                            borderRadius: '999px',
+                                                            fontSize: '11px',
+                                                            fontWeight: '600',
+                                                            color: st.color,
+                                                            background: st.bg,
+                                                            border: `1px solid ${st.color}22`
+                                                        }}>
+                                                            {st.label}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        // ==========================================
+        // HISTORICO (SOMENTE LEITURA)
+        // ==========================================
+        function HistoryView({ entries, exits, products }) {
+            const [filter, setFilter] = useState('all');
+            const [searchTerm, setSearchTerm] = useState('');
+
+            const allMovements = [
+                ...entries.map(e => ({...e, movType: 'entry'})),
+                ...exits.map(e => ({...e, movType: 'exit'}))
+            ].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            const getProductName = (sku) => products.find(p => p.sku === sku)?.name || sku;
+
+            // Filtrar por tipo e busca
+            const filtered = allMovements.filter(m => {
+                const matchesType = filter === 'all' || m.movType === filter;
+
+                if (!searchTerm) return matchesType;
+
+                const search = searchTerm.toLowerCase();
+                const productName = getProductName(m.sku).toLowerCase();
+                const matchesSearch =
+                    productName.includes(search) ||
+                    (m.sku || '').toLowerCase().includes(search) ||
+                    (m.nf || '').toLowerCase().includes(search) ||
+                    (m.nfOrigem || '').toLowerCase().includes(search) ||
+                    (m.supplier || '').toLowerCase().includes(search) ||
+                    (m.client || '').toLowerCase().includes(search) ||
+                    (m.localEntrada || '').toLowerCase().includes(search);
+
+                return matchesType && matchesSearch;
+            });
+
+            return (
+                <div>
+                    <div className="page-header">
+                        <h1 className="page-title">Historico de Movimentacoes</h1>
+                        <p className="page-subtitle">Visualize todas as entradas e saidas</p>
+                    </div>
+
+                    <div className="card">
+                        {/* Barra de pesquisa */}
+                        <div className="search-box" style={{marginBottom: '16px'}}>
+                            <span className="search-icon"><Icon name="search" size={14} /></span>
+                            <input
+                                type="text"
+                                className="search-input"
+                                placeholder="Buscar por produto, SKU, NF, cliente ou fornecedor..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                            {searchTerm && (
+                                <button onClick={() => setSearchTerm('')} style={{position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: '4px'}}>
+                                    <Icon name="close" size={14} />
+                                </button>
+                            )}
+                        </div>
+
+                        <div className="filter-tabs" style={{marginBottom: '16px'}}>
+                            <button className={`filter-tab ${filter === 'all' ? 'active' : ''}`} onClick={() => setFilter('all')}>
+                                Todas ({allMovements.length})
+                            </button>
+                            <button className={`filter-tab ${filter === 'entry' ? 'active' : ''}`} onClick={() => setFilter('entry')}>
+                                Entradas ({entries.length})
+                            </button>
+                            <button className={`filter-tab ${filter === 'exit' ? 'active' : ''}`} onClick={() => setFilter('exit')}>
+                                Saidas ({exits.length})
+                            </button>
+                        </div>
+
+                        {searchTerm && (
+                            <div style={{
+                                padding: '8px 12px',
+                                background: 'var(--accent-primary-subtle)',
+                                borderRadius: 'var(--radius)',
+                                marginBottom: '16px',
+                                fontSize: '13px',
+                                color: 'var(--accent-primary)',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center'
+                            }}>
+                                <span>{filtered.length} resultado(s) para "{searchTerm}"</span>
+                                <button onClick={() => setSearchTerm('')} style={{background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent-primary)', fontSize: '12px', fontWeight: '600'}}>Limpar</button>
+                            </div>
+                        )}
+
+                        {filtered.length === 0 ? (
+                            <div className="empty-state">
+                                <div className="empty-state-icon"><Icon name="clipboard" size={48} /></div>
+                                <h3>{searchTerm ? 'Nenhuma movimentacao encontrada' : 'Nenhuma movimentacao'}</h3>
+                            </div>
+                        ) : (
+                            <div className="table-container">
+                                <table className="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Data</th>
+                                            <th>Tipo</th>
+                                            <th>Produto</th>
+                                            <th>Qtd</th>
+                                            <th>Local</th>
+                                            <th>Info</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {filtered.slice(0, 100).map((m, i) => (
+                                            <tr key={i}>
+                                                <td style={{whiteSpace: 'nowrap'}}>
+                                                    {new Date(m.date).toLocaleDateString('pt-BR')}
+                                                    <div style={{fontSize: '11px', color: 'var(--text-tertiary)'}}>
+                                                        {new Date(m.date).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <span className={`badge ${m.movType === 'entry' ? 'badge-success' : 'badge-danger'}`}>
+                                                        {m.movType === 'entry' ? 'Entrada' : 'Saida'}
+                                                    </span>
+                                                </td>
+                                                <td style={{maxWidth: '300px'}}>
+                                                    <div style={{fontWeight: '500'}}>{getProductName(m.sku)}</div>
+                                                    <div style={{fontSize: '10px', color: 'var(--text-tertiary)'}}>SKU: {m.sku}</div>
+                                                </td>
+                                                <td style={{fontWeight: '600'}}>{m.quantity}</td>
+                                                <td style={{fontSize: '12px'}}>
+                                                    {m.localEntrada && (
+                                                        <span style={{
+                                                            background: 'var(--accent-primary-subtle)',
+                                                            color: 'var(--accent-primary)',
+                                                            padding: '2px 8px',
+                                                            borderRadius: '12px',
+                                                            fontSize: '11px'
+                                                        }}>
+                                                            {m.localEntrada}
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td style={{fontSize: '12px', color: 'var(--text-tertiary)'}}>
+                                                    {m.supplier || m.client || '-'}
+                                                    {m.nf && <div style={{marginTop: '2px'}}><strong>NF: {m.nf}</strong></div>}
+                                                    {m.nfOrigem && <div style={{marginTop: '2px', color: 'var(--accent-warning)'}}>Saida da NF: {m.nfOrigem}</div>}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        // ==========================================
+        // APP PRINCIPAL (CONSULTA)
+        // ==========================================
+        function App() {
+            const [loading, setLoading] = useState(true);
+            const [error, setError] = useState(null);
+            const [authenticated, setAuthenticated] = useState(false);
+            const [products, setProducts] = useState([]);
+            const [categories, setCategories] = useState([]);
+            const [entries, setEntries] = useState([]);
+            const [exits, setExits] = useState([]);
+            const [shippings, setShippings] = useState([]);
+            const [activeTab, setActiveTab] = useState('dashboard');
+            const [searchTerm, setSearchTerm] = useState('');
+            const [sidebarOpen, setSidebarOpen] = useState(false);
+
+            const tabTitles = { dashboard: 'Dashboard', stock: 'Estoque', shipping: 'Despachos', history: 'Historico' };
+
+            const handleTabChange = (tab) => {
+                if (tab === activeTab) return;
+                if (document.startViewTransition) {
+                    document.startViewTransition(() => { setActiveTab(tab); });
+                } else {
+                    setActiveTab(tab);
+                }
+                if (sidebarOpen) setSidebarOpen(false);
+            };
+
+            // Autenticacao anonima via Supabase
+            useEffect(() => {
+                if (!supabaseClient) {
+                    setError('Erro ao conectar com Supabase');
+                    setLoading(false);
+                    return;
+                }
+
+                supabaseClient.auth.signInAnonymously()
+                    .then(({ data, error: authError }) => {
+                        if (authError) {
+                            console.error('Erro na autenticacao anonima:', authError);
+                            setError('Erro ao autenticar. Tente recarregar a pagina.');
+                            setLoading(false);
+                        } else {
+                            setAuthenticated(true);
+                        }
+                    });
+            }, []);
+
+            // Carregar dados do Supabase (so apos autenticacao)
+            useEffect(() => {
+                if (!authenticated || !supabaseClient) return;
+
+                let loadedCount = 0;
+                const totalRefs = 5;
+                const channels = [];
+
+                const checkLoaded = () => {
+                    loadedCount++;
+                    if (loadedCount >= totalRefs) {
+                        setLoading(false);
+                    }
+                };
+
+                const handleError = (err) => {
+                    console.error('Erro ao carregar dados:', err);
+                    setError('Erro ao carregar dados: ' + err.message);
+                    setLoading(false);
+                };
+
+                const setupCollection = (table, setState, transform) => {
+                    supabaseClient.from(table).select('*').then(({ data, error }) => {
+                        if (error) { handleError(error); return; }
+                        setState(transform ? data.map(transform) : data);
+                        checkLoaded();
+                    });
+                    const ch = supabaseClient
+                        .channel(table + '-consulta')
+                        .on('postgres_changes',
+                            { event: '*', schema: 'public', table: table },
+                            (payload) => {
+                                const { eventType, new: newRec, old: oldRec } = payload;
+                                setState(prev => {
+                                    let updated = [...prev];
+                                    const item = transform ? transform(newRec) : newRec;
+                                    if (eventType === 'INSERT') updated.push(item);
+                                    else if (eventType === 'UPDATE') {
+                                        const idx = updated.findIndex(i => i.id === item.id);
+                                        if (idx >= 0) updated[idx] = item; else updated.push(item);
+                                    } else if (eventType === 'DELETE') {
+                                        updated = updated.filter(i => i.id !== (oldRec && oldRec.id));
+                                    }
+                                    return updated;
+                                });
+                            }
+                        ).subscribe();
+                    channels.push(ch);
+                };
+
+                try {
+                    setupCollection('products', setProducts, mapProductFromDB);
+                    setupCollection('categories', setCategories, null);
+                    setupCollection('entries', setEntries, mapEntryFromDB);
+                    setupCollection('exits', setExits, mapExitFromDB);
+                    setupCollection('shippings', setShippings, mapShippingFromDB);
+                } catch (err) {
+                    handleError(err);
+                }
+
+                return () => {
+                    channels.forEach(ch => supabaseClient.removeChannel(ch));
+                };
+            }, [authenticated]);
+
+            // Calcular estoque
+            const calculateStock = (sku) => {
+                const totalEntries = entries.filter(e => e.sku === sku).reduce((sum, e) => sum + parseInt(e.quantity), 0);
+                const totalExits = exits.filter(e => e.sku === sku).reduce((sum, e) => sum + parseInt(e.quantity), 0);
+                return totalEntries - totalExits;
+            };
+
+            const getCurrentStock = () => products.map(p => ({
+                ...p,
+                currentQuantity: calculateStock(p.sku),
+                status: (() => {
+                    const qty = calculateStock(p.sku);
+                    const min = p.minStock || 3;
+                    return qty === 0 ? 'empty' : qty < min ? 'low' : 'ok';
+                })()
+            }));
+
+            const currentStock = getCurrentStock();
+
+            if (loading) {
+                return (
+                    <div className="loading-container">
+                        <div className="loading-spinner"></div>
+                        <p style={{marginTop: '16px', color: 'var(--text-tertiary)'}}>Carregando dados...</p>
+                    </div>
+                );
+            }
+
+            if (error) {
+                return (
+                    <div className="loading-container">
+                        <div style={{marginBottom: '16px', color: 'var(--text-disabled)'}}><Icon name="warning" size={48} /></div>
+                        <h2 style={{color: 'var(--accent-error)', marginBottom: '8px'}}>Erro de Conexao</h2>
+                        <p style={{color: 'var(--text-tertiary)', marginBottom: '16px'}}>{error}</p>
+                        <button className="btn btn-primary" onClick={() => window.location.reload()}>
+                            Tentar Novamente
+                        </button>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="app-container">
+                    {/* Mobile Header */}
+                    <div className="mobile-header">
+                        <button className="mobile-menu-btn" onClick={() => setSidebarOpen(true)} aria-label="Abrir menu">
+                            <Icon name="menuIcon" size={20} />
+                        </button>
+                        <div className="mobile-header-title">{tabTitles[activeTab] || 'Consulta'}</div>
+                        <div className="mobile-header-actions">
+                            <span style={{fontSize: '9px', padding: '2px 6px', borderRadius: '999px', background: 'var(--accent-primary-subtle)', color: 'var(--accent-primary)', fontWeight: 500}}>LEITURA</span>
+                        </div>
+                    </div>
+
+                    {/* Sidebar Overlay */}
+                    <div className={`sidebar-overlay ${sidebarOpen ? 'visible' : ''}`} onClick={() => setSidebarOpen(false)}></div>
+
+                    {/* Sidebar */}
+                    <div className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
+                        <div className="logo-container">
+                            <img src="logo-orne.png" alt="Orne" className="logo" onError={(e) => e.target.style.display = 'none'} />
+                            <span style={{fontSize: '11px', color: 'rgba(255,255,255,0.4)', display: 'block', marginTop: '8px'}}>
+                                Consulta de Estoque <span className="sidebar-badge">LEITURA</span>
+                            </span>
+                        </div>
+
+                        <ul className="nav-menu">
+                            <li className="nav-item">
+                                <a className={`nav-link ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => handleTabChange('dashboard')}>
+                                    <span className="nav-icon" dangerouslySetInnerHTML={{__html: ICONS.dashboard}}></span>Dashboard
+                                </a>
+                            </li>
+                            <li className="nav-item">
+                                <a className={`nav-link ${activeTab === 'stock' ? 'active' : ''}`} onClick={() => handleTabChange('stock')}>
+                                    <span className="nav-icon" dangerouslySetInnerHTML={{__html: ICONS.stock}}></span>Estoque
+                                </a>
+                            </li>
+                            <li className="nav-item">
+                                <a className={`nav-link ${activeTab === 'shipping' ? 'active' : ''}`} onClick={() => handleTabChange('shipping')}>
+                                    <span className="nav-icon" dangerouslySetInnerHTML={{__html: ICONS.shipping}}></span>Despachos
+                                </a>
+                            </li>
+                            <li className="nav-item">
+                                <a className={`nav-link ${activeTab === 'history' ? 'active' : ''}`} onClick={() => handleTabChange('history')}>
+                                    <span className="nav-icon" dangerouslySetInnerHTML={{__html: ICONS.clipboard}}></span>Historico
+                                </a>
+                            </li>
+                        </ul>
+
+                        <div style={{padding: '16px', marginTop: 'auto', borderTop: '1px solid rgba(255,255,255,0.08)'}}>
+                            <div style={{fontSize: '11px', color: 'rgba(255,255,255,0.3)'}}>
+                                Modo somente leitura
+                            </div>
+                            <a
+                                href="index.html"
+                                style={{
+                                    display: 'block',
+                                    marginTop: '10px',
+                                    padding: '8px',
+                                    background: 'rgba(255,255,255,0.06)',
+                                    borderRadius: 'var(--radius-sm)',
+                                    border: '1px solid rgba(255,255,255,0.1)',
+                                    color: 'rgba(255,255,255,0.6)',
+                                    textDecoration: 'none',
+                                    fontSize: '12px',
+                                    textAlign: 'center'
+                                }}
+                            >
+                                Acessar versao completa
+                            </a>
+                        </div>
+                    </div>
+
+                    {/* Main Content — tabs kept mounted, hidden via display:none */}
+                    <div className="main-content">
+                        <div style={{display: activeTab === 'dashboard' ? 'block' : 'none'}}>
+                            <DashboardView
+                                stock={currentStock}
+                                categories={categories}
+                                isVisible={activeTab === 'dashboard'}
+                                entries={entries}
+                                exits={exits}
+                            />
+                        </div>
+                        <div style={{display: activeTab === 'stock' ? 'block' : 'none'}}>
+                            <StockView
+                                stock={currentStock}
+                                categories={categories}
+                                searchTerm={searchTerm}
+                                setSearchTerm={setSearchTerm}
+                                entries={entries}
+                                exits={exits}
+                            />
+                        </div>
+                        <div style={{display: activeTab === 'shipping' ? 'block' : 'none'}}>
+                            <ShippingView
+                                shippings={shippings}
+                            />
+                        </div>
+                        <div style={{display: activeTab === 'history' ? 'block' : 'none'}}>
+                            <HistoryView
+                                entries={entries}
+                                exits={exits}
+                                products={products}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Mobile Bottom Nav */}
+                    <div className="mobile-bottom-nav" role="navigation" aria-label="Navegação principal">
+                        <button
+                            className={`nav-tab ${activeTab === 'dashboard' ? 'active' : ''}`}
+                            onClick={() => handleTabChange('dashboard')}
+                            aria-current={activeTab === 'dashboard' ? 'page' : undefined}
+                            aria-label="Dashboard"
+                        >
+                            <Icon name="layoutDashboard" size={22} />
+                            <span>Início</span>
+                        </button>
+                        <button
+                            className={`nav-tab ${activeTab === 'stock' ? 'active' : ''}`}
+                            onClick={() => handleTabChange('stock')}
+                            aria-current={activeTab === 'stock' ? 'page' : undefined}
+                            aria-label="Estoque"
+                        >
+                            <Icon name="package" size={22} />
+                            <span>Produtos</span>
+                        </button>
+                        <button
+                            className={`nav-tab ${activeTab === 'shipping' ? 'active' : ''}`}
+                            onClick={() => handleTabChange('shipping')}
+                            aria-current={activeTab === 'shipping' ? 'page' : undefined}
+                            aria-label="Despachos"
+                        >
+                            <Icon name="shipping" size={22} />
+                            <span>Despachos</span>
+                        </button>
+                        <button
+                            className={`nav-tab ${activeTab === 'history' ? 'active' : ''}`}
+                            onClick={() => handleTabChange('history')}
+                            aria-current={activeTab === 'history' ? 'page' : undefined}
+                            aria-label="Histórico"
+                        >
+                            <Icon name="clipboard" size={22} />
+                            <span>Histórico</span>
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        // ==========================================
+        // RENDER
+        // ==========================================
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
