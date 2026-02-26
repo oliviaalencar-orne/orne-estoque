@@ -9549,7 +9549,7 @@
                     onPrepareShipping({
                         nfNumero: String(nfeData.numero || ''),
                         cliente: nfeData.cliente?.nome || '',
-                        destino: '',
+                        destino: nfeData.cliente?.endereco || '',
                         produtos: produtos,
                     });
 
