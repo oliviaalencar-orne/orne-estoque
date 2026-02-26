@@ -7,7 +7,7 @@
  */
 import React, { useState } from 'react';
 import { Icon } from '@/utils/icons';
-import { LocaisModal } from '@/components/ui/LocaisModal';
+import LocaisModal from '@/components/ui/LocaisModal';
 import TinyNFeImport from '@/components/import/TinyNFeImport';
 import CSVImportTab from '@/components/import/CSVImportTab';
 import ShippingList from './ShippingList';

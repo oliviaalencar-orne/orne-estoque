@@ -9,10 +9,10 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url
 ).toString();
 
-// Global CSS will be imported here in Phase 7
-// import './styles/global.css';
-// import './styles/components.css';
-// import './styles/pages.css';
+// Global CSS
+import './styles/global.css';
+import './styles/components.css';
+import './styles/pages.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
