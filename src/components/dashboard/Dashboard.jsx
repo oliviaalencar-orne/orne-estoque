@@ -5,6 +5,7 @@
  * Uses Chart.js directly via useRef+useEffect (NOT react-chartjs-2)
  */
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { Chart } from 'chart.js/auto';
 import { Icon, CategoryIcon } from '@/utils/icons';
 import { formatBRL } from '@/utils/formatters';
 

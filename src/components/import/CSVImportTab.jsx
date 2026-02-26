@@ -2,9 +2,11 @@
  * CSVImportTab.jsx — Import entries/exits/shippings via CSV/Excel
  *
  * Extracted from index-legacy.html L4974-5264
- * Uses Papa (PapaParse) and XLSX (SheetJS) from CDN globals
+ * Uses PapaParse for CSV and SheetJS for Excel parsing
  */
 import React, { useState } from 'react';
+import Papa from 'papaparse';
+import * as XLSX from 'xlsx';
 import { Icon } from '@/utils/icons';
 import LocaisModal from '@/components/ui/LocaisModal';
 import CategorySelectInline from '@/components/ui/CategorySelectInline';

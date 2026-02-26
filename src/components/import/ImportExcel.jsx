@@ -5,6 +5,8 @@
  * Uses Papa (PapaParse) and XLSX (SheetJS) from CDN globals
  */
 import React, { useState } from 'react';
+import Papa from 'papaparse';
+import * as XLSX from 'xlsx';
 import { Icon } from '@/utils/icons';
 import LocaisModal from '@/components/ui/LocaisModal';
 

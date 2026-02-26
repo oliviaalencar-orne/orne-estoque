@@ -54,6 +54,34 @@ const tabTitles = {
   admin: 'Usuários',
 };
 
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, info) {
+    console.error('ErrorBoundary caught:', error, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: 40, fontFamily: 'Inter, monospace', color: '#c00' }}>
+          <h2>Erro na aplicação</h2>
+          <pre style={{ whiteSpace: 'pre-wrap', background: '#fef2f2', padding: 16, borderRadius: 8 }}>
+            {this.state.error?.message}
+            {'\n\n'}
+            {this.state.error?.stack}
+          </pre>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function App() {
   // ── Auth ──────────────────────────────────────────────────────────────
   const {
@@ -201,6 +229,7 @@ export default function App() {
     return <RejectedScreen onLogout={handleLogout} />;
 
   return (
+    <ErrorBoundary>
     <div className="app-container">
       {/* ── Mobile Header ─────────────────────────────────────────── */}
       <div className="mobile-header">
@@ -663,5 +692,6 @@ export default function App() {
         </button>
       </div>
     </div>
+    </ErrorBoundary>
   );
 }

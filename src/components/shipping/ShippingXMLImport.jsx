@@ -5,6 +5,7 @@
  * Handles parsing of XML and PDF files to extract NF-e data
  */
 import React from 'react';
+import * as pdfjsLib from 'pdfjs-dist';
 import { Icon } from '@/utils/icons';
 
 /**
