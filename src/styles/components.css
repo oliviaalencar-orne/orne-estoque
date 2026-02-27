@@ -143,11 +143,9 @@
     font-weight: 500;
 }
 
-.stat-card.warning { border-left: 3px solid var(--accent-warning); }
 .stat-card.warning .stat-value { color: var(--text-primary); }
 .stat-card.warning .stat-icon { background: var(--accent-warning-subtle); }
 
-.stat-card.danger { border-left: 3px solid var(--accent-error); }
 .stat-card.danger .stat-value { color: var(--text-primary); }
 .stat-card.danger .stat-icon { background: var(--accent-error-subtle); }
 
