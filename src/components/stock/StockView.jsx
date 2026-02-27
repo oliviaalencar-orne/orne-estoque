@@ -107,8 +107,8 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
             filtered = filtered.filter(p => p.status === filter);
         }
 
-        // Ocultar zerados (exceto se busca ativa ou aba "Zerado")
-        if (hideZeroStock && !hasSearch && filter !== 'empty') {
+        // Ocultar zerados (exceto na aba "Zerado")
+        if (hideZeroStock && filter !== 'empty') {
             filtered = filtered.filter(p => p.currentQuantity > 0);
         }
 
@@ -148,11 +148,10 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                 (p.nfOrigem || '').toLowerCase().includes(term)
             );
         }
-        const all = hideZeroStock && !hasSearch ? base.filter(p => p.currentQuantity > 0) : base;
+        const all = hideZeroStock ? base.filter(p => p.currentQuantity > 0) : base;
         return {
             all: all.length,
             ok: base.filter(p => p.status === 'ok').length,
-            low: base.filter(p => p.status === 'low').length,
             empty: base.filter(p => p.status === 'empty').length,
         };
     }, [stock, debouncedSearch, hideZeroStock]);
@@ -493,7 +492,7 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                         onChange={(e) => setSearchInput(e.target.value)}
                     />
                     {searchInput && (
-                        <button onClick={() => { setSearchInput(''); setDebouncedSearch(''); setSearchTerm(''); }} style={{background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px', color: '#999', fontSize: '16px'}} title="Limpar busca">&times;</button>
+                        <button className="search-clear" onClick={() => { setSearchInput(''); setDebouncedSearch(''); setSearchTerm(''); }} title="Limpar busca">&times;</button>
                     )}
                 </div>
 
@@ -504,9 +503,6 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                     </button>
                     <button className={`filter-tab ${filter === 'ok' ? 'active' : ''}`} onClick={() => setFilter('ok')}>
                         OK ({statusCounts.ok})
-                    </button>
-                    <button className={`filter-tab ${filter === 'low' ? 'active' : ''}`} onClick={() => setFilter('low')}>
-                        Baixo ({statusCounts.low})
                     </button>
                     <button className={`filter-tab ${filter === 'empty' ? 'active' : ''}`} onClick={() => setFilter('empty')}>
                         Zerado ({statusCounts.empty})
@@ -622,8 +618,7 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
 
                                             <div className="product-name">{p.name}</div>
                                             <div className="product-sku">SKU: {p.sku}</div>
-                                            {p.ean && <div className="product-sku">EAN: {p.ean}</div>}
-                                            <div className="product-price">{p.unitPrice > 0 ? `R$ ${formatBRL(p.unitPrice)}` : 'Preco: nao sincronizado'}</div>
+                                            {p.unitPrice > 0 && <div className="product-price">R$ {formatBRL(p.unitPrice)}</div>}
 
                                             {p.local && p.local.trim() !== '' && (
                                                 <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
@@ -631,16 +626,9 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                                                 </div>
                                             )}
 
-                                            {p.observations && p.observations.trim() !== '' && (
-                                                <div style={{ fontSize: '12px', color: '#888', marginTop: '4px', fontStyle: 'italic' }}>
-                                                    {'\uD83D\uDCAC'} {p.observations.length > 80 ? p.observations.substring(0, 80) + '...' : p.observations}
-                                                </div>
-                                            )}
-
                                             <div className="product-quantity">{p.currentQuantity}</div>
-                                            {p.unitPrice > 0 && <div className="product-value">Valor: R$ {formatBRL(p.unitPrice * p.currentQuantity)}</div>}
                                             <span className={`product-status status-${p.status}`}>
-                                                {p.status === 'ok' ? 'OK' : p.status === 'low' ? 'BAIXO' : 'ZERADO'}
+                                                {p.status === 'ok' ? 'OK' : 'ZERADO'}
                                             </span>
                                         </div>
                                     ))}

@@ -84,8 +84,6 @@
     border-color: var(--border-strong);
 }
 
-.product-card.low { border-left: 3px solid var(--accent-warning); }
-.product-card.empty { border-left: 3px solid var(--accent-error); }
 
 .product-actions {
     position: absolute;
@@ -157,7 +155,6 @@
 }
 
 .status-ok { background: var(--accent-success-subtle); color: var(--accent-success); }
-.status-low { background: var(--accent-warning-subtle); color: var(--accent-warning); }
 .status-empty { background: var(--accent-error-subtle); color: var(--accent-error); }
 
 .product-price { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }

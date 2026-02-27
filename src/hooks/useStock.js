@@ -34,11 +34,10 @@ export function useStock(products, entries, exits) {
     const { entryMap, exitMap } = stockMap;
     return products.map((p) => {
       const qty = (entryMap[p.sku] || 0) - (exitMap[p.sku] || 0);
-      const min = p.minStock || 3;
       return {
         ...p,
         currentQuantity: qty,
-        status: qty === 0 ? 'empty' : qty < min ? 'low' : 'ok',
+        status: qty === 0 ? 'empty' : 'ok',
       };
     });
   }, [products, stockMap]);

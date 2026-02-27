@@ -36,15 +36,14 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
     // === Calculos memoizados do estoque ===
     const stockStats = useMemo(() => {
         const totalQty = stock.reduce((s, p) => s + p.currentQuantity, 0);
-        const lowStock = stock.filter(p => p.status === 'low').length;
         const emptyStock = stock.filter(p => p.status === 'empty').length;
         const okStock = stock.filter(p => p.status === 'ok').length;
         const topProducts = [...stock].sort((a, b) => b.currentQuantity - a.currentQuantity).slice(0, 5);
-        const alertProducts = [...stock].filter(p => p.status === 'low' || p.status === 'empty').slice(0, 5);
+        const alertProducts = stock.filter(p => p.status === 'empty').slice(0, 5);
         const totalValue = stock.reduce((sum, p) => sum + ((p.unitPrice || 0) * (p.currentQuantity || 0)), 0);
-        return { totalQty, totalProducts: stock.length, lowStock, emptyStock, okStock, topProducts, alertProducts, totalValue };
+        return { totalQty, totalProducts: stock.length, emptyStock, okStock, topProducts, alertProducts, totalValue };
     }, [stock]);
-    const { totalQty, totalProducts, lowStock, emptyStock, okStock, topProducts, alertProducts, totalValue } = stockStats;
+    const { totalQty, totalProducts, emptyStock, okStock, topProducts, alertProducts, totalValue } = stockStats;
 
     // Hora atual para saudacao
     const hora = new Date().getHours();
@@ -56,7 +55,7 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
             ...cat,
             productCount: catProducts.length,
             totalStock: catProducts.reduce((sum, p) => sum + (p.currentQuantity || 0), 0),
-            alertCount: catProducts.filter(p => p.status === 'low' || p.status === 'empty').length
+            alertCount: catProducts.filter(p => p.status === 'empty').length
         };
     }), [stock, categories]);
 
@@ -348,16 +347,6 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
                     </div>
                 </div>
 
-                <div className="stat-card warning">
-                    <div className="stat-header">
-                        <div className="stat-icon yellow"><Icon name="warning" size={18} /></div>
-                    </div>
-                    <div className="stat-content">
-                        <div className="stat-value">{lowStock}</div>
-                        <div className="stat-label">Estoque Baixo</div>
-                    </div>
-                </div>
-
                 <div className="stat-card danger">
                     <div className="stat-header">
                         <div className="stat-icon red"><Icon name="error" size={18} /></div>
@@ -427,20 +416,19 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
                                     padding: '12px',
                                     background: 'var(--bg-secondary)',
                                     border: '1px solid var(--border-default)',
-                                    borderRadius: 'var(--radius)',
-                                    borderLeft: `3px solid ${p.status === 'empty' ? 'var(--accent-error)' : 'var(--accent-warning)'}`
+                                    borderRadius: 'var(--radius)'
                                 }}>
                                     <div style={{
                                         width: '32px',
                                         height: '32px',
                                         borderRadius: 'var(--radius)',
-                                        background: p.status === 'empty' ? 'var(--accent-error-subtle)' : 'var(--accent-warning-subtle)',
+                                        background: 'var(--accent-error-subtle)',
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
-                                        color: p.status === 'empty' ? 'var(--accent-error)' : 'var(--accent-warning)'
+                                        color: 'var(--accent-error)'
                                     }}>
-                                        {p.status === 'empty' ? <Icon name="error" size={14} /> : <Icon name="warning" size={14} />}
+                                        <Icon name="error" size={14} />
                                     </div>
                                     <div style={{flex: 1, minWidth: 0}}>
                                         <div style={{
@@ -454,19 +442,19 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
                                             {p.name}
                                         </div>
                                         <div style={{fontSize: '12px', color: 'var(--text-tertiary)'}}>
-                                            {p.status === 'empty' ? 'Sem estoque' : `${p.currentQuantity} un. restantes`}
+                                            Sem estoque
                                         </div>
                                     </div>
                                 </div>
                             ))}
-                            {lowStock + emptyStock > 5 && (
+                            {emptyStock > 5 && (
                                 <div style={{
                                     textAlign: 'center',
                                     marginTop: '4px',
                                     fontSize: '12px',
                                     color: 'var(--text-tertiary)'
                                 }}>
-                                    +{lowStock + emptyStock - 5} outros produtos
+                                    +{emptyStock - 5} outros produtos
                                 </div>
                             )}
                         </div>
