@@ -145,16 +145,10 @@ export default function App() {
   const [mobileSheet, setMobileSheet] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // ── Tab change with View Transitions ──────────────────────────────────
+  // ── Tab change ──────────────────────────────────────────────────────────
   const handleTabChange = (tab) => {
     if (tab === activeTab) return;
-    if (document.startViewTransition) {
-      document.startViewTransition(() => {
-        setActiveTab(tab);
-      });
-    } else {
-      setActiveTab(tab);
-    }
+    setActiveTab(tab);
     if (sidebarOpen) setSidebarOpen(false);
     if (mobileSheet) setMobileSheet(null);
   };
