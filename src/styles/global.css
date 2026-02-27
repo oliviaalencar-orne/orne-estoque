@@ -106,8 +106,8 @@
     --radius-2xl: 16px;
 
     /* ===== TRANSITIONS ===== */
-    --transition: all 0.15s ease;
-    --transition-slow: all 0.25s ease;
+    --transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+    --transition-slow: border-color 0.25s ease, background-color 0.25s ease, color 0.25s ease, box-shadow 0.25s ease, opacity 0.25s ease;
 }
 
 /* ===== DARK MODE ===== */
