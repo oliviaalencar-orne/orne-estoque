@@ -1,12 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <style>
-    .i { fill: #1a1a1a }
-    @media (prefers-color-scheme: dark) {
-      .i { fill: #e8e8e8 }
-    }
-  </style>
-  <!-- Accent / half-moon -->
-  <path class="i" d="M 15 2 A 17 9 0 0 1 49 2 A 17 4 0 0 0 15 2 Z"/>
-  <!-- O ring -->
-  <path class="i" fill-rule="evenodd" d="M 10 40 A 22 22 0 1 1 54 40 A 22 22 0 1 1 10 40 Z M 22 40 A 10 10 0 1 0 42 40 A 10 10 0 1 0 22 40 Z"/>
+  <!-- Accent crescent (concave up, convex down) -->
+  <path fill="#1a1a1a" d="M 19 8 A 13 7 0 0 1 45 8 A 13 3 0 0 0 19 8 Z"/>
+  <!-- Arch open at bottom -->
+  <path fill="#1a1a1a" d="M 12 52 A 22 22 0 1 1 52 52 L 39 52 A 12 12 0 1 0 25 52 Z"/>
 </svg>
