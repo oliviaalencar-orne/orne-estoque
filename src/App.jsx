@@ -468,6 +468,10 @@ export default function App() {
               entries={entries}
               exits={exits}
               locaisOrigem={locaisOrigem}
+              onAddCategory={addCategory}
+              onUpdateCategory={updateCategory}
+              onDeleteCategory={deleteCategory}
+              products={products}
             />
           </div>
           <div style={{ display: activeTab === 'categories' ? 'block' : 'none' }}>

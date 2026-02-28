@@ -6,8 +6,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Icon, CategoryIcon } from '@/utils/icons';
 import { formatBRL } from '@/utils/formatters';
+import CategorySelectInline from '@/components/ui/CategorySelectInline';
 
-export default function StockView({ stock, categories, onUpdate, onDelete, searchTerm, setSearchTerm, entries, exits, locaisOrigem }) {
+export default function StockView({ stock, categories, onUpdate, onDelete, searchTerm, setSearchTerm, entries, exits, locaisOrigem, onAddCategory, onUpdateCategory, onDeleteCategory, products }) {
     // Loading state enquanto produtos ainda nao carregaram
     if (stock.length === 0) {
         return (
@@ -176,10 +177,26 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
             category: product.category || '',
             minStock: product.minStock || 3,
             observations: product.observations || '',
-            nfOrigem: product.nfOrigem || '',
             local: product.local || '',
         });
         setEditingProduct(product);
+    };
+
+    // Obter todas as NFs de entrada do produto
+    const getProductNFs = (sku) => {
+        const productEntries = (entries || []).filter(e => e.sku === sku && e.nf && e.nf.trim() !== '');
+        const nfMap = {};
+        productEntries.forEach(e => {
+            if (!nfMap[e.nf]) {
+                nfMap[e.nf] = { nf: e.nf, date: e.date, quantity: e.quantity };
+            } else {
+                nfMap[e.nf].quantity += e.quantity;
+                if (new Date(e.date) > new Date(nfMap[e.nf].date)) {
+                    nfMap[e.nf].date = e.date;
+                }
+            }
+        });
+        return Object.values(nfMap).sort((a, b) => new Date(b.date) - new Date(a.date));
     };
 
     // Obter historico de movimentacoes do produto
@@ -256,29 +273,24 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                             </div>
                         </div>
 
-                        <div className="form-row">
-                            <div className="form-group">
-                                <label className="form-label">Categoria</label>
-                                <select
-                                    className="form-select"
-                                    value={editForm.category}
-                                    onChange={(e) => setEditForm({...editForm, category: e.target.value})}
-                                >
-                                    <option value="">Sem categoria</option>
-                                    {categories.map(cat => (
-                                        <option key={cat.id} value={cat.id}>{cat.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div className="form-group">
-                                <label className="form-label">Estoque Minimo</label>
-                                <input
-                                    type="number"
-                                    className="form-input"
-                                    value={editForm.minStock}
-                                    onChange={(e) => setEditForm({...editForm, minStock: e.target.value})}
-                                />
-                            </div>
+                        <CategorySelectInline
+                            categories={categories}
+                            value={editForm.category}
+                            onChange={(val) => setEditForm({...editForm, category: val})}
+                            onAddCategory={onAddCategory}
+                            onUpdateCategory={onUpdateCategory}
+                            onDeleteCategory={onDeleteCategory}
+                            products={products || stock}
+                        />
+
+                        <div className="form-group">
+                            <label className="form-label">Estoque Minimo</label>
+                            <input
+                                type="number"
+                                className="form-input"
+                                value={editForm.minStock}
+                                onChange={(e) => setEditForm({...editForm, minStock: e.target.value})}
+                            />
                         </div>
 
                         <div className="form-group">
@@ -309,14 +321,41 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                         )}
 
                         <div className="form-group">
-                            <label className="form-label">NF de Origem</label>
-                            <input
-                                type="text"
-                                className="form-input"
-                                value={editForm.nfOrigem}
-                                onChange={(e) => setEditForm({...editForm, nfOrigem: e.target.value})}
-                                placeholder="Numero da NF para localizar no estoque"
-                            />
+                            <label className="form-label">Notas Fiscais de Entrada</label>
+                            {(() => {
+                                const nfs = getProductNFs(editingProduct.sku);
+                                if (nfs.length === 0) {
+                                    return (
+                                        <div style={{ padding: '8px 12px', fontSize: '13px', color: 'var(--text-muted)', background: 'var(--bg-secondary)', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
+                                            Nenhuma NF registrada para este produto
+                                        </div>
+                                    );
+                                }
+                                return (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                        {nfs.map((nfInfo, idx) => (
+                                            <div key={idx} style={{
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center',
+                                                padding: '6px 12px',
+                                                fontSize: '13px',
+                                                background: 'var(--bg-secondary)',
+                                                borderRadius: 'var(--radius)',
+                                                border: '1px solid var(--border)',
+                                            }}>
+                                                <span style={{ fontWeight: 500 }}>NF {nfInfo.nf}</span>
+                                                <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
+                                                    {nfInfo.quantity} un. — {new Date(nfInfo.date).toLocaleDateString('pt-BR')}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                );
+                            })()}
+                            <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+                                NFs registradas via Entradas de estoque
+                            </span>
                         </div>
 
                         <div className="form-group">
