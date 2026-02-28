@@ -163,7 +163,7 @@ export default function SeparationList({
                           }}
                           title="Excluir"
                         >
-                          <Icon name="trash" size={14} />
+                          <Icon name="delete" size={14} />
                         </button>
                       </>
                     )}
