@@ -5,7 +5,7 @@
  * CRITICAL: handleSubmit, salvarDespachosLote, handlePrepareShippingFromTiny
  * MUST stay here because they use onAdd, onAddExit, onUpdate for stock deduction.
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Icon } from '@/utils/icons';
 import LocaisModal from '@/components/ui/LocaisModal';
 import TinyNFeImport from '@/components/import/TinyNFeImport';
@@ -32,7 +32,8 @@ export default function ShippingManager({
     shippings, onAdd, onUpdate, onDelete, stock, products,
     onAddExit, onAddEntry, locaisOrigem, onUpdateLocais, onAddProduct,
     categories, entries, exits, isStockAdmin,
-    onAddCategory, onUpdateCategory, onDeleteCategory
+    onAddCategory, onUpdateCategory, onDeleteCategory,
+    pendingDispatchData, onClearPendingDispatch
 }) {
     const [activeView, setActiveView] = useState('list');
     const [nfFile, setNfFile] = useState(null);
@@ -94,6 +95,14 @@ export default function ShippingManager({
         });
         setActiveView('register');
     };
+
+    // Process pending dispatch data from SeparationManager
+    useEffect(() => {
+        if (pendingDispatchData) {
+            handlePrepareShippingFromTiny(pendingDispatchData);
+            if (onClearPendingDispatch) onClearPendingDispatch();
+        }
+    }, [pendingDispatchData]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // === CRITICAL: handleSubmit — stock deduction logic ===
     const handleSubmit = async (e) => {

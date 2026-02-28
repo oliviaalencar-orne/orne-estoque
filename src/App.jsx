@@ -13,13 +13,14 @@ import { useProducts } from '@/hooks/useProducts';
 import { useEntries } from '@/hooks/useEntries';
 import { useExits } from '@/hooks/useExits';
 import { useShippings } from '@/hooks/useShippings';
+import { useSeparations } from '@/hooks/useSeparations';
 import { useCategories, DEFAULT_CATEGORIES } from '@/hooks/useCategories';
 import { useLocaisOrigem } from '@/hooks/useLocaisOrigem';
 import { useStock } from '@/hooks/useStock';
 import { setupSupabaseCollection } from '@/hooks/useSupabaseCollection';
 
 // Mappers
-import { mapEntryFromDB, mapExitFromDB, mapShippingFromDB } from '@/utils/mappers';
+import { mapEntryFromDB, mapExitFromDB, mapShippingFromDB, mapSeparationFromDB } from '@/utils/mappers';
 
 // Icons
 import { Icon, ICONS } from '@/utils/icons';
@@ -37,6 +38,7 @@ import CategoryManager from '@/components/categories/CategoryManager';
 import EntryForm from '@/components/entries/EntryForm';
 import ExitForm from '@/components/exits/ExitForm';
 import ShippingManager from '@/components/shipping/ShippingManager';
+import SeparationManager from '@/components/separation/SeparationManager';
 import History from '@/components/history/History';
 import TinyERPPage from '@/components/tiny/TinyERPPage';
 import ProductForm from '@/components/stock/ProductForm';
@@ -48,6 +50,7 @@ const tabTitles = {
   stock: 'Estoque',
   entry: 'Entrada',
   exit: 'Saída',
+  separation: 'Separação',
   shipping: 'Despachos',
   history: 'Histórico',
   tiny: 'Tiny ERP',
@@ -130,6 +133,9 @@ export default function App() {
   const { shippings, setShippings, addShipping, updateShipping, deleteShipping } =
     useShippings(user, isStockAdmin);
 
+  const { separations, setSeparations, addSeparation, updateSeparation, deleteSeparation } =
+    useSeparations(user, isStockAdmin);
+
   const { categories, setCategories, addCategory, updateCategory, deleteCategory } =
     useCategories(isStockAdmin);
 
@@ -144,6 +150,7 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mobileSheet, setMobileSheet] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [pendingDispatchData, setPendingDispatchData] = useState(null);
 
   // ── Tab change ──────────────────────────────────────────────────────────
   const handleTabChange = (tab) => {
@@ -152,6 +159,12 @@ export default function App() {
     if (sidebarOpen) setSidebarOpen(false);
     if (mobileSheet) setMobileSheet(null);
   };
+
+  // ── Separation → Dispatch handoff ─────────────────────────────────────
+  const handleSendSeparationToDispatch = useCallback((dispatchData) => {
+    setPendingDispatchData(dispatchData);
+    setActiveTab('shipping');
+  }, []);
 
   // ── Data loading (realtime subscriptions + paginated fetch) ───────────
   useEffect(() => {
@@ -195,6 +208,13 @@ export default function App() {
     channels.push(
       setupSupabaseCollection('shippings', setShippings, {
         transform: mapShippingFromDB,
+      })
+    );
+
+    // Separations
+    channels.push(
+      setupSupabaseCollection('separations', setSeparations, {
+        transform: mapSeparationFromDB,
       })
     );
 
@@ -350,6 +370,18 @@ export default function App() {
               </li>
               <li className="nav-item">
                 <a
+                  className={`nav-link ${activeTab === 'separation' ? 'active' : ''}`}
+                  onClick={() => handleTabChange('separation')}
+                >
+                  <span
+                    className="nav-icon"
+                    dangerouslySetInnerHTML={{ __html: ICONS.clipboard }}
+                  ></span>
+                  Separação
+                </a>
+              </li>
+              <li className="nav-item">
+                <a
                   className={`nav-link ${activeTab === 'shipping' ? 'active' : ''}`}
                   onClick={() => handleTabChange('shipping')}
                 >
@@ -487,6 +519,32 @@ export default function App() {
               <AccessRestricted />
             )}
           </div>
+          <div style={{ display: activeTab === 'separation' ? 'block' : 'none' }}>
+            {isStockAdmin ? (
+              <SeparationManager
+                separations={separations}
+                onAdd={addSeparation}
+                onUpdate={updateSeparation}
+                onDelete={deleteSeparation}
+                products={products}
+                stock={currentStock}
+                entries={entries}
+                exits={exits}
+                categories={categories}
+                locaisOrigem={locaisOrigem}
+                onUpdateLocais={updateLocaisOrigem}
+                onAddProduct={addProduct}
+                onAddCategory={addCategory}
+                onUpdateCategory={updateCategory}
+                onDeleteCategory={deleteCategory}
+                user={user}
+                onSendToDispatch={handleSendSeparationToDispatch}
+                isStockAdmin={isStockAdmin}
+              />
+            ) : (
+              <AccessRestricted />
+            )}
+          </div>
           <div style={{ display: activeTab === 'shipping' ? 'block' : 'none' }}>
             <ShippingManager
               shippings={shippings}
@@ -507,6 +565,8 @@ export default function App() {
               onAddCategory={addCategory}
               onUpdateCategory={updateCategory}
               onDeleteCategory={deleteCategory}
+              pendingDispatchData={pendingDispatchData}
+              onClearPendingDispatch={() => setPendingDispatchData(null)}
             />
           </div>
           <div style={{ display: activeTab === 'history' ? 'block' : 'none' }}>
@@ -623,7 +683,7 @@ export default function App() {
         )}
         {isStockAdmin && (
           <button
-            className={`nav-tab ${['entry', 'exit', 'shipping', 'history'].includes(activeTab) ? 'active' : ''}`}
+            className={`nav-tab ${['entry', 'exit', 'separation', 'shipping', 'history'].includes(activeTab) ? 'active' : ''}`}
             onClick={() =>
               setMobileSheet(mobileSheet === 'moves' ? null : 'moves')
             }
@@ -669,6 +729,13 @@ export default function App() {
         >
           <span dangerouslySetInnerHTML={{ __html: ICONS.exit }}></span>
           Saída de Estoque
+        </button>
+        <button
+          className="bottom-sheet-item"
+          onClick={() => handleTabChange('separation')}
+        >
+          <span dangerouslySetInnerHTML={{ __html: ICONS.clipboard }}></span>
+          Separação
         </button>
         <button
           className="bottom-sheet-item"

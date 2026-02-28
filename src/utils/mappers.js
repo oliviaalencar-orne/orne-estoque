@@ -61,3 +61,17 @@ export const mapShippingFromDB = (row) => ({
   ultimaAtualizacaoRastreio: row.ultima_atualizacao_rastreio || '',
   rastreioInfo: row.rastreio_info || null,
 });
+
+export const mapSeparationFromDB = (row) => ({
+  id: row.id,
+  nfNumero: row.nf_numero || '',
+  cliente: row.cliente || '',
+  destino: row.destino || '',
+  observacoes: row.observacoes || '',
+  status: row.status || 'pendente',
+  produtos: row.produtos || [],
+  shippingId: row.shipping_id || '',
+  date: row.date,
+  updatedAt: row.updated_at,
+  userId: row.user_id || '',
+});
