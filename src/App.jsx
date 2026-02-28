@@ -530,6 +530,7 @@ export default function App() {
                 stock={currentStock}
                 entries={entries}
                 exits={exits}
+                shippings={shippings}
                 categories={categories}
                 locaisOrigem={locaisOrigem}
                 onUpdateLocais={updateLocaisOrigem}

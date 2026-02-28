@@ -12,7 +12,7 @@ import SeparationForm from './SeparationForm';
 
 export default function SeparationManager({
   separations, onAdd, onUpdate, onDelete,
-  products, stock, entries, exits,
+  products, stock, entries, exits, shippings,
   categories, locaisOrigem, onUpdateLocais,
   onAddProduct, onAddCategory, onUpdateCategory, onDeleteCategory,
   user, onSendToDispatch, isStockAdmin
@@ -22,6 +22,26 @@ export default function SeparationManager({
   const [success, setSuccess] = useState('');
 
   const handlePrepareSeparationFromTiny = (data) => {
+    const nf = data.nfNumero || '';
+
+    // Check if NF already exists in shippings
+    const existingShipping = (shippings || []).find(s => s.nfNumero === nf);
+    if (existingShipping) {
+      if (!window.confirm(`A NF ${nf} já foi despachada. Deseja criar uma separação mesmo assim?`)) {
+        return;
+      }
+    }
+
+    // Check if NF already exists in active separations (not despachado)
+    if (!existingShipping) {
+      const existingSeparation = separations.find(s => s.nfNumero === nf && s.status !== 'despachado');
+      if (existingSeparation) {
+        if (!window.confirm(`A NF ${nf} já está em separação (status: ${existingSeparation.status}). Deseja criar uma nova separação mesmo assim?`)) {
+          return;
+        }
+      }
+    }
+
     const produtosComFlags = (data.produtos || []).map(p => ({
       ...p,
       doNossoEstoque: !!p.produtoEstoque,
@@ -29,7 +49,7 @@ export default function SeparationManager({
       observacao: '',
     }));
     setEditingSeparation({
-      nfNumero: data.nfNumero || '',
+      nfNumero: nf,
       cliente: data.cliente || '',
       destino: data.destino || '',
       observacoes: '',
