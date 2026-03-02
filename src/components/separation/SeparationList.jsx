@@ -11,11 +11,18 @@ const STATUS_CONFIG = {
   despachado: { label: 'Despachado', color: '#10b981', bg: '#d1fae5' },
 };
 
+const NEXT_STATUS = {
+  pendente: 'separado',
+  separado: 'embalado',
+};
+
 export default function SeparationList({
   separations, onUpdate, onDelete, onEdit, onSendToDispatch
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [loadingId, setLoadingId] = useState(null);
+  const [successId, setSuccessId] = useState(null);
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '-';
@@ -46,9 +53,25 @@ export default function SeparationList({
   }, [separations]);
 
   const handleStatusAdvance = async (sep) => {
-    if (sep.status === 'pendente') await onUpdate(sep.id, { status: 'separado' });
-    else if (sep.status === 'separado') await onUpdate(sep.id, { status: 'embalado' });
-    else if (sep.status === 'embalado') onSendToDispatch(sep);
+    if (loadingId) return;
+    setLoadingId(sep.id);
+    try {
+      if (sep.status === 'embalado') {
+        await onSendToDispatch(sep);
+      } else {
+        const nextStatus = NEXT_STATUS[sep.status];
+        if (nextStatus) {
+          await onUpdate(sep.id, { status: nextStatus });
+          setSuccessId(sep.id);
+          setTimeout(() => setSuccessId(null), 2000);
+        }
+      }
+    } catch (err) {
+      console.error('Erro ao atualizar status:', err);
+      alert('Erro ao atualizar status: ' + (err.message || err));
+    } finally {
+      setLoadingId(null);
+    }
   };
 
   const getActionButton = (sep) => {
@@ -104,8 +127,14 @@ export default function SeparationList({
             const cfg = STATUS_CONFIG[sep.status] || STATUS_CONFIG.pendente;
             const action = getActionButton(sep);
             const prodCount = (sep.produtos || []).length;
+            const isLoading = loadingId === sep.id;
+            const isSuccess = successId === sep.id;
             return (
-              <div key={sep.id} className="card" style={{ padding: '16px' }}>
+              <div key={sep.id} className="card" style={{
+                padding: '16px',
+                borderLeft: isSuccess ? '3px solid var(--success)' : undefined,
+                transition: 'border-left 0.3s',
+              }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', flexWrap: 'wrap' }}>
                   <div style={{ flex: 1, minWidth: '200px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
@@ -115,6 +144,11 @@ export default function SeparationList({
                       <span className="badge" style={{ background: cfg.bg, color: cfg.color, fontSize: '11px' }}>
                         {cfg.label}
                       </span>
+                      {isSuccess && (
+                        <span style={{ color: 'var(--success)', fontSize: '12px', fontWeight: 500 }}>
+                          ✓ Atualizado
+                        </span>
+                      )}
                     </div>
                     {sep.cliente && (
                       <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '2px' }}>
@@ -139,10 +173,13 @@ export default function SeparationList({
                     {action && (
                       <button
                         className="btn btn-primary"
-                        style={{ fontSize: '12px', padding: '6px 12px' }}
+                        style={{ fontSize: '12px', padding: '6px 12px', opacity: isLoading ? 0.7 : 1 }}
                         onClick={() => handleStatusAdvance(sep)}
+                        disabled={isLoading}
                       >
-                        <Icon name={action.icon} size={14} /> {action.label}
+                        {isLoading ? 'Atualizando...' : (
+                          <><Icon name={action.icon} size={14} /> {action.label}</>
+                        )}
                       </button>
                     )}
                     {sep.status !== 'despachado' && (
@@ -152,6 +189,7 @@ export default function SeparationList({
                           style={{ fontSize: '12px', padding: '6px 10px' }}
                           onClick={() => onEdit(sep)}
                           title="Editar"
+                          disabled={isLoading}
                         >
                           <Icon name="edit" size={14} />
                         </button>
@@ -162,6 +200,7 @@ export default function SeparationList({
                             if (confirm('Excluir esta separação?')) onDelete(sep.id);
                           }}
                           title="Excluir"
+                          disabled={isLoading}
                         >
                           <Icon name="delete" size={14} />
                         </button>
