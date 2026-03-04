@@ -21,6 +21,7 @@ export default function ShippingList({
     const [shipCustomYear, setShipCustomYear] = useState(new Date().getFullYear());
     const [editingShipping, setEditingShipping] = useState(null);
     const [atualizandoRastreio, setAtualizandoRastreio] = useState(false);
+    const [openStatusMenu, setOpenStatusMenu] = useState(null);
     const [success, setSuccess] = useState('');
     const [error, setError] = useState('');
 
@@ -256,41 +257,108 @@ export default function ShippingList({
                                         )}
                                     </td>
                                     <td>
-                                        <span style={{
-                                            display: 'inline-block',
-                                            background: statusList[s.status]?.bg || '#f3f4f6',
-                                            color: statusList[s.status]?.color || '#6b7280',
-                                            border: 'none',
-                                            borderRadius: '12px',
-                                            padding: '4px 10px',
-                                            fontSize: '11px',
-                                            fontWeight: '600',
-                                        }}>
-                                            {statusList[s.status]?.label || s.status}
-                                        </span>
-                                        {isStockAdmin && (statusTransitions[s.status] || []).length > 0 && (
-                                            <div style={{display: 'flex', gap: '4px', marginTop: '4px'}}>
-                                                {statusTransitions[s.status].map(nextStatus => (
+                                        <div style={{position: 'relative', display: 'inline-flex', alignItems: 'center', gap: '2px'}}>
+                                            <span style={{
+                                                display: 'inline-block',
+                                                background: statusList[s.status]?.bg || '#f3f4f6',
+                                                color: statusList[s.status]?.textColor || '#6b7280',
+                                                borderRadius: '12px',
+                                                padding: '3px 10px',
+                                                fontSize: '11px',
+                                                fontWeight: '500',
+                                                lineHeight: '1.4',
+                                                whiteSpace: 'nowrap',
+                                            }}>
+                                                {statusList[s.status]?.label || s.status}
+                                            </span>
+                                            {isStockAdmin && (statusTransitions[s.status] || []).length > 0 && (
+                                                <>
                                                     <button
-                                                        key={nextStatus}
-                                                        className="btn btn-sm"
-                                                        onClick={() => handleUpdateStatus(s, nextStatus)}
+                                                        onClick={() => setOpenStatusMenu(openStatusMenu === s.id ? null : s.id)}
                                                         style={{
-                                                            fontSize: '10px',
-                                                            padding: '2px 6px',
-                                                            border: `1px solid ${statusList[nextStatus]?.color || '#999'}`,
-                                                            color: statusList[nextStatus]?.color || '#999',
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            width: '18px',
+                                                            height: '18px',
+                                                            border: 'none',
                                                             background: 'transparent',
-                                                            borderRadius: '8px',
+                                                            color: 'var(--text-muted)',
                                                             cursor: 'pointer',
-                                                            lineHeight: '1.4',
+                                                            borderRadius: '4px',
+                                                            padding: 0,
+                                                            fontSize: '10px',
+                                                            transition: 'background 0.15s, color 0.15s',
                                                         }}
+                                                        onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-primary)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
+                                                        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)'; }}
+                                                        title="Alterar status"
                                                     >
-                                                        {statusList[nextStatus]?.label}
+                                                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                                            <path d="M3 4l2 2 2-2" />
+                                                        </svg>
                                                     </button>
-                                                ))}
-                                            </div>
-                                        )}
+                                                    {openStatusMenu === s.id && (
+                                                        <>
+                                                            <div
+                                                                style={{position: 'fixed', inset: 0, zIndex: 998}}
+                                                                onClick={() => setOpenStatusMenu(null)}
+                                                            />
+                                                            <div style={{
+                                                                position: 'absolute',
+                                                                top: 'calc(100% + 4px)',
+                                                                left: 0,
+                                                                zIndex: 999,
+                                                                background: '#fff',
+                                                                border: '1px solid var(--border)',
+                                                                borderRadius: '8px',
+                                                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                                                                padding: '4px',
+                                                                minWidth: '120px',
+                                                            }}>
+                                                                {statusTransitions[s.status].map(nextStatus => (
+                                                                    <button
+                                                                        key={nextStatus}
+                                                                        onClick={() => {
+                                                                            handleUpdateStatus(s, nextStatus);
+                                                                            setOpenStatusMenu(null);
+                                                                        }}
+                                                                        style={{
+                                                                            display: 'flex',
+                                                                            alignItems: 'center',
+                                                                            gap: '8px',
+                                                                            width: '100%',
+                                                                            padding: '6px 10px',
+                                                                            border: 'none',
+                                                                            background: 'transparent',
+                                                                            borderRadius: '6px',
+                                                                            cursor: 'pointer',
+                                                                            fontSize: '11px',
+                                                                            fontWeight: '500',
+                                                                            color: statusList[nextStatus]?.textColor || '#374151',
+                                                                            textAlign: 'left',
+                                                                            transition: 'background 0.12s',
+                                                                            whiteSpace: 'nowrap',
+                                                                        }}
+                                                                        onMouseEnter={(e) => { e.currentTarget.style.background = statusList[nextStatus]?.bg || '#f3f4f6'; }}
+                                                                        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                                                                    >
+                                                                        <span style={{
+                                                                            width: '6px',
+                                                                            height: '6px',
+                                                                            borderRadius: '50%',
+                                                                            background: statusList[nextStatus]?.color || '#999',
+                                                                            flexShrink: 0,
+                                                                        }} />
+                                                                        {statusList[nextStatus]?.label}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                </>
+                                            )}
+                                        </div>
                                         {s.ultimaAtualizacaoRastreio && (
                                             <div style={{fontSize: '9px', color: 'var(--text-muted)', marginTop: '2px'}}>
                                                 Atualizado: {formatDate(s.ultimaAtualizacaoRastreio)}

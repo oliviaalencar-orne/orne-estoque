@@ -19,10 +19,10 @@ import ShippingBatchImport from './ShippingBatchImport';
 const transportadoras = ['Melhor Envio', 'Correios', 'Jadlog', 'Total Express', 'Braspress', 'TNT', 'Azul Cargo', 'Loggi', 'Outro'];
 
 export const statusList = {
-    'DESPACHADO':  { label: 'Despachado',  color: '#3b82f6', bg: '#dbeafe' },
-    'EM_TRANSITO': { label: 'Em Trânsito', color: '#d97706', bg: '#fef3c7' },
-    'ENTREGUE':    { label: 'Entregue',    color: '#10b981', bg: '#d1fae5' },
-    'DEVOLVIDO':   { label: 'Devolvido',   color: '#ef4444', bg: '#fee2e2' },
+    'DESPACHADO':  { label: 'Despachado',  color: '#3b82f6', textColor: '#1E40AF', bg: '#DBEAFE' },
+    'EM_TRANSITO': { label: 'Em Trânsito', color: '#d97706', textColor: '#92400E', bg: '#FEF3C7' },
+    'ENTREGUE':    { label: 'Entregue',    color: '#10b981', textColor: '#065F46', bg: '#D1FAE5' },
+    'DEVOLVIDO':   { label: 'Devolvido',   color: '#ef4444', textColor: '#991B1B', bg: '#FEE2E2' },
 };
 
 export const STATUS_TRANSITIONS = {
