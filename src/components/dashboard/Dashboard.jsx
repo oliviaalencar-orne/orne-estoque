@@ -9,7 +9,9 @@ import { Chart } from 'chart.js/auto';
 import { Icon, CategoryIcon } from '@/utils/icons';
 import { formatBRL } from '@/utils/formatters';
 
-export default function Dashboard({ stock, categories, isVisible, entries, exits, onNavigate }) {
+import { statusList } from '@/components/shipping/ShippingManager';
+
+export default function Dashboard({ stock, categories, isVisible, entries, exits, onNavigate, shippings }) {
     // Loading state enquanto produtos ainda nao carregaram
     if (stock.length === 0) {
         return (
@@ -44,6 +46,20 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
         return { totalQty, totalProducts: stock.length, emptyStock, okStock, topProducts, alertProducts, totalValue };
     }, [stock]);
     const { totalQty, totalProducts, emptyStock, okStock, topProducts, alertProducts, totalValue } = stockStats;
+
+    // === Resumo logístico (últimos 30 dias) ===
+    const shippingStats = useMemo(() => {
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - 30);
+        const recent = (shippings || []).filter(s => new Date(s.date) >= cutoff);
+        return {
+            DESPACHADO: recent.filter(s => s.status === 'DESPACHADO').length,
+            EM_TRANSITO: recent.filter(s => s.status === 'EM_TRANSITO').length,
+            ENTREGUE: recent.filter(s => s.status === 'ENTREGUE').length,
+            DEVOLVIDO: recent.filter(s => s.status === 'DEVOLVIDO').length,
+            total: recent.length,
+        };
+    }, [shippings]);
 
     // Hora atual para saudacao
     const hora = new Date().getHours();
@@ -371,6 +387,33 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
                     </div>
                 </div>
             </div>
+
+            {/* Resumo Logístico */}
+            {shippingStats.total > 0 && (
+                <div className="card" style={{marginBottom: '24px'}}>
+                    <h2 className="card-title" style={{marginBottom: '16px'}}>
+                        <Icon name="shipping" size={16} className="card-title-icon" />
+                        Resumo Logístico <span style={{fontWeight: 400, fontSize: '12px', color: 'var(--text-muted)'}}>(30 dias)</span>
+                    </h2>
+                    <div style={{display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px'}}>
+                        {Object.entries(statusList).map(([key, val]) => (
+                            <div key={key} style={{
+                                textAlign: 'center',
+                                padding: '12px 8px',
+                                borderRadius: 'var(--radius)',
+                                background: val.bg,
+                            }}>
+                                <div style={{fontSize: '24px', fontWeight: '700', color: val.color, fontVariantNumeric: 'tabular-nums'}}>
+                                    {shippingStats[key] || 0}
+                                </div>
+                                <div style={{fontSize: '11px', fontWeight: '600', color: val.color, marginTop: '2px'}}>
+                                    {val.label}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* Grid Principal */}
             <div className="dashboard-main-grid">

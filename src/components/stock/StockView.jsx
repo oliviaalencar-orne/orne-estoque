@@ -646,6 +646,15 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                                     {prods.map(p => (
                                         <div key={p.id} className={`product-card ${p.status}`}>
                                             <div className="product-actions">
+                                                <span className={`obs-indicator${p.observations && p.observations.trim() ? ' has-obs' : ''}`}>
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                        <circle cx="12" cy="12" r="10"/>
+                                                        <path d="M12 16v-4M12 8h.01"/>
+                                                    </svg>
+                                                    {p.observations && p.observations.trim() && (
+                                                        <span className="obs-tooltip">{p.observations}</span>
+                                                    )}
+                                                </span>
                                                 <button className="btn btn-icon btn-secondary" onClick={() => setHistoryProduct(p)} title="Ver Historico"><Icon name="clipboard" size={14} /></button>
                                                 <button className="btn btn-icon btn-secondary" onClick={() => openEditModal(p)} title="Editar"><Icon name="edit" size={14} /></button>
                                                 <button className="btn btn-icon btn-secondary" onClick={() => handleDelete(p)} title="Excluir"><Icon name="delete" size={14} /></button>

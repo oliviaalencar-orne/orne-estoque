@@ -39,7 +39,8 @@ export function useShippings(user, isStockAdmin) {
         melhor_envio_id: shipping.melhorEnvioId || '',
         produtos: shipping.produtos || [],
         observacoes: shipping.observacoes || '',
-        status: shipping.status || 'PENDENTE',
+        hub_telefone: shipping.hubTelefone || '',
+        status: shipping.status || 'DESPACHADO',
         date: new Date().toISOString(),
         user_id: user.email,
       };
@@ -81,6 +82,7 @@ export function useShippings(user, isStockAdmin) {
       if (data.ultimaAtualizacaoRastreio !== undefined)
         mapped.ultima_atualizacao_rastreio = data.ultimaAtualizacaoRastreio;
       if (data.rastreioInfo !== undefined) mapped.rastreio_info = data.rastreioInfo;
+      if (data.hubTelefone !== undefined) mapped.hub_telefone = data.hubTelefone;
       const { error } = await supabaseClient
         .from('shippings')
         .update(mapped)

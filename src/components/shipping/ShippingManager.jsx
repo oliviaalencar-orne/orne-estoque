@@ -18,14 +18,18 @@ import ShippingBatchImport from './ShippingBatchImport';
 // Constantes
 const transportadoras = ['Melhor Envio', 'Correios', 'Jadlog', 'Total Express', 'Braspress', 'TNT', 'Azul Cargo', 'Loggi', 'Outro'];
 
-const statusList = {
-    'PENDENTE': { label: 'Pendente', color: '#f59e0b', bg: '#fef3c7' },
-    'DESPACHADO': { label: 'Despachado', color: '#3b82f6', bg: '#dbeafe' },
-    'EM_TRANSITO': { label: 'Em Trânsito', color: '#8b5cf6', bg: '#ede9fe' },
-    'ENTREGUE': { label: 'Entregue', color: '#10b981', bg: '#d1fae5' },
-    'DEVOLVIDO': { label: 'Devolvido', color: '#ef4444', bg: '#fee2e2' },
-    'NAO_ENTREGUE': { label: 'Não Entregue', color: '#ef4444', bg: '#fee2e2' },
-    'CANCELADO': { label: 'Cancelado', color: '#6b7280', bg: '#f3f4f6' }
+export const statusList = {
+    'DESPACHADO':  { label: 'Despachado',  color: '#3b82f6', bg: '#dbeafe' },
+    'EM_TRANSITO': { label: 'Em Trânsito', color: '#d97706', bg: '#fef3c7' },
+    'ENTREGUE':    { label: 'Entregue',    color: '#10b981', bg: '#d1fae5' },
+    'DEVOLVIDO':   { label: 'Devolvido',   color: '#ef4444', bg: '#fee2e2' },
+};
+
+export const STATUS_TRANSITIONS = {
+    'DESPACHADO':  ['EM_TRANSITO', 'DEVOLVIDO'],
+    'EM_TRANSITO': ['ENTREGUE', 'DEVOLVIDO'],
+    'ENTREGUE':    [],
+    'DEVOLVIDO':   [],
 };
 
 export default function ShippingManager({
@@ -59,6 +63,7 @@ export default function ShippingManager({
         codigoRastreio: '',
         linkRastreio: '',
         melhorEnvioId: '',
+        hubTelefone: '',
         baixarEstoque: true,
         produtos: [],
         observacoes: ''
@@ -124,6 +129,7 @@ export default function ShippingManager({
                 codigoRastreio: form.codigoRastreio,
                 linkRastreio: form.linkRastreio,
                 melhorEnvioId: form.melhorEnvioId || '',
+                hubTelefone: form.hubTelefone || '',
                 produtos: form.produtos,
                 observacoes: form.observacoes,
                 status: 'PENDENTE'
@@ -188,7 +194,7 @@ export default function ShippingManager({
             setForm({
                 nfNumero: '', cliente: '', destino: '', localOrigem: locaisOrigem[0] || 'Loja Principal',
                 transportadora: '', codigoRastreio: '', linkRastreio: '', melhorEnvioId: '',
-                baixarEstoque: true, produtos: [], observacoes: ''
+                hubTelefone: '', baixarEstoque: true, produtos: [], observacoes: ''
             });
             setNfFile(null);
             setNfData(null);
@@ -361,6 +367,7 @@ export default function ShippingManager({
                     isStockAdmin={isStockAdmin}
                     locaisOrigem={locaisOrigem}
                     statusList={statusList}
+                    statusTransitions={STATUS_TRANSITIONS}
                     transportadoras={transportadoras}
                 />
             )}

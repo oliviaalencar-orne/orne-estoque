@@ -1,0 +1,250 @@
+/**
+ * Vercel Cron Job — Atualização automática de rastreios
+ *
+ * Executa a cada 4 horas (configurado no vercel.json).
+ * Busca shippings com status DESPACHADO ou EM_TRANSITO que possuem
+ * código de rastreio ou melhorEnvioId, e chama a Edge Function
+ * `rastrear-envio` para atualizar o status automaticamente.
+ *
+ * Env vars necessárias:
+ *   CRON_SECRET            — Vercel Cron secret (verificação automática)
+ *   SUPABASE_URL           — URL do projeto Supabase
+ *   SUPABASE_SERVICE_ROLE_KEY — Service role key (acesso admin ao DB + Edge Functions)
+ */
+
+const VALID_STATUSES = ['DESPACHADO', 'EM_TRANSITO', 'ENTREGUE', 'DEVOLVIDO'];
+
+// Progressão válida — só avança, nunca retrocede
+const STATUS_RANK = {
+  DESPACHADO: 0,
+  EM_TRANSITO: 1,
+  ENTREGUE: 2,
+  DEVOLVIDO: 2, // mesmo nível que ENTREGUE (final)
+};
+
+function shouldUpdateStatus(currentStatus, newStatus) {
+  // Só atualiza para status válidos no nosso sistema
+  if (!VALID_STATUSES.includes(newStatus)) return false;
+  // Não atualiza se já está num status final
+  if (currentStatus === 'ENTREGUE' || currentStatus === 'DEVOLVIDO') return false;
+  // Só avança (rank maior ou igual)
+  return (STATUS_RANK[newStatus] ?? -1) > (STATUS_RANK[currentStatus] ?? -1);
+}
+
+export default async function handler(req, res) {
+  // --- Segurança: verificar CRON_SECRET ---
+  const authHeader = req.headers['authorization'];
+  const cronSecret = process.env.CRON_SECRET;
+
+  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+    console.error('[CRON] Unauthorized request — missing or invalid CRON_SECRET');
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  const SUPABASE_URL = process.env.SUPABASE_URL;
+  const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
+    console.error('[CRON] Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+    return res.status(500).json({ error: 'Server misconfigured' });
+  }
+
+  const FUNCTIONS_URL = `${SUPABASE_URL}/functions/v1`;
+  const REST_URL = `${SUPABASE_URL}/rest/v1`;
+
+  const supabaseHeaders = {
+    'apikey': SERVICE_ROLE_KEY,
+    'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
+    'Content-Type': 'application/json',
+  };
+
+  try {
+    // 1. Buscar shippings pendentes de atualização
+    const query = new URLSearchParams({
+      select: 'id,nf_numero,status,codigo_rastreio,melhor_envio_id,transportadora',
+      or: '(status.eq.DESPACHADO,status.eq.EM_TRANSITO)',
+      // Pelo menos um campo de rastreio preenchido
+    });
+
+    const shippingsRes = await fetch(`${REST_URL}/shippings?${query}`, {
+      headers: supabaseHeaders,
+    });
+
+    if (!shippingsRes.ok) {
+      const errText = await shippingsRes.text();
+      console.error('[CRON] Erro ao buscar shippings:', shippingsRes.status, errText);
+      return res.status(500).json({ error: 'Failed to fetch shippings' });
+    }
+
+    const allShippings = await shippingsRes.json();
+
+    // Filtrar: precisa ter código de rastreio OU melhor_envio_id
+    const shippings = allShippings.filter(
+      s => (s.codigo_rastreio && s.codigo_rastreio.trim()) || (s.melhor_envio_id && s.melhor_envio_id.trim())
+    );
+
+    console.log(`[CRON] Encontrados ${shippings.length} despachos para rastrear (de ${allShippings.length} pendentes)`);
+
+    if (shippings.length === 0) {
+      return res.status(200).json({ message: 'Nenhum despacho para rastrear', updated: 0 });
+    }
+
+    // 2. Separar por tipo de rastreio
+    const porMelhorEnvio = shippings.filter(s => s.melhor_envio_id && s.melhor_envio_id.trim());
+    const porCodigo = shippings.filter(s => !s.melhor_envio_id?.trim() && s.codigo_rastreio?.trim());
+
+    let updated = 0;
+    let errors = 0;
+
+    // 3a. Rastrear via Melhor Envio (em batch — a API aceita array)
+    if (porMelhorEnvio.length > 0) {
+      const orderIds = porMelhorEnvio.map(s => s.melhor_envio_id.trim());
+      console.log(`[CRON] Rastreando ${orderIds.length} via Melhor Envio`);
+
+      try {
+        const trackRes = await fetch(`${FUNCTIONS_URL}/rastrear-envio`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
+          },
+          body: JSON.stringify({ orderIds }),
+        });
+
+        const trackData = await trackRes.json();
+
+        if (trackData.success && trackData.data) {
+          for (const shipping of porMelhorEnvio) {
+            const info = trackData.data[shipping.melhor_envio_id.trim()];
+            if (!info || info.erro) {
+              console.log(`[CRON] ${shipping.nf_numero}: ${info?.erro || 'sem dados'}`);
+              continue;
+            }
+
+            if (info.status && shouldUpdateStatus(shipping.status, info.status)) {
+              const updatePayload = {
+                status: info.status,
+                codigo_rastreio: info.codigoRastreio || shipping.codigo_rastreio,
+                ultima_atualizacao_rastreio: new Date().toISOString(),
+                rastreio_info: info,
+              };
+
+              const updateRes = await fetch(
+                `${REST_URL}/shippings?id=eq.${shipping.id}`,
+                {
+                  method: 'PATCH',
+                  headers: { ...supabaseHeaders, 'Prefer': 'return=minimal' },
+                  body: JSON.stringify(updatePayload),
+                }
+              );
+
+              if (updateRes.ok) {
+                console.log(`[CRON] ${shipping.nf_numero}: ${shipping.status} → ${info.status}`);
+                updated++;
+              } else {
+                console.error(`[CRON] Erro ao atualizar ${shipping.nf_numero}:`, await updateRes.text());
+                errors++;
+              }
+            } else {
+              console.log(`[CRON] ${shipping.nf_numero}: sem mudança (${shipping.status} → ${info.status || 'N/A'})`);
+            }
+          }
+        } else {
+          console.error('[CRON] Erro na resposta do Melhor Envio:', trackData.error || 'sem dados');
+          errors += porMelhorEnvio.length;
+        }
+      } catch (err) {
+        console.error('[CRON] Erro ao chamar rastrear-envio (Melhor Envio):', err.message);
+        errors += porMelhorEnvio.length;
+      }
+    }
+
+    // 3b. Rastrear por código de rastreio (Correios/transportadora) — em batches de 5
+    if (porCodigo.length > 0) {
+      const BATCH_SIZE = 5;
+      console.log(`[CRON] Rastreando ${porCodigo.length} por código de rastreio`);
+
+      for (let i = 0; i < porCodigo.length; i += BATCH_SIZE) {
+        const batch = porCodigo.slice(i, i + BATCH_SIZE);
+        const codigos = batch.map(s => s.codigo_rastreio.trim());
+
+        try {
+          const trackRes = await fetch(`${FUNCTIONS_URL}/rastrear-envio`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
+            },
+            body: JSON.stringify({ codigosRastreio: codigos }),
+          });
+
+          const trackData = await trackRes.json();
+
+          if (trackData.success && trackData.data) {
+            for (const shipping of batch) {
+              const info = trackData.data[shipping.codigo_rastreio.trim()];
+              if (!info || info.erro) {
+                console.log(`[CRON] ${shipping.nf_numero}: ${info?.erro || 'sem dados'}`);
+                continue;
+              }
+
+              if (info.status && shouldUpdateStatus(shipping.status, info.status)) {
+                const updatePayload = {
+                  status: info.status,
+                  ultima_atualizacao_rastreio: new Date().toISOString(),
+                  rastreio_info: info,
+                };
+
+                const updateRes = await fetch(
+                  `${REST_URL}/shippings?id=eq.${shipping.id}`,
+                  {
+                    method: 'PATCH',
+                    headers: { ...supabaseHeaders, 'Prefer': 'return=minimal' },
+                    body: JSON.stringify(updatePayload),
+                  }
+                );
+
+                if (updateRes.ok) {
+                  console.log(`[CRON] ${shipping.nf_numero}: ${shipping.status} → ${info.status}`);
+                  updated++;
+                } else {
+                  console.error(`[CRON] Erro ao atualizar ${shipping.nf_numero}:`, await updateRes.text());
+                  errors++;
+                }
+              } else {
+                console.log(`[CRON] ${shipping.nf_numero}: sem mudança (${shipping.status} → ${info.status || 'N/A'})`);
+              }
+            }
+          } else {
+            console.error('[CRON] Erro na resposta (código rastreio):', trackData.error || 'sem dados');
+            errors += batch.length;
+          }
+        } catch (err) {
+          console.error('[CRON] Erro ao chamar rastrear-envio (código):', err.message);
+          errors += batch.length;
+        }
+
+        // Delay entre batches para respeitar rate limits
+        if (i + BATCH_SIZE < porCodigo.length) {
+          await new Promise(r => setTimeout(r, 1000));
+        }
+      }
+    }
+
+    const summary = {
+      message: 'Cron job concluído',
+      total: shippings.length,
+      melhorEnvio: porMelhorEnvio.length,
+      codigoRastreio: porCodigo.length,
+      updated,
+      errors,
+      timestamp: new Date().toISOString(),
+    };
+
+    console.log('[CRON] Resumo:', JSON.stringify(summary));
+    return res.status(200).json(summary);
+  } catch (err) {
+    console.error('[CRON] Erro geral:', err.message);
+    return res.status(500).json({ error: err.message });
+  }
+}

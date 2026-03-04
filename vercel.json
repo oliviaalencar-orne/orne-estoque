@@ -1,6 +1,12 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "crons": [
+    {
+      "path": "/api/cron/update-tracking",
+      "schedule": "0 */4 * * *"
+    }
+  ],
   "rewrites": [
     { "source": "/consulta", "destination": "/consulta.html" },
     { "source": "/tiny-callback", "destination": "/index.html" }

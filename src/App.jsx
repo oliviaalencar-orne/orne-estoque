@@ -455,6 +455,7 @@ export default function App() {
               entries={entries}
               exits={exits}
               onNavigate={handleTabChange}
+              shippings={shippings}
             />
           </div>
           <div style={{ display: activeTab === 'stock' ? 'block' : 'none' }}>

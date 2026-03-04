@@ -90,11 +90,14 @@
     top: 12px;
     right: 12px;
     display: flex;
+    align-items: center;
     gap: 2px;
+}
+.product-actions .btn {
     opacity: 0.5;
     transition: opacity 0.15s;
 }
-.product-card:hover .product-actions { opacity: 1; }
+.product-card:hover .product-actions .btn { opacity: 1; }
 
 .category-card-actions {
     opacity: 0.5;

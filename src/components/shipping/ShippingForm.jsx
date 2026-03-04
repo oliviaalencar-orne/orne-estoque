@@ -602,6 +602,33 @@ export default function ShippingForm({
                 )}
 
                 <div className="form-group">
+                    <label className="form-label">Telefone do Hub/Transportadora</label>
+                    <input
+                        type="text"
+                        className="form-input"
+                        value={(() => {
+                            const digits = (form.hubTelefone || '').replace(/\D/g, '');
+                            if (!digits) return '';
+                            // Display mask: +55 (XX) XXXXX-XXXX
+                            let display = '';
+                            if (digits.length > 0) display += '+' + digits.substring(0, 2);
+                            if (digits.length > 2) display += ' (' + digits.substring(2, 4);
+                            if (digits.length > 4) display += ') ' + digits.substring(4, 9);
+                            if (digits.length > 9) display += '-' + digits.substring(9, 13);
+                            return display;
+                        })()}
+                        onChange={(e) => {
+                            const digits = e.target.value.replace(/\D/g, '').substring(0, 13);
+                            setForm({...form, hubTelefone: digits});
+                        }}
+                        placeholder="+55 (11) 99999-9999"
+                    />
+                    <p style={{fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px'}}>
+                        Número com DDI+DDD para envio de solicitação via WhatsApp
+                    </p>
+                </div>
+
+                <div className="form-group">
                     <label className="form-label">Observações</label>
                     <textarea
                         className="form-textarea"

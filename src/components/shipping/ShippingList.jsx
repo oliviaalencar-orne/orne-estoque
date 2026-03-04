@@ -12,7 +12,7 @@ import { supabaseClient } from '@/config/supabase';
 
 export default function ShippingList({
     shippings, onUpdate, onDelete, isStockAdmin, locaisOrigem,
-    statusList, transportadoras
+    statusList, statusTransitions, transportadoras
 }) {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
@@ -75,7 +75,6 @@ export default function ShippingList({
     const atualizarTodosRastreios = async () => {
         const pendentes = shippings.filter(s =>
             s.status !== 'ENTREGUE' &&
-            s.status !== 'CANCELADO' &&
             s.status !== 'DEVOLVIDO' &&
             (s.melhorEnvioId || s.codigoRastreio)
         );
@@ -112,6 +111,35 @@ export default function ShippingList({
             status: newStatus,
             [`status_${newStatus}_date`]: new Date().toISOString()
         });
+    };
+
+    // Gerar mensagem WhatsApp para despacho
+    const buildWhatsAppMessage = (shipping) => {
+        let msg = `*ORNE DECOR — Solicitação de Despacho*\n\n`;
+        msg += `📋 *NF:* ${shipping.nfNumero || '-'}\n`;
+        msg += `👤 *Cliente:* ${shipping.cliente || '-'}\n`;
+        msg += `📍 *Destino:* ${shipping.destino || '-'}\n`;
+        if (shipping.produtos && shipping.produtos.length > 0) {
+            msg += `\n📦 *Produtos:*\n`;
+            shipping.produtos.forEach(p => {
+                msg += `  • ${p.nome || p.name || '-'} — Qtd: ${p.quantidade || p.quantity || 1}\n`;
+            });
+        }
+        msg += `\n📊 *Status:* ${statusList[shipping.status]?.label || shipping.status}`;
+        if (shipping.codigoRastreio) {
+            msg += `\n🔍 *Rastreio:* ${shipping.codigoRastreio}`;
+        }
+        if (shipping.linkRastreio) {
+            msg += `\n🔗 ${shipping.linkRastreio}`;
+        }
+        return msg;
+    };
+
+    const openWhatsApp = (shipping) => {
+        const phone = (shipping.hubTelefone || '').replace(/\D/g, '');
+        if (!phone) return;
+        const message = encodeURIComponent(buildWhatsAppMessage(shipping));
+        window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
     };
 
     // Gerar link de rastreio baseado na transportadora
@@ -228,24 +256,41 @@ export default function ShippingList({
                                         )}
                                     </td>
                                     <td>
-                                        <select
-                                            value={s.status}
-                                            onChange={(e) => handleUpdateStatus(s, e.target.value)}
-                                            style={{
-                                                background: statusList[s.status]?.bg,
-                                                color: statusList[s.status]?.color,
-                                                border: 'none',
-                                                borderRadius: '12px',
-                                                padding: '4px 8px',
-                                                fontSize: '11px',
-                                                fontWeight: '600',
-                                                cursor: 'pointer'
-                                            }}
-                                        >
-                                            {Object.entries(statusList).map(([key, val]) => (
-                                                <option key={key} value={key}>{val.label}</option>
-                                            ))}
-                                        </select>
+                                        <span style={{
+                                            display: 'inline-block',
+                                            background: statusList[s.status]?.bg || '#f3f4f6',
+                                            color: statusList[s.status]?.color || '#6b7280',
+                                            border: 'none',
+                                            borderRadius: '12px',
+                                            padding: '4px 10px',
+                                            fontSize: '11px',
+                                            fontWeight: '600',
+                                        }}>
+                                            {statusList[s.status]?.label || s.status}
+                                        </span>
+                                        {isStockAdmin && (statusTransitions[s.status] || []).length > 0 && (
+                                            <div style={{display: 'flex', gap: '4px', marginTop: '4px'}}>
+                                                {statusTransitions[s.status].map(nextStatus => (
+                                                    <button
+                                                        key={nextStatus}
+                                                        className="btn btn-sm"
+                                                        onClick={() => handleUpdateStatus(s, nextStatus)}
+                                                        style={{
+                                                            fontSize: '10px',
+                                                            padding: '2px 6px',
+                                                            border: `1px solid ${statusList[nextStatus]?.color || '#999'}`,
+                                                            color: statusList[nextStatus]?.color || '#999',
+                                                            background: 'transparent',
+                                                            borderRadius: '8px',
+                                                            cursor: 'pointer',
+                                                            lineHeight: '1.4',
+                                                        }}
+                                                    >
+                                                        {statusList[nextStatus]?.label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
                                         {s.ultimaAtualizacaoRastreio && (
                                             <div style={{fontSize: '9px', color: 'var(--text-muted)', marginTop: '2px'}}>
                                                 Atualizado: {formatDate(s.ultimaAtualizacaoRastreio)}
@@ -254,6 +299,22 @@ export default function ShippingList({
                                     </td>
                                     <td>
                                         <div style={{display: 'flex', gap: '4px'}}>
+                                            {s.hubTelefone && (
+                                                <button
+                                                    className="btn btn-icon btn-sm"
+                                                    onClick={() => openWhatsApp(s)}
+                                                    title="Enviar via WhatsApp"
+                                                    style={{
+                                                        color: '#25D366',
+                                                        border: '1px solid #25D366',
+                                                        background: 'transparent',
+                                                    }}
+                                                >
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                                                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                                                    </svg>
+                                                </button>
+                                            )}
                                             {(s.melhorEnvioId || s.transportadora === 'Melhor Envio') && (
                                                 <button
                                                     className="btn btn-icon btn-primary btn-sm"
@@ -347,7 +408,7 @@ export default function ShippingList({
                             </div>
                             <div className="form-group">
                                 <label className="form-label">Status</label>
-                                <select className="form-select" value={editingShipping.status || 'PENDENTE'} onChange={(e) => setEditingShipping({...editingShipping, status: e.target.value})}>
+                                <select className="form-select" value={editingShipping.status || 'DESPACHADO'} onChange={(e) => setEditingShipping({...editingShipping, status: e.target.value})}>
                                     {Object.entries(statusList).map(([key, val]) => (
                                         <option key={key} value={key}>{val.label}</option>
                                     ))}
@@ -356,9 +417,8 @@ export default function ShippingList({
                         </div>
 
                         <div className="form-group">
-                            <label className="form-label">Link de Rastreio</label>
-                            <input type="url" className="form-input" value={editingShipping.linkRastreio || ''} onChange={(e) => setEditingShipping({...editingShipping, linkRastreio: e.target.value})} placeholder="https://..." />
-                            <span className="form-help">Gerado automaticamente para transportadoras conhecidas</span>
+                            <label className="form-label">Telefone do Hub/Transportadora</label>
+                            <input type="text" className="form-input" value={editingShipping.hubTelefone || ''} onChange={(e) => setEditingShipping({...editingShipping, hubTelefone: e.target.value})} placeholder="(11) 99999-9999" />
                         </div>
 
                         <div className="form-group">
@@ -380,6 +440,7 @@ export default function ShippingList({
                                         linkRastreio: editingShipping.linkRastreio,
                                         melhorEnvioId: editingShipping.melhorEnvioId,
                                         status: editingShipping.status,
+                                        hubTelefone: editingShipping.hubTelefone,
                                         observacoes: editingShipping.observacoes,
                                         updatedAt: new Date().toISOString()
                                     });
