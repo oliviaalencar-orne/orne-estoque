@@ -209,7 +209,7 @@ export default function SeparationManager({
 
       {/* Consolidated export button — only on specific HUB tabs */}
       {isHubSelected && (
-        <div className="card" style={{ marginBottom: '12px', padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', overflow: 'visible' }}>
+        <div className="card" style={{ marginBottom: '12px', padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', overflow: 'visible', containerType: 'normal' }}>
           <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
             {hasPending
               ? `${pendingSeparationsForHub.length} separação(ões) pendente(s) em ${selectedHubName}`
