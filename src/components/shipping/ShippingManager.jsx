@@ -132,7 +132,7 @@ export default function ShippingManager({
                 hubTelefone: form.hubTelefone || '',
                 produtos: form.produtos,
                 observacoes: form.observacoes,
-                status: 'PENDENTE'
+                status: 'DESPACHADO'
             };
 
             const savedShipping = await onAdd(shippingData);
@@ -236,7 +236,7 @@ export default function ShippingManager({
                     melhorEnvioId: despacho.melhorEnvioId,
                     produtos: despacho.produtos,
                     observacoes: despacho.observacoes,
-                    status: 'PENDENTE'
+                    status: 'DESPACHADO'
                 });
                 salvos++;
 
