@@ -3,10 +3,11 @@
  *
  * Tabs: Lista | Importar NF (Tiny) | Manual
  * Hub tabs: Todos | <dynamic hub names>
- * Handles view switching, separation CRUD, and dispatch handoff.
+ * Handles view switching, separation CRUD, dispatch handoff, and WhatsApp export.
  */
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Icon } from '@/utils/icons';
+import { buildSeparationMessage, openWhatsAppWithMessage, copyToClipboard } from '@/utils/separationMessage';
 import TinyNFeImport from '@/components/import/TinyNFeImport';
 import SeparationList from './SeparationList';
 import SeparationForm from './SeparationForm';
@@ -25,6 +26,8 @@ export default function SeparationManager({
   const [success, setSuccess] = useState('');
   const [selectedHubId, setSelectedHubId] = useState('all');
   const [showHubsModal, setShowHubsModal] = useState(false);
+  const [showShareMenu, setShowShareMenu] = useState(false);
+  const [copiedHub, setCopiedHub] = useState(false);
 
   // Count active (non-despachado) separations per hub
   const hubCounts = useMemo(() => {
@@ -46,6 +49,44 @@ export default function SeparationManager({
     if (selectedHubId === 'all') return separations;
     return separations.filter(s => s.hubId === selectedHubId);
   }, [separations, selectedHubId]);
+
+  // Get pending separations for the selected hub
+  const pendingSeparationsForHub = useMemo(() => {
+    if (selectedHubId === 'all') return [];
+    return separations.filter(s => s.hubId === selectedHubId && s.status === 'pendente');
+  }, [separations, selectedHubId]);
+
+  // Get hub name for selected hub
+  const selectedHubName = useMemo(() => {
+    if (selectedHubId === 'all') return '';
+    const hub = (hubs || []).find(h => h.id === selectedHubId);
+    return hub?.name || '';
+  }, [selectedHubId, hubs]);
+
+  // Build message for the selected hub's pending separations
+  const handleBuildHubMessage = useCallback(() => {
+    if (pendingSeparationsForHub.length === 0) return '';
+    return buildSeparationMessage({
+      hubName: selectedHubName,
+      separations: pendingSeparationsForHub,
+    });
+  }, [pendingSeparationsForHub, selectedHubName]);
+
+  const handleWhatsAppHub = useCallback(() => {
+    const msg = handleBuildHubMessage();
+    if (msg) openWhatsAppWithMessage(msg);
+    setShowShareMenu(false);
+  }, [handleBuildHubMessage]);
+
+  const handleCopyHub = useCallback(async () => {
+    const msg = handleBuildHubMessage();
+    if (msg) {
+      await copyToClipboard(msg);
+      setCopiedHub(true);
+      setTimeout(() => setCopiedHub(false), 2000);
+    }
+    setShowShareMenu(false);
+  }, [handleBuildHubMessage]);
 
   const handlePrepareSeparationFromTiny = (data) => {
     const nf = data.nfNumero || '';
@@ -116,6 +157,9 @@ export default function SeparationManager({
     onSendToDispatch(dispatchData);
   };
 
+  const hasPending = pendingSeparationsForHub.length > 0;
+  const isHubSelected = selectedHubId !== 'all';
+
   return (
     <div>
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -144,7 +188,7 @@ export default function SeparationManager({
             <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 500, marginRight: '4px' }}>HUB:</span>
             <button
               className={`filter-tab ${selectedHubId === 'all' ? 'active' : ''}`}
-              onClick={() => setSelectedHubId('all')}
+              onClick={() => { setSelectedHubId('all'); setShowShareMenu(false); }}
               style={{ fontSize: '12px', padding: '4px 10px' }}
             >
               Todos ({hubCounts.all})
@@ -153,12 +197,115 @@ export default function SeparationManager({
               <button
                 key={hub.id}
                 className={`filter-tab ${selectedHubId === hub.id ? 'active' : ''}`}
-                onClick={() => setSelectedHubId(hub.id)}
+                onClick={() => { setSelectedHubId(hub.id); setShowShareMenu(false); }}
                 style={{ fontSize: '12px', padding: '4px 10px' }}
               >
                 {hub.name} ({hubCounts[hub.id] || 0})
               </button>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Consolidated export button — only on specific HUB tabs */}
+      {isHubSelected && (
+        <div className="card" style={{ marginBottom: '12px', padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+            {hasPending
+              ? `${pendingSeparationsForHub.length} separação(ões) pendente(s) em ${selectedHubName}`
+              : `Nenhuma separação pendente em ${selectedHubName}`
+            }
+          </span>
+          <div style={{ position: 'relative' }}>
+            <button
+              className="btn btn-primary"
+              style={{
+                fontSize: '12px',
+                padding: '6px 14px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                opacity: hasPending ? 1 : 0.5,
+                cursor: hasPending ? 'pointer' : 'not-allowed',
+              }}
+              onClick={() => hasPending && setShowShareMenu(!showShareMenu)}
+              disabled={!hasPending}
+              title={hasPending ? 'Enviar solicitação de separação' : 'Nenhuma separação pendente'}
+            >
+              <Icon name="share" size={14} />
+              Enviar Solicitação
+            </button>
+
+            {/* Share dropdown */}
+            {showShareMenu && (
+              <>
+                <div
+                  style={{ position: 'fixed', inset: 0, zIndex: 998 }}
+                  onClick={() => setShowShareMenu(false)}
+                />
+                <div style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 4px)',
+                  right: 0,
+                  zIndex: 999,
+                  background: '#fff',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
+                  padding: '4px',
+                  minWidth: '200px',
+                }}>
+                  <button
+                    onClick={handleWhatsAppHub}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: 'none',
+                      background: 'transparent',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      fontWeight: 500,
+                      color: '#25D366',
+                      textAlign: 'left',
+                      transition: 'background 0.12s',
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = '#f0fdf4'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                  >
+                    <Icon name="whatsapp" size={16} style={{ color: '#25D366' }} />
+                    Enviar via WhatsApp
+                  </button>
+                  <button
+                    onClick={handleCopyHub}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: 'none',
+                      background: 'transparent',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      fontWeight: 500,
+                      color: 'var(--text-primary)',
+                      textAlign: 'left',
+                      transition: 'background 0.12s',
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-secondary)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                  >
+                    <Icon name="copy" size={16} />
+                    {copiedHub ? 'Copiado!' : 'Copiar mensagem'}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
