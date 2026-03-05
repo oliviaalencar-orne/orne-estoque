@@ -16,6 +16,7 @@ import { useShippings } from '@/hooks/useShippings';
 import { useSeparations } from '@/hooks/useSeparations';
 import { useCategories, DEFAULT_CATEGORIES } from '@/hooks/useCategories';
 import { useLocaisOrigem } from '@/hooks/useLocaisOrigem';
+import { useHubs } from '@/hooks/useHubs';
 import { useStock } from '@/hooks/useStock';
 import { setupSupabaseCollection } from '@/hooks/useSupabaseCollection';
 
@@ -142,6 +143,9 @@ export default function App() {
   const { locaisOrigem, initLocais, updateLocaisOrigem } =
     useLocaisOrigem(isStockAdmin);
 
+  const { hubs, initHubs, addHub, updateHub, deleteHub } =
+    useHubs(isStockAdmin);
+
   // ── Stock calculation ─────────────────────────────────────────────────
   const { stockMap, currentStock } = useStock(products, entries, exits);
 
@@ -221,6 +225,10 @@ export default function App() {
     // Locais de origem (fetch + realtime channel)
     const locaisChannel = initLocais();
     channels.push(locaisChannel);
+
+    // Hubs (fetch + realtime channel)
+    const hubsChannel = initHubs();
+    channels.push(hubsChannel);
 
     setSyncStatus('online');
 
@@ -546,6 +554,10 @@ export default function App() {
                 user={user}
                 onSendToDispatch={handleSendSeparationToDispatch}
                 isStockAdmin={isStockAdmin}
+                hubs={hubs}
+                onAddHub={addHub}
+                onUpdateHub={updateHub}
+                onDeleteHub={deleteHub}
               />
             ) : (
               <AccessRestricted />

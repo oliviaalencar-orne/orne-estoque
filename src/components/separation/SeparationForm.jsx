@@ -11,7 +11,8 @@ export default function SeparationForm({
   data, onSave, onCancel,
   products, stock, entries, exits,
   categories, locaisOrigem, onUpdateLocais,
-  onAddProduct, onAddCategory, onUpdateCategory, onDeleteCategory
+  onAddProduct, onAddCategory, onUpdateCategory, onDeleteCategory,
+  hubs, defaultHubId
 }) {
   const [form, setForm] = useState(() => ({
     id: data?.id || '',
@@ -20,6 +21,7 @@ export default function SeparationForm({
     destino: data?.destino || '',
     observacoes: data?.observacoes || '',
     status: data?.status || 'pendente',
+    hubId: data?.hubId || defaultHubId || '',
     produtos: (data?.produtos || []).map(p => ({ ...p, selected: p.selected !== false })),
   }));
 
@@ -85,6 +87,10 @@ export default function SeparationForm({
   };
 
   const handleSave = () => {
+    if ((hubs || []).length > 0 && !form.hubId) {
+      setError('Selecione um HUB');
+      return;
+    }
     const produtosFinal = form.produtos
       .filter(p => p.selected !== false)
       .map(({ selected, ...rest }) => rest);
@@ -123,6 +129,17 @@ export default function SeparationForm({
           <label className="form-label">Destino</label>
           <input className="form-input" value={form.destino} onChange={e => setForm({ ...form, destino: e.target.value })} placeholder="Cidade/Estado" />
         </div>
+        {(hubs || []).length > 0 && (
+          <div>
+            <label className="form-label">HUB *</label>
+            <select className="form-select" value={form.hubId || ''} onChange={e => setForm({ ...form, hubId: e.target.value })}>
+              <option value="">Selecione o HUB</option>
+              {(hubs || []).map(h => (
+                <option key={h.id} value={h.id}>{h.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       <div style={{ marginBottom: '16px' }}>

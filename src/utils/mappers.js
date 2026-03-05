@@ -72,6 +72,7 @@ export const mapSeparationFromDB = (row) => ({
   status: row.status || 'pendente',
   produtos: row.produtos || [],
   shippingId: row.shipping_id || '',
+  hubId: row.hub_id || null,
   date: row.date,
   updatedAt: row.updated_at,
   userId: row.user_id || '',

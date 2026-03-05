@@ -23,6 +23,7 @@ export function useSeparations(user, isStockAdmin) {
         status: separation.status || 'pendente',
         produtos: separation.produtos || [],
         shipping_id: separation.shippingId || '',
+        hub_id: separation.hubId || null,
         date: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         user_id: separation.userId || user?.email || '',
@@ -59,6 +60,7 @@ export function useSeparations(user, isStockAdmin) {
       if (data.status !== undefined) mapped.status = data.status;
       if (data.produtos !== undefined) mapped.produtos = data.produtos;
       if (data.shippingId !== undefined) mapped.shipping_id = data.shippingId;
+      if (data.hubId !== undefined) mapped.hub_id = data.hubId;
       const { error } = await supabaseClient
         .from('separations')
         .update(mapped)

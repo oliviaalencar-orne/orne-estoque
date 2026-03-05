@@ -17,7 +17,8 @@ const NEXT_STATUS = {
 };
 
 export default function SeparationList({
-  separations, onUpdate, onDelete, onEdit, onSendToDispatch
+  separations, onUpdate, onDelete, onEdit, onSendToDispatch,
+  hubs, showHubBadge
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -144,6 +145,14 @@ export default function SeparationList({
                       <span className="badge" style={{ background: cfg.bg, color: cfg.color, fontSize: '11px' }}>
                         {cfg.label}
                       </span>
+                      {showHubBadge && sep.hubId && (() => {
+                        const hub = (hubs || []).find(h => h.id === sep.hubId);
+                        return hub ? (
+                          <span className="badge" style={{ background: '#e0e7ff', color: '#3730a3', fontSize: '10px' }}>
+                            {hub.name}
+                          </span>
+                        ) : null;
+                      })()}
                       {isSuccess && (
                         <span style={{ color: 'var(--success)', fontSize: '12px', fontWeight: 500 }}>
                           ✓ Atualizado
