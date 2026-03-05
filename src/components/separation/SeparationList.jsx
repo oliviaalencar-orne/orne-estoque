@@ -1,7 +1,7 @@
 /**
  * SeparationList.jsx — List of separations with filters, status actions, and share
  */
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
 import { Icon } from '@/utils/icons';
 import { buildSeparationMessage, openWhatsAppWithMessage, copyToClipboard } from '@/utils/separationMessage';
 
@@ -26,7 +26,9 @@ export default function SeparationList({
   const [loadingId, setLoadingId] = useState(null);
   const [successId, setSuccessId] = useState(null);
   const [shareMenuId, setShareMenuId] = useState(null);
+  const [shareMenuPos, setShareMenuPos] = useState({ top: 0, right: 0 });
   const [copiedId, setCopiedId] = useState(null);
+  const shareMenuSepRef = useRef(null);
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '-';
@@ -107,6 +109,17 @@ export default function SeparationList({
     setTimeout(() => setCopiedId(null), 2000);
     setShareMenuId(null);
   }, [buildIndividualMessage]);
+
+  const openShareMenu = (sepId, btnEl) => {
+    if (shareMenuId === sepId) {
+      setShareMenuId(null);
+      return;
+    }
+    const rect = btnEl.getBoundingClientRect();
+    setShareMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+    shareMenuSepRef.current = separations.find(s => s.id === sepId) || null;
+    setShareMenuId(sepId);
+  };
 
   return (
     <div>
@@ -225,93 +238,20 @@ export default function SeparationList({
                     )}
                     {/* Individual share button */}
                     {sep.status !== 'despachado' && (
-                      <div style={{ position: 'relative' }}>
-                        <button
-                          className="btn btn-secondary"
-                          style={{
-                            fontSize: '12px',
-                            padding: '6px 10px',
-                            color: '#25D366',
-                            borderColor: '#25D366',
-                          }}
-                          onClick={() => setShareMenuId(shareMenuId === sep.id ? null : sep.id)}
-                          title="Compartilhar separação"
-                          disabled={isLoading}
-                        >
-                          <Icon name="whatsapp" size={14} style={{ color: '#25D366' }} />
-                        </button>
-
-                        {/* Individual share dropdown */}
-                        {shareMenuId === sep.id && (
-                          <>
-                            <div
-                              style={{ position: 'fixed', inset: 0, zIndex: 998 }}
-                              onClick={() => setShareMenuId(null)}
-                            />
-                            <div style={{
-                              position: 'absolute',
-                              top: 'calc(100% + 4px)',
-                              right: 0,
-                              zIndex: 999,
-                              background: '#fff',
-                              border: '1px solid var(--border-color)',
-                              borderRadius: '8px',
-                              boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
-                              padding: '4px',
-                              minWidth: '190px',
-                            }}>
-                              <button
-                                onClick={() => handleWhatsAppIndividual(sep)}
-                                style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '8px',
-                                  width: '100%',
-                                  padding: '8px 12px',
-                                  border: 'none',
-                                  background: 'transparent',
-                                  borderRadius: '6px',
-                                  cursor: 'pointer',
-                                  fontSize: '12px',
-                                  fontWeight: 500,
-                                  color: '#25D366',
-                                  textAlign: 'left',
-                                  transition: 'background 0.12s',
-                                }}
-                                onMouseEnter={(e) => { e.currentTarget.style.background = '#f0fdf4'; }}
-                                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-                              >
-                                <Icon name="whatsapp" size={14} style={{ color: '#25D366' }} />
-                                Enviar via WhatsApp
-                              </button>
-                              <button
-                                onClick={() => handleCopyIndividual(sep)}
-                                style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '8px',
-                                  width: '100%',
-                                  padding: '8px 12px',
-                                  border: 'none',
-                                  background: 'transparent',
-                                  borderRadius: '6px',
-                                  cursor: 'pointer',
-                                  fontSize: '12px',
-                                  fontWeight: 500,
-                                  color: 'var(--text-primary)',
-                                  textAlign: 'left',
-                                  transition: 'background 0.12s',
-                                }}
-                                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-secondary)'; }}
-                                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-                              >
-                                <Icon name="copy" size={14} />
-                                Copiar mensagem
-                              </button>
-                            </div>
-                          </>
-                        )}
-                      </div>
+                      <button
+                        className="btn btn-secondary"
+                        style={{
+                          fontSize: '12px',
+                          padding: '6px 10px',
+                          color: '#25D366',
+                          borderColor: '#25D366',
+                        }}
+                        onClick={(e) => openShareMenu(sep.id, e.currentTarget)}
+                        title="Compartilhar separação"
+                        disabled={isLoading}
+                      >
+                        <Icon name="whatsapp" size={14} style={{ color: '#25D366' }} />
+                      </button>
                     )}
                     {sep.status !== 'despachado' && (
                       <>
@@ -343,6 +283,77 @@ export default function SeparationList({
             );
           })}
         </div>
+      )}
+
+      {/* Individual share dropdown — fixed, outside any container */}
+      {shareMenuId && shareMenuSepRef.current && (
+        <>
+          <div
+            style={{ position: 'fixed', inset: 0, zIndex: 9998 }}
+            onClick={() => setShareMenuId(null)}
+          />
+          <div style={{
+            position: 'fixed',
+            top: shareMenuPos.top,
+            right: shareMenuPos.right,
+            zIndex: 9999,
+            background: '#fff',
+            border: '1px solid var(--border-color)',
+            borderRadius: '8px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
+            padding: '4px',
+            minWidth: '190px',
+          }}>
+            <button
+              onClick={() => handleWhatsAppIndividual(shareMenuSepRef.current)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                width: '100%',
+                padding: '8px 12px',
+                border: 'none',
+                background: 'transparent',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '12px',
+                fontWeight: 500,
+                color: '#25D366',
+                textAlign: 'left',
+                transition: 'background 0.12s',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#f0fdf4'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+            >
+              <Icon name="whatsapp" size={14} style={{ color: '#25D366' }} />
+              Enviar via WhatsApp
+            </button>
+            <button
+              onClick={() => handleCopyIndividual(shareMenuSepRef.current)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                width: '100%',
+                padding: '8px 12px',
+                border: 'none',
+                background: 'transparent',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '12px',
+                fontWeight: 500,
+                color: 'var(--text-primary)',
+                textAlign: 'left',
+                transition: 'background 0.12s',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-secondary)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+            >
+              <Icon name="copy" size={14} />
+              Copiar mensagem
+            </button>
+          </div>
+        </>
       )}
     </div>
   );

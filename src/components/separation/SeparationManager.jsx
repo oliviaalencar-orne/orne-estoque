@@ -5,7 +5,7 @@
  * Hub tabs: Todos | <dynamic hub names>
  * Handles view switching, separation CRUD, dispatch handoff, and WhatsApp export.
  */
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { Icon } from '@/utils/icons';
 import { buildSeparationMessage, openWhatsAppWithMessage, copyToClipboard } from '@/utils/separationMessage';
 import TinyNFeImport from '@/components/import/TinyNFeImport';
@@ -27,7 +27,9 @@ export default function SeparationManager({
   const [selectedHubId, setSelectedHubId] = useState('all');
   const [showHubsModal, setShowHubsModal] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
+  const [shareMenuPos, setShareMenuPos] = useState({ top: 0, right: 0 });
   const [copiedHub, setCopiedHub] = useState(false);
+  const shareBtnRef = useRef(null);
 
   // Count active (non-despachado) separations per hub
   const hubCounts = useMemo(() => {
@@ -209,105 +211,111 @@ export default function SeparationManager({
 
       {/* Consolidated export button — only on specific HUB tabs */}
       {isHubSelected && (
-        <div className="card" style={{ marginBottom: '12px', padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', overflow: 'visible', containerType: 'normal' }}>
+        <div className="card" style={{ marginBottom: '12px', padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
             {hasPending
               ? `${pendingSeparationsForHub.length} separação(ões) pendente(s) em ${selectedHubName}`
               : `Nenhuma separação pendente em ${selectedHubName}`
             }
           </span>
-          <div style={{ position: 'relative' }}>
+          <button
+            ref={shareBtnRef}
+            className="btn btn-primary"
+            style={{
+              fontSize: '12px',
+              padding: '6px 14px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              opacity: hasPending ? 1 : 0.5,
+              cursor: hasPending ? 'pointer' : 'not-allowed',
+            }}
+            onClick={() => {
+              if (!hasPending) return;
+              if (shareBtnRef.current) {
+                const rect = shareBtnRef.current.getBoundingClientRect();
+                setShareMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+              }
+              setShowShareMenu(!showShareMenu);
+            }}
+            disabled={!hasPending}
+            title={hasPending ? 'Enviar solicitação de separação' : 'Nenhuma separação pendente'}
+          >
+            <Icon name="share" size={14} />
+            Enviar Solicitação
+          </button>
+        </div>
+      )}
+
+      {/* Share dropdown — rendered as fixed portal outside any container */}
+      {showShareMenu && (
+        <>
+          <div
+            style={{ position: 'fixed', inset: 0, zIndex: 9998 }}
+            onClick={() => setShowShareMenu(false)}
+          />
+          <div style={{
+            position: 'fixed',
+            top: shareMenuPos.top,
+            right: shareMenuPos.right,
+            zIndex: 9999,
+            background: '#fff',
+            border: '1px solid var(--border-color)',
+            borderRadius: '8px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
+            padding: '4px',
+            minWidth: '200px',
+          }}>
             <button
-              className="btn btn-primary"
+              onClick={handleWhatsAppHub}
               style={{
-                fontSize: '12px',
-                padding: '6px 14px',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px',
-                opacity: hasPending ? 1 : 0.5,
-                cursor: hasPending ? 'pointer' : 'not-allowed',
+                gap: '8px',
+                width: '100%',
+                padding: '8px 12px',
+                border: 'none',
+                background: 'transparent',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '13px',
+                fontWeight: 500,
+                color: '#25D366',
+                textAlign: 'left',
+                transition: 'background 0.12s',
               }}
-              onClick={() => hasPending && setShowShareMenu(!showShareMenu)}
-              disabled={!hasPending}
-              title={hasPending ? 'Enviar solicitação de separação' : 'Nenhuma separação pendente'}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#f0fdf4'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
             >
-              <Icon name="share" size={14} />
-              Enviar Solicitação
+              <Icon name="whatsapp" size={16} style={{ color: '#25D366' }} />
+              Enviar via WhatsApp
             </button>
-
-            {/* Share dropdown */}
-            {showShareMenu && (
-              <>
-                <div
-                  style={{ position: 'fixed', inset: 0, zIndex: 998 }}
-                  onClick={() => setShowShareMenu(false)}
-                />
-                <div style={{
-                  position: 'absolute',
-                  top: 'calc(100% + 4px)',
-                  right: 0,
-                  zIndex: 999,
-                  background: '#fff',
-                  border: '1px solid var(--border-color)',
-                  borderRadius: '8px',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
-                  padding: '4px',
-                  minWidth: '200px',
-                }}>
-                  <button
-                    onClick={handleWhatsAppHub}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      width: '100%',
-                      padding: '8px 12px',
-                      border: 'none',
-                      background: 'transparent',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      fontSize: '13px',
-                      fontWeight: 500,
-                      color: '#25D366',
-                      textAlign: 'left',
-                      transition: 'background 0.12s',
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = '#f0fdf4'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-                  >
-                    <Icon name="whatsapp" size={16} style={{ color: '#25D366' }} />
-                    Enviar via WhatsApp
-                  </button>
-                  <button
-                    onClick={handleCopyHub}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      width: '100%',
-                      padding: '8px 12px',
-                      border: 'none',
-                      background: 'transparent',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      fontSize: '13px',
-                      fontWeight: 500,
-                      color: 'var(--text-primary)',
-                      textAlign: 'left',
-                      transition: 'background 0.12s',
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-secondary)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-                  >
-                    <Icon name="copy" size={16} />
-                    {copiedHub ? 'Copiado!' : 'Copiar mensagem'}
-                  </button>
-                </div>
-              </>
-            )}
+            <button
+              onClick={handleCopyHub}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                width: '100%',
+                padding: '8px 12px',
+                border: 'none',
+                background: 'transparent',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '13px',
+                fontWeight: 500,
+                color: 'var(--text-primary)',
+                textAlign: 'left',
+                transition: 'background 0.12s',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-secondary)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+            >
+              <Icon name="copy" size={16} />
+              {copiedHub ? 'Copiado!' : 'Copiar mensagem'}
+            </button>
           </div>
-        </div>
+        </>
       )}
 
       {/* View tabs */}
