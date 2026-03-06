@@ -1,15 +1,18 @@
 /**
  * Vercel Cron Job — Atualização automática de rastreios
  *
- * Executa a cada 4 horas (configurado no vercel.json).
+ * Executa diariamente às 11:00 UTC / 08:00 BRT (configurado no vercel.json).
  * Busca shippings com status DESPACHADO ou EM_TRANSITO que possuem
  * código de rastreio ou melhorEnvioId, e chama a Edge Function
  * `rastrear-envio` para atualizar o status automaticamente.
  *
- * Env vars necessárias:
- *   CRON_SECRET            — Vercel Cron secret (verificação automática)
- *   SUPABASE_URL           — URL do projeto Supabase
+ * Env vars necessárias (Vercel → Settings → Environment Variables):
+ *   CRON_SECRET              — Vercel Cron secret (verificação automática)
+ *   SUPABASE_URL             — URL do projeto Supabase
  *   SUPABASE_SERVICE_ROLE_KEY — Service role key (acesso admin ao DB + Edge Functions)
+ *
+ * A Edge Function `rastrear-envio` também precisa de:
+ *   MELHOR_ENVIO_TOKEN       — Token do Melhor Envio (configurar em Supabase → Edge Function Secrets)
  */
 
 const VALID_STATUSES = ['DESPACHADO', 'EM_TRANSITO', 'ENTREGUE', 'DEVOLVIDO'];
@@ -23,12 +26,22 @@ const STATUS_RANK = {
 };
 
 function shouldUpdateStatus(currentStatus, newStatus) {
-  // Só atualiza para status válidos no nosso sistema
   if (!VALID_STATUSES.includes(newStatus)) return false;
-  // Não atualiza se já está num status final
   if (currentStatus === 'ENTREGUE' || currentStatus === 'DEVOLVIDO') return false;
-  // Só avança (rank maior ou igual)
   return (STATUS_RANK[newStatus] ?? -1) > (STATUS_RANK[currentStatus] ?? -1);
+}
+
+/**
+ * Helper: update a shipping record in Supabase.
+ * Always writes ultima_atualizacao_rastreio so we know the cron ran.
+ */
+async function patchShipping(restUrl, headers, shippingId, payload) {
+  const res = await fetch(`${restUrl}/shippings?id=eq.${shippingId}`, {
+    method: 'PATCH',
+    headers: { ...headers, 'Prefer': 'return=minimal' },
+    body: JSON.stringify(payload),
+  });
+  return res.ok;
 }
 
 export default async function handler(req, res) {
@@ -63,7 +76,6 @@ export default async function handler(req, res) {
     const query = new URLSearchParams({
       select: 'id,nf_numero,status,codigo_rastreio,melhor_envio_id,transportadora',
       or: '(status.eq.DESPACHADO,status.eq.EM_TRANSITO)',
-      // Pelo menos um campo de rastreio preenchido
     });
 
     const shippingsRes = await fetch(`${REST_URL}/shippings?${query}`, {
@@ -94,7 +106,9 @@ export default async function handler(req, res) {
     const porCodigo = shippings.filter(s => !s.melhor_envio_id?.trim() && s.codigo_rastreio?.trim());
 
     let updated = 0;
+    let checked = 0;
     let errors = 0;
+    const now = new Date().toISOString();
 
     // 3a. Rastrear via Melhor Envio (em batch — a API aceita array)
     if (porMelhorEnvio.length > 0) {
@@ -116,37 +130,37 @@ export default async function handler(req, res) {
         if (trackData.success && trackData.data) {
           for (const shipping of porMelhorEnvio) {
             const info = trackData.data[shipping.melhor_envio_id.trim()];
+
             if (!info || info.erro) {
               console.log(`[CRON] ${shipping.nf_numero}: ${info?.erro || 'sem dados'}`);
+              // Still mark as checked so we know the cron ran
+              await patchShipping(REST_URL, supabaseHeaders, shipping.id, {
+                ultima_atualizacao_rastreio: now,
+                rastreio_info: info || { erro: 'sem dados' },
+              });
+              checked++;
               continue;
             }
 
+            const updatePayload = {
+              ultima_atualizacao_rastreio: now,
+              rastreio_info: info,
+            };
+
             if (info.status && shouldUpdateStatus(shipping.status, info.status)) {
-              const updatePayload = {
-                status: info.status,
-                codigo_rastreio: info.codigoRastreio || shipping.codigo_rastreio,
-                ultima_atualizacao_rastreio: new Date().toISOString(),
-                rastreio_info: info,
-              };
-
-              const updateRes = await fetch(
-                `${REST_URL}/shippings?id=eq.${shipping.id}`,
-                {
-                  method: 'PATCH',
-                  headers: { ...supabaseHeaders, 'Prefer': 'return=minimal' },
-                  body: JSON.stringify(updatePayload),
-                }
-              );
-
-              if (updateRes.ok) {
-                console.log(`[CRON] ${shipping.nf_numero}: ${shipping.status} → ${info.status}`);
-                updated++;
-              } else {
-                console.error(`[CRON] Erro ao atualizar ${shipping.nf_numero}:`, await updateRes.text());
-                errors++;
-              }
+              updatePayload.status = info.status;
+              updatePayload.codigo_rastreio = info.codigoRastreio || shipping.codigo_rastreio;
+              console.log(`[CRON] ${shipping.nf_numero}: ${shipping.status} → ${info.status}`);
             } else {
               console.log(`[CRON] ${shipping.nf_numero}: sem mudança (${shipping.status} → ${info.status || 'N/A'})`);
+            }
+
+            const ok = await patchShipping(REST_URL, supabaseHeaders, shipping.id, updatePayload);
+            if (ok) {
+              if (updatePayload.status) updated++;
+              checked++;
+            } else {
+              errors++;
             }
           }
         } else {
@@ -183,36 +197,36 @@ export default async function handler(req, res) {
           if (trackData.success && trackData.data) {
             for (const shipping of batch) {
               const info = trackData.data[shipping.codigo_rastreio.trim()];
+
               if (!info || info.erro) {
                 console.log(`[CRON] ${shipping.nf_numero}: ${info?.erro || 'sem dados'}`);
+                // Still mark as checked
+                await patchShipping(REST_URL, supabaseHeaders, shipping.id, {
+                  ultima_atualizacao_rastreio: now,
+                  rastreio_info: info || { erro: 'sem dados' },
+                });
+                checked++;
                 continue;
               }
 
+              const updatePayload = {
+                ultima_atualizacao_rastreio: now,
+                rastreio_info: info,
+              };
+
               if (info.status && shouldUpdateStatus(shipping.status, info.status)) {
-                const updatePayload = {
-                  status: info.status,
-                  ultima_atualizacao_rastreio: new Date().toISOString(),
-                  rastreio_info: info,
-                };
-
-                const updateRes = await fetch(
-                  `${REST_URL}/shippings?id=eq.${shipping.id}`,
-                  {
-                    method: 'PATCH',
-                    headers: { ...supabaseHeaders, 'Prefer': 'return=minimal' },
-                    body: JSON.stringify(updatePayload),
-                  }
-                );
-
-                if (updateRes.ok) {
-                  console.log(`[CRON] ${shipping.nf_numero}: ${shipping.status} → ${info.status}`);
-                  updated++;
-                } else {
-                  console.error(`[CRON] Erro ao atualizar ${shipping.nf_numero}:`, await updateRes.text());
-                  errors++;
-                }
+                updatePayload.status = info.status;
+                console.log(`[CRON] ${shipping.nf_numero}: ${shipping.status} → ${info.status}`);
               } else {
                 console.log(`[CRON] ${shipping.nf_numero}: sem mudança (${shipping.status} → ${info.status || 'N/A'})`);
+              }
+
+              const ok = await patchShipping(REST_URL, supabaseHeaders, shipping.id, updatePayload);
+              if (ok) {
+                if (updatePayload.status) updated++;
+                checked++;
+              } else {
+                errors++;
               }
             }
           } else {
@@ -236,9 +250,10 @@ export default async function handler(req, res) {
       total: shippings.length,
       melhorEnvio: porMelhorEnvio.length,
       codigoRastreio: porCodigo.length,
+      checked,
       updated,
       errors,
-      timestamp: new Date().toISOString(),
+      timestamp: now,
     };
 
     console.log('[CRON] Resumo:', JSON.stringify(summary));
