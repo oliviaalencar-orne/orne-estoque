@@ -11,8 +11,7 @@ export function useSeparations(user, isStockAdmin) {
   const addSeparation = useCallback(
     async (separation) => {
       if (!isStockAdmin) {
-        alert('Sem permissão para esta ação');
-        return;
+        throw new Error('Sem permissão para esta ação');
       }
       const newSeparation = {
         id: separation.id || generateId(),
@@ -31,17 +30,23 @@ export function useSeparations(user, isStockAdmin) {
       const { error } = await supabaseClient.from('separations').upsert(newSeparation);
       if (error) {
         console.error('Erro ao criar separação:', error);
-        alert('Erro ao criar separação: ' + error.message);
-        return;
+        throw new Error('Erro ao criar separação: ' + error.message);
       }
-      return {
+      // Optimistic local state update (don't wait for realtime)
+      const created = {
         ...separation,
         id: newSeparation.id,
         date: newSeparation.date,
         updatedAt: newSeparation.updated_at,
         userId: newSeparation.user_id,
         status: newSeparation.status,
+        hubId: newSeparation.hub_id || '',
       };
+      setSeparations(prev => {
+        if (prev.find(s => s.id === created.id)) return prev;
+        return [...prev, created];
+      });
+      return created;
     },
     [user, isStockAdmin]
   );
@@ -52,6 +57,10 @@ export function useSeparations(user, isStockAdmin) {
         alert('Sem permissão para esta ação');
         return;
       }
+      // Optimistic local state update
+      setSeparations(prev => prev.map(s =>
+        s.id === separationId ? { ...s, ...data, updatedAt: new Date().toISOString() } : s
+      ));
       const mapped = { updated_at: new Date().toISOString() };
       if (data.nfNumero !== undefined) mapped.nf_numero = data.nfNumero;
       if (data.cliente !== undefined) mapped.cliente = data.cliente;
@@ -79,10 +88,13 @@ export function useSeparations(user, isStockAdmin) {
         alert('Sem permissão para esta ação');
         return;
       }
+      // Optimistic local state update — remove immediately from UI
+      setSeparations(prev => prev.filter(s => s.id !== separationId));
       const { error } = await supabaseClient.from('separations').delete().eq('id', separationId);
       if (error) {
         console.error('Erro ao excluir separação:', error);
         alert('Erro ao excluir separação: ' + error.message);
+        // Realtime will re-sync if needed, but the row is likely gone from DB anyway
       }
     },
     [isStockAdmin]

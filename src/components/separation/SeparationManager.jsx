@@ -90,21 +90,34 @@ export default function SeparationManager({
     setShowShareMenu(false);
   }, [handleBuildHubMessage]);
 
-  const handlePrepareSeparationFromTiny = (data) => {
+  // Check if NF is duplicate (used by TinyNFeImport confirming phase)
+  const checkNfDuplicate = useCallback((nfNum) => {
+    const existingShipping = (shippings || []).find(s => s.nfNumero === nfNum);
+    if (existingShipping) return { type: 'shipping', label: 'Ja despachada' };
+    const existingSeparation = separations.find(s => s.nfNumero === nfNum && s.status !== 'despachado');
+    if (existingSeparation) return { type: 'separation', label: `Em separacao (${existingSeparation.status})` };
+    return null;
+  }, [shippings, separations]);
+
+  const handlePrepareSeparationFromTiny = async (data, options = {}) => {
     const nf = data.nfNumero || '';
+    const isBatch = options.batchMode === true;
 
-    const existingShipping = (shippings || []).find(s => s.nfNumero === nf);
-    if (existingShipping) {
-      if (!window.confirm(`A NF ${nf} já foi despachada. Deseja criar uma separação mesmo assim?`)) {
-        return;
+    // Duplicate checks — skip in batch mode (already shown in confirming/summary phase)
+    if (!isBatch) {
+      const existingShipping = (shippings || []).find(s => s.nfNumero === nf);
+      if (existingShipping) {
+        if (!window.confirm(`A NF ${nf} já foi despachada. Deseja criar uma separação mesmo assim?`)) {
+          return false;
+        }
       }
-    }
 
-    if (!existingShipping) {
-      const existingSeparation = separations.find(s => s.nfNumero === nf && s.status !== 'despachado');
-      if (existingSeparation) {
-        if (!window.confirm(`A NF ${nf} já está em separação (status: ${existingSeparation.status}). Deseja criar uma nova separação mesmo assim?`)) {
-          return;
+      if (!existingShipping) {
+        const existingSeparation = separations.find(s => s.nfNumero === nf && s.status !== 'despachado');
+        if (existingSeparation) {
+          if (!window.confirm(`A NF ${nf} já está em separação (status: ${existingSeparation.status}). Deseja criar uma nova separação mesmo assim?`)) {
+            return false;
+          }
         }
       }
     }
@@ -115,7 +128,8 @@ export default function SeparationManager({
       baixarEstoque: !!p.produtoEstoque,
       observacao: '',
     }));
-    setEditingSeparation({
+
+    const separationObj = {
       nfNumero: nf,
       cliente: data.cliente || '',
       destino: data.destino || '',
@@ -123,24 +137,41 @@ export default function SeparationManager({
       status: 'pendente',
       hubId: selectedHubId !== 'all' ? selectedHubId : '',
       produtos: produtosComFlags,
-    });
+    };
+
+    // Batch mode: save directly without going to edit form
+    if (isBatch) {
+      await onAdd({
+        ...separationObj,
+        userId: user?.email || '',
+      });
+      return true;
+    }
+
+    // Single mode: open edit form (existing behavior)
+    setEditingSeparation(separationObj);
     setActiveView('edit');
+    return true;
   };
 
   const handleSaveSeparation = async (separationData) => {
-    if (separationData.id) {
-      await onUpdate(separationData.id, separationData);
-    } else {
-      await onAdd({
-        ...separationData,
-        status: 'pendente',
-        userId: user?.email || '',
-      });
+    try {
+      if (separationData.id) {
+        await onUpdate(separationData.id, separationData);
+      } else {
+        await onAdd({
+          ...separationData,
+          status: 'pendente',
+          userId: user?.email || '',
+        });
+      }
+      setActiveView('list');
+      setEditingSeparation(null);
+      setSuccess('Separação salva com sucesso!');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      alert('Erro ao salvar separação: ' + err.message);
     }
-    setActiveView('list');
-    setEditingSeparation(null);
-    setSuccess('Separação salva com sucesso!');
-    setTimeout(() => setSuccess(''), 3000);
   };
 
   const handleEdit = (sep) => {
@@ -379,6 +410,7 @@ export default function SeparationManager({
           onUpdateCategory={onUpdateCategory}
           onDeleteCategory={onDeleteCategory}
           onPrepareShipping={handlePrepareSeparationFromTiny}
+          checkNfDuplicate={checkNfDuplicate}
         />
       )}
 

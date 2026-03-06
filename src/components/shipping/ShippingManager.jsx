@@ -82,7 +82,67 @@ export default function ShippingManager({
     };
 
     // Callback para quando TinyNFeImport prepara dados para despacho
-    const handlePrepareShippingFromTiny = (data) => {
+    const handlePrepareShippingFromTiny = async (data, options = {}) => {
+        const isBatch = options.batchMode === true;
+
+        // Batch mode: save shipping directly (skip manual form)
+        if (isBatch) {
+            const shippingData = {
+                nfNumero: data.nfNumero || '',
+                cliente: data.cliente || '',
+                destino: data.destino || '',
+                localOrigem: locaisOrigem[0] || 'Loja Principal',
+                transportadora: '',
+                codigoRastreio: '',
+                linkRastreio: '',
+                melhorEnvioId: '',
+                hubTelefone: '',
+                produtos: data.produtos || [],
+                observacoes: '',
+                status: 'DESPACHADO',
+            };
+
+            const savedShipping = await onAdd(shippingData);
+            const shippingId = savedShipping?.id || null;
+
+            // Stock deduction for linked products
+            if (shippingId) {
+                const produtosComExit = [...shippingData.produtos];
+                let temExit = false;
+                for (let j = 0; j < shippingData.produtos.length; j++) {
+                    const prod = shippingData.produtos[j];
+                    if (prod.produtoEstoque && prod.baixarEstoque) {
+                        try {
+                            const exitResult = await onAddExit({
+                                type: 'VENDA',
+                                sku: prod.produtoEstoque.sku,
+                                quantity: prod.quantidade,
+                                client: shippingData.cliente,
+                                nf: shippingData.nfNumero,
+                                nfOrigem: (prod.nfOrigem && prod.nfOrigem !== 'Sem NF' && prod.nfOrigem !== 'SEM_NF')
+                                    ? prod.nfOrigem : null,
+                            });
+                            if (exitResult?.id) {
+                                produtosComExit[j] = { ...produtosComExit[j], exitId: exitResult.id, baixouEstoque: true };
+                                temExit = true;
+                            }
+                        } catch (exitErr) {
+                            console.error('Erro exit batch:', prod.produtoEstoque.sku, exitErr);
+                        }
+                    }
+                }
+                if (temExit) {
+                    try {
+                        await onUpdate(shippingId, { produtos: produtosComExit });
+                    } catch (updateErr) {
+                        console.error('Erro ao atualizar JSONB batch:', updateErr);
+                    }
+                }
+            }
+            return true;
+        }
+
+        // Single mode: set form data and switch to register view (existing behavior)
         setForm(prevForm => ({
             ...prevForm,
             nfNumero: data.nfNumero || '',
@@ -99,6 +159,7 @@ export default function ShippingManager({
             produtos: data.produtos || [],
         });
         setActiveView('register');
+        return true;
     };
 
     // Process pending dispatch data from SeparationManager

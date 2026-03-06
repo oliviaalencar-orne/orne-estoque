@@ -1,17 +1,22 @@
 /**
  * TinyNFeImport.jsx — Import NF-e from Tiny ERP via Edge Function
  *
+ * Supports two modes:
+ *   - Individual: single NF lookup (original flow)
+ *   - Lote (batch): multiple NFs with sequential fetch + editing queue
+ *
  * Extracted from index-legacy.html L9310-10001
  * CRITICAL: Uses normalizeNfKey/getEstoquePorNF from @/utils/fifo (NOT duplicated)
  * CRITICAL: onPrepareShipping prop — when present and mode is exit,
  *           fills shipping form instead of creating exits directly
  */
-import React, { useState } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { supabaseClient, SUPABASE_URL, SUPABASE_ANON_KEY } from '@/config/supabase';
 import { getEstoquePorNF } from '@/utils/fifo';
 import CategorySelectInline from '@/components/ui/CategorySelectInline';
+import { useBatchImport, BATCH_MAX_NFS, BATCH_FETCH_TIMEOUT_MS } from '@/hooks/useBatchImport';
 
-export default function TinyNFeImport({ products, onSubmitEntry, onSubmitExit, onAddProduct, categories, locaisOrigem, onUpdateLocais, entries, exits, stock, mode, onAddCategory, onUpdateCategory, onDeleteCategory, onPrepareShipping }) {
+export default function TinyNFeImport({ products, onSubmitEntry, onSubmitExit, onAddProduct, categories, locaisOrigem, onUpdateLocais, entries, exits, stock, mode, onAddCategory, onUpdateCategory, onDeleteCategory, onPrepareShipping, checkNfDuplicate }) {
     const [nfNumber, setNfNumber] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -27,9 +32,44 @@ export default function TinyNFeImport({ products, onSubmitEntry, onSubmitExit, o
     const [newCatName, setNewCatName] = useState('');
     const [newCatColor, setNewCatColor] = useState('#7A7585');
 
+    // Batch mode state
+    const [importMode, setImportMode] = useState('single');
+    const [batchConfirmedCount, setBatchConfirmedCount] = useState(0);
+    const batch = useBatchImport();
+
     const isEntry = mode === 'entry' || (mode === 'both' && nfeData?.tipo === 'E');
     const isExit = mode === 'exit' || (mode === 'both' && nfeData?.tipo === 'S');
+    const isBatchEditing = importMode === 'batch' && batch.batchPhase === 'editing';
 
+    // ─── Shared: build itemStates from raw nfe data ──────────────────────
+    const buildItemStatesFromNfe = useCallback((nfe) => {
+        const nfStr = String(nfe.numero);
+        const isExitNfe = mode === 'exit' || (mode === 'both' && nfe.tipo === 'S');
+        return (nfe.itens || []).map(item => {
+            const matched = products.find(p =>
+                (p.sku || '').toLowerCase() === (item.codigo || '').toLowerCase() ||
+                (p.ean && p.ean === item.codigo)
+            );
+            const alreadyInEntries = entries.some(e => e.nf === nfStr && (e.sku === item.codigo || (matched && e.sku === matched.sku)));
+            const alreadyInExits = exits.some(e => e.nf === nfStr && (e.sku === item.codigo || (matched && e.sku === matched.sku)));
+            const alreadyRegistered = alreadyInEntries || alreadyInExits;
+
+            return {
+                selected: !alreadyRegistered,
+                linkedSku: matched?.sku || '',
+                linkedProduct: matched || null,
+                quantity: Math.round(item.quantidade) || 1,
+                localEntrada: locaisOrigem?.[0] || 'Loja Principal',
+                observations: '',
+                category: matched?.category || '',
+                alreadyRegistered,
+                baixarEstoque: !!matched && isExitNfe,
+                nfOrigem: '',
+            };
+        });
+    }, [products, entries, exits, mode, locaisOrigem]);
+
+    // ─── Single mode: fetch NF ───────────────────────────────────────────
     const fetchNFe = async () => {
         if (!nfNumber.trim()) { setError('Informe o numero da NF.'); return; }
         setLoading(true);
@@ -59,39 +99,85 @@ export default function TinyNFeImport({ products, onSubmitEntry, onSubmitExit, o
             }
             const nfe = data.notas[0];
             setNfeData(nfe);
-
-            // Build per-item states with auto-linking
-            const states = (nfe.itens || []).map(item => {
-                const matched = products.find(p =>
-                    (p.sku || '').toLowerCase() === (item.codigo || '').toLowerCase() ||
-                    (p.ean && p.ean === item.codigo)
-                );
-                const nfStr = String(nfe.numero);
-                const alreadyInEntries = entries.some(e => e.nf === nfStr && (e.sku === item.codigo || (matched && e.sku === matched.sku)));
-                const alreadyInExits = exits.some(e => e.nf === nfStr && (e.sku === item.codigo || (matched && e.sku === matched.sku)));
-                const alreadyRegistered = alreadyInEntries || alreadyInExits;
-
-                const isExitNfe = mode === 'exit' || (mode === 'both' && nfe.tipo === 'S');
-                return {
-                    selected: !alreadyRegistered,
-                    linkedSku: matched?.sku || '',
-                    linkedProduct: matched || null,
-                    quantity: Math.round(item.quantidade) || 1,
-                    localEntrada: locaisOrigem?.[0] || 'Loja Principal',
-                    observations: '',
-                    category: matched?.category || '',
-                    alreadyRegistered,
-                    baixarEstoque: !!matched && isExitNfe,
-                    nfOrigem: '',
-                };
-            });
-            setItemStates(states);
+            setItemStates(buildItemStatesFromNfe(nfe));
         } catch (e) {
             setError(e.message);
         } finally {
             setLoading(false);
         }
     };
+
+    // ─── Batch mode: pure fetch (no state side effects) ──────────────────
+    const fetchSingleNFe = useCallback(async (nfNum) => {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (!session) throw new Error('Sessao expirada.');
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), BATCH_FETCH_TIMEOUT_MS);
+
+        try {
+            const resp = await fetch(`${SUPABASE_URL}/functions/v1/tiny-sync-nfe`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`,
+                    'Content-Type': 'application/json',
+                    'apikey': SUPABASE_ANON_KEY,
+                },
+                body: JSON.stringify({ action: 'fetch', nf_number: nfNum.trim() }),
+                signal: controller.signal,
+            });
+            clearTimeout(timeoutId);
+
+            if (!resp.ok) {
+                const err = await resp.json().catch(() => ({}));
+                throw new Error(err.error || `Erro ${resp.status}`);
+            }
+            const data = await resp.json();
+            if (!data.notas || data.notas.length === 0) {
+                throw new Error(`NF ${nfNum} nao encontrada no Tiny.`);
+            }
+            return data.notas[0];
+        } catch (err) {
+            clearTimeout(timeoutId);
+            if (err.name === 'AbortError') {
+                throw new Error(`Timeout ao buscar NF ${nfNum} (${BATCH_FETCH_TIMEOUT_MS / 1000}s)`);
+            }
+            throw err;
+        }
+    }, []);
+
+    // Load batch item into component state for editing
+    const loadBatchItem = useCallback((batchItem) => {
+        if (!batchItem?.data) return;
+        const nfe = batchItem.data;
+        setNfeData(nfe);
+        setItemStates(buildItemStatesFromNfe(nfe));
+        setNfNumber(String(nfe.numero || batchItem.nf));
+        setError('');
+        setSuccess('');
+    }, [buildItemStatesFromNfe]);
+
+    // Effect: load batch item when editing phase starts or advances
+    useEffect(() => {
+        if (batch.batchPhase === 'editing' && batch.currentEditItem) {
+            loadBatchItem(batch.currentEditItem);
+        }
+        if (batch.batchPhase === 'completed') {
+            setNfeData(null);
+            setItemStates([]);
+            setNfNumber('');
+        }
+    }, [batch.batchPhase, batch.editIndex]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Duplicate detection for confirming phase
+    const existingNfNumbers = useMemo(() => {
+        const nfs = new Set();
+        (entries || []).forEach(e => { if (e.nf) nfs.add(String(e.nf)); });
+        (exits || []).forEach(e => { if (e.nf) nfs.add(String(e.nf)); });
+        return nfs;
+    }, [entries, exits]);
+
+    // ─── Shared helpers ──────────────────────────────────────────────────
 
     const updateItemState = (idx, updates) => {
         setItemStates(prev => prev.map((s, i) => i === idx ? { ...s, ...updates } : s));
@@ -146,6 +232,8 @@ export default function TinyNFeImport({ products, onSubmitEntry, onSubmitExit, o
         setShowInlineCatForm(false);
     };
 
+    // ─── handleConfirm (batch-aware) ─────────────────────────────────────
+
     const handleConfirm = async () => {
         const selectedItems = itemStates
             .map((s, i) => ({ ...s, item: nfeData.itens[i], index: i }))
@@ -157,7 +245,6 @@ export default function TinyNFeImport({ products, onSubmitEntry, onSubmitExit, o
         }
 
         // Validar quantidades vs estoque disponivel por NF de origem
-        // Uses getEstoquePorNF imported from @/utils/fifo (params: produtoSku, entries, exits)
         if (isExit) {
             for (const s of selectedItems) {
                 if (s.baixarEstoque && s.nfOrigem) {
@@ -171,8 +258,8 @@ export default function TinyNFeImport({ products, onSubmitEntry, onSubmitExit, o
             }
         }
 
-        // Se tem callback de preparar shipping (contexto Despachos),
-        // desviar para o formulario de despacho em vez de criar exits direto
+        // Se tem callback de preparar shipping (contexto Despachos/Separacao),
+        // desviar para o formulario em vez de criar exits direto
         if (onPrepareShipping && isExit) {
             const produtos = selectedItems.map(s => ({
                 sku: s.item.codigo || '',
@@ -185,19 +272,39 @@ export default function TinyNFeImport({ products, onSubmitEntry, onSubmitExit, o
                 autoVinculado: !!s.linkedProduct,
             }));
 
-            onPrepareShipping({
-                nfNumero: String(nfeData.numero || ''),
-                cliente: nfeData.cliente?.nome || '',
-                destino: nfeData.cliente?.endereco || '',
-                produtos: produtos,
-            });
+            const prepareOptions = isBatchEditing ? { batchMode: true } : {};
+            if (isBatchEditing) setSaving(true);
+            setError('');
 
-            // Limpar estado do import
-            setNfeData(null);
-            setItemStates([]);
-            setNfNumber('');
-            setSuccess('NF importada! Preencha os dados do despacho.');
-            setTimeout(() => setSuccess(''), 5000);
+            try {
+                const result = await onPrepareShipping({
+                    nfNumero: String(nfeData.numero || ''),
+                    cliente: nfeData.cliente?.nome || '',
+                    destino: nfeData.cliente?.endereco || '',
+                    produtos: produtos,
+                }, prepareOptions);
+
+                // Cancelled by user (single mode duplicate check)
+                if (result === false) return;
+
+                // Batch mode: advance queue after successful save
+                if (isBatchEditing) {
+                    setBatchConfirmedCount(prev => prev + 1);
+                    batch.advanceQueue();
+                    return;
+                }
+
+                // Single mode: clear state
+                setNfeData(null);
+                setItemStates([]);
+                setNfNumber('');
+                setSuccess('NF importada! Preencha os dados do despacho.');
+                setTimeout(() => setSuccess(''), 5000);
+            } catch (err) {
+                setError('Erro ao salvar: ' + err.message);
+            } finally {
+                if (isBatchEditing) setSaving(false);
+            }
             return;
         }
 
@@ -231,6 +338,16 @@ export default function TinyNFeImport({ products, onSubmitEntry, onSubmitExit, o
                 }
                 count++;
             }
+
+            // Batch mode: advance queue instead of clearing
+            if (isBatchEditing) {
+                setBatchConfirmedCount(prev => prev + 1);
+                setSuccess(`${count} item(ns) registrado(s)!`);
+                batch.advanceQueue();
+                setSaving(false);
+                return;
+            }
+
             setSuccess(`${count} item(ns) registrado(s) com sucesso!`);
             setNfeData(null);
             setItemStates([]);
@@ -243,33 +360,351 @@ export default function TinyNFeImport({ products, onSubmitEntry, onSubmitExit, o
         }
     };
 
+    // ─── Mode switching helpers ──────────────────────────────────────────
+
+    const handleSwitchToSingle = () => {
+        setImportMode('single');
+        batch.resetBatch();
+        setBatchConfirmedCount(0);
+        setNfeData(null);
+        setItemStates([]);
+        setNfNumber('');
+        setError('');
+        setSuccess('');
+    };
+
+    const handleSwitchToBatch = () => {
+        setImportMode('batch');
+        setNfeData(null);
+        setItemStates([]);
+        setNfNumber('');
+        setError('');
+        setSuccess('');
+        setBatchConfirmedCount(0);
+    };
+
+    const handleBatchSkip = () => {
+        setNfeData(null);
+        setItemStates([]);
+        batch.skipCurrent();
+    };
+
+    const handleBatchCancel = () => {
+        setNfeData(null);
+        setItemStates([]);
+        setNfNumber('');
+        setBatchConfirmedCount(0);
+        batch.cancelBatch();
+    };
+
     const sortedProducts = [...products].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
     return (
         <div style={{marginBottom: '24px'}}>
-            {/* Search bar */}
-            <div style={{display: 'flex', gap: '8px', alignItems: 'end', marginBottom: '16px'}}>
-                <div style={{flex: 1}}>
-                    <label className="form-label">Numero da NF (Tiny ERP)</label>
-                    <input
-                        type="text"
-                        className="form-input"
-                        placeholder="Ex: 2305"
-                        value={nfNumber}
-                        onChange={e => setNfNumber(e.target.value)}
-                        onKeyDown={e => e.key === 'Enter' && fetchNFe()}
-                    />
-                </div>
-                <button className="btn btn-primary" onClick={fetchNFe} disabled={loading} style={{whiteSpace: 'nowrap'}}>
-                    {loading ? 'Buscando...' : 'Buscar no Tiny'}
+            {/* ─── Mode toggle ──────────────────────────────────────── */}
+            <div className="filter-tabs" style={{ marginBottom: '16px' }}>
+                <button
+                    className={`filter-tab ${importMode === 'single' ? 'active' : ''}`}
+                    onClick={handleSwitchToSingle}
+                >
+                    Individual
+                </button>
+                <button
+                    className={`filter-tab ${importMode === 'batch' ? 'active' : ''}`}
+                    onClick={handleSwitchToBatch}
+                >
+                    Lote
                 </button>
             </div>
 
+            {/* ─── Single mode: search bar ──────────────────────────── */}
+            {importMode === 'single' && (
+                <div style={{display: 'flex', gap: '8px', alignItems: 'end', marginBottom: '16px'}}>
+                    <div style={{flex: 1}}>
+                        <label className="form-label">Numero da NF (Tiny ERP)</label>
+                        <input
+                            type="text"
+                            className="form-input"
+                            placeholder="Ex: 2305"
+                            value={nfNumber}
+                            onChange={e => setNfNumber(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && fetchNFe()}
+                        />
+                    </div>
+                    <button className="btn btn-primary" onClick={fetchNFe} disabled={loading} style={{whiteSpace: 'nowrap'}}>
+                        {loading ? 'Buscando...' : 'Buscar no Tiny'}
+                    </button>
+                </div>
+            )}
+
+            {/* ─── Batch mode: idle — textarea input ────────────────── */}
+            {importMode === 'batch' && batch.batchPhase === 'idle' && (
+                <div style={{ marginBottom: '16px' }}>
+                    <label className="form-label">Numeros das NFs (separados por virgula, ponto e virgula, espaco ou quebra de linha)</label>
+                    <textarea
+                        className="form-input"
+                        placeholder={"Ex: 2305, 2306, 2307\nOu uma NF por linha"}
+                        value={batch.rawInput}
+                        onChange={e => batch.setRawInput(e.target.value)}
+                        rows={4}
+                        style={{ resize: 'vertical', fontFamily: 'monospace', fontSize: '13px' }}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
+                        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                            Maximo {BATCH_MAX_NFS} NFs por lote
+                        </span>
+                        <button
+                            className="btn btn-primary"
+                            onClick={() => {
+                                const result = batch.prepareBatch();
+                                if (result.error) setError(result.error);
+                                else setError('');
+                            }}
+                            disabled={!batch.rawInput.trim()}
+                        >
+                            Preparar Lote
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* ─── Batch mode: confirming — parsed NF list ──────────── */}
+            {importMode === 'batch' && batch.batchPhase === 'confirming' && (
+                <div style={{ marginBottom: '16px' }}>
+                    <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '12px' }}>
+                        Confirmar NFs para buscar ({batch.parsedNfs.length} NF{batch.parsedNfs.length !== 1 ? 's' : ''})
+                    </div>
+                    <div style={{
+                        border: '1px solid var(--border)',
+                        borderRadius: 'var(--radius-md)',
+                        overflow: 'hidden',
+                        marginBottom: '12px',
+                    }}>
+                        {batch.parsedNfs.map((nf, idx) => {
+                            const duplicateInfo = checkNfDuplicate
+                                ? checkNfDuplicate(nf)
+                                : (existingNfNumbers.has(nf) ? { label: 'Ja registrada' } : null);
+                            return (
+                                <div key={idx} style={{
+                                    padding: '10px 14px',
+                                    borderBottom: idx < batch.parsedNfs.length - 1 ? '1px solid var(--border)' : 'none',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    background: duplicateInfo ? '#fef3c7' : 'transparent',
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 500, minWidth: '24px' }}>
+                                            {idx + 1}.
+                                        </span>
+                                        <span style={{ fontWeight: 500, fontSize: '13px' }}>NF {nf}</span>
+                                    </div>
+                                    {duplicateInfo && (
+                                        <span className="badge badge-warning" style={{ fontSize: '10px' }}>
+                                            {duplicateInfo.label}
+                                        </span>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                        <button className="btn btn-secondary" onClick={() => batch.resetBatch()}>
+                            Voltar
+                        </button>
+                        <button
+                            className="btn btn-primary"
+                            onClick={() => {
+                                setError('');
+                                batch.startBatchFetch(fetchSingleNFe);
+                            }}
+                        >
+                            Buscar {batch.parsedNfs.length} NF{batch.parsedNfs.length !== 1 ? 's' : ''}
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* ─── Batch mode: fetching — progress bar ──────────────── */}
+            {importMode === 'batch' && batch.batchPhase === 'fetching' && (
+                <div style={{ marginBottom: '16px' }}>
+                    <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '8px' }}>
+                        Buscando NFs no Tiny...
+                    </div>
+                    <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
+                        NF {batch.fetchProgress.currentNf} ({batch.fetchProgress.current} de {batch.fetchProgress.total})
+                    </div>
+                    <div style={{
+                        width: '100%',
+                        height: '8px',
+                        background: 'var(--bg-secondary)',
+                        borderRadius: '4px',
+                        overflow: 'hidden',
+                        marginBottom: '8px',
+                    }}>
+                        <div style={{
+                            width: `${batch.fetchProgress.total > 0 ? (batch.fetchProgress.current / batch.fetchProgress.total) * 100 : 0}%`,
+                            height: '100%',
+                            background: 'var(--accent)',
+                            borderRadius: '4px',
+                            transition: 'width 0.3s ease',
+                        }} />
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                            {batch.fetchProgress.total > 0 ? Math.round((batch.fetchProgress.current / batch.fetchProgress.total) * 100) : 0}%
+                        </span>
+                        <button className="btn btn-secondary" onClick={batch.cancelFetch} style={{ fontSize: '12px' }}>
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* ─── Batch mode: summary — results ────────────────────── */}
+            {importMode === 'batch' && batch.batchPhase === 'summary' && (
+                <div style={{ marginBottom: '16px' }}>
+                    <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '8px' }}>
+                        Resultado da busca
+                    </div>
+                    {(() => {
+                        const successCount = batch.fetchResults.filter(r => r.success).length;
+                        const errorCount = batch.fetchResults.filter(r => !r.success).length;
+                        return (
+                            <div style={{ display: 'flex', gap: '12px', marginBottom: '12px', fontSize: '13px' }}>
+                                {successCount > 0 && (
+                                    <span style={{ color: 'var(--success)', fontWeight: 500 }}>
+                                        {successCount} encontrada{successCount !== 1 ? 's' : ''}
+                                    </span>
+                                )}
+                                {errorCount > 0 && (
+                                    <span style={{ color: 'var(--danger)', fontWeight: 500 }}>
+                                        {errorCount} com erro
+                                    </span>
+                                )}
+                            </div>
+                        );
+                    })()}
+                    <div style={{
+                        border: '1px solid var(--border)',
+                        borderRadius: 'var(--radius-md)',
+                        overflow: 'hidden',
+                        marginBottom: '12px',
+                    }}>
+                        {batch.fetchResults.map((r, idx) => (
+                            <div key={idx} style={{
+                                padding: '10px 14px',
+                                borderBottom: idx < batch.fetchResults.length - 1 ? '1px solid var(--border)' : 'none',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                background: r.success ? 'transparent' : '#fee2e2',
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span style={{ fontSize: '14px', color: r.success ? 'var(--success)' : 'var(--danger)' }}>
+                                        {r.success ? '\u2713' : '\u2717'}
+                                    </span>
+                                    <span style={{ fontWeight: 500, fontSize: '13px' }}>NF {r.nf}</span>
+                                    {r.success && r.data?.cliente?.nome && (
+                                        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                                            — {r.data.cliente.nome}
+                                        </span>
+                                    )}
+                                </div>
+                                {!r.success && (
+                                    <span style={{ fontSize: '11px', color: 'var(--danger)' }}>
+                                        {r.error}
+                                    </span>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                        <button className="btn btn-secondary" onClick={batch.resetBatch}>
+                            Cancelar
+                        </button>
+                        {batch.fetchResults.some(r => r.success) && (
+                            <button
+                                className="btn btn-primary"
+                                onClick={() => {
+                                    setBatchConfirmedCount(0);
+                                    batch.startEditing();
+                                }}
+                            >
+                                Editar {batch.fetchResults.filter(r => r.success).length} NF{batch.fetchResults.filter(r => r.success).length !== 1 ? 's' : ''}
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* ─── Batch mode: completed ────────────────────────────── */}
+            {importMode === 'batch' && batch.batchPhase === 'completed' && (
+                <div style={{
+                    textAlign: 'center',
+                    padding: '40px 20px',
+                    marginBottom: '16px',
+                }}>
+                    <div style={{ fontSize: '32px', marginBottom: '8px', color: 'var(--success)' }}>{'\u2713'}</div>
+                    <div style={{ fontWeight: 600, fontSize: '16px', marginBottom: '4px', color: 'var(--success)' }}>
+                        Lote concluido!
+                    </div>
+                    <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '20px' }}>
+                        {batchConfirmedCount} NF{batchConfirmedCount !== 1 ? 's' : ''} processada{batchConfirmedCount !== 1 ? 's' : ''} com sucesso
+                        {batch.editQueue.length - batchConfirmedCount > 0 && (
+                            <span>, {batch.editQueue.length - batchConfirmedCount} pulada{batch.editQueue.length - batchConfirmedCount !== 1 ? 's' : ''}</span>
+                        )}
+                    </div>
+                    <button className="btn btn-primary" onClick={() => {
+                        batch.resetBatch();
+                        setBatchConfirmedCount(0);
+                    }}>
+                        Nova Importacao em Lote
+                    </button>
+                </div>
+            )}
+
+            {/* ─── Batch editing: progress header ───────────────────── */}
+            {isBatchEditing && (
+                <div style={{
+                    marginBottom: '12px',
+                    padding: '10px 14px',
+                    background: 'var(--bg-secondary)',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--border)',
+                }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <span style={{ fontWeight: 600, fontSize: '14px' }}>
+                            Editando NF {batch.editIndex + 1} de {batch.editQueue.length}
+                        </span>
+                        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                            NF {batch.currentEditItem?.nf}
+                        </span>
+                    </div>
+                    <div style={{
+                        width: '100%',
+                        height: '4px',
+                        background: '#e5e7eb',
+                        borderRadius: '2px',
+                        overflow: 'hidden',
+                    }}>
+                        <div style={{
+                            width: `${((batch.editIndex + 1) / batch.editQueue.length) * 100}%`,
+                            height: '100%',
+                            background: 'var(--accent)',
+                            borderRadius: '2px',
+                            transition: 'width 0.3s ease',
+                        }} />
+                    </div>
+                </div>
+            )}
+
+            {/* ─── Alerts ───────────────────────────────────────────── */}
             {error && <div className="alert alert-danger" style={{marginBottom: '12px'}}>{error}</div>}
             {success && <div className="alert alert-success" style={{marginBottom: '12px'}}>{success}</div>}
 
-            {/* NF-e Preview */}
-            {nfeData && (
+            {/* ─── NF-e Preview (shared between single and batch editing) ── */}
+            {nfeData && (importMode === 'single' || isBatchEditing) && (
                 <div style={{border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', overflow: 'hidden'}}>
                     {/* Header */}
                     <div style={{background: 'var(--bg-secondary)', padding: '16px', borderBottom: '1px solid var(--border)'}}>
@@ -475,21 +910,45 @@ export default function TinyNFeImport({ products, onSubmitEntry, onSubmitExit, o
                     </div>
 
                     {/* Action bar */}
-                    <div style={{padding: '16px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                    <div style={{padding: '16px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px'}}>
                         <div style={{fontSize: '13px', color: 'var(--text-secondary)'}}>
                             {itemStates.filter(s => s.selected && s.linkedSku).length} de {nfeData.itens?.length || 0} item(ns) selecionado(s)
                         </div>
-                        <div style={{display: 'flex', gap: '8px'}}>
-                            <button className="btn btn-secondary" onClick={() => { setNfeData(null); setItemStates([]); }}>
-                                Cancelar
-                            </button>
-                            <button className="btn btn-primary" onClick={handleConfirm} disabled={saving}>
-                                {saving ? 'Registrando...' : (
-                                    (isEntry || (mode === 'both' && nfeData.tipo === 'E'))
-                                        ? 'Registrar Entrada'
-                                        : 'Registrar Saida'
-                                )}
-                            </button>
+                        <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap'}}>
+                            {isBatchEditing ? (
+                                <>
+                                    <button className="btn btn-secondary" onClick={handleBatchSkip} style={{ fontSize: '12px' }}>
+                                        Pular
+                                    </button>
+                                    <button
+                                        className="btn btn-secondary"
+                                        onClick={handleBatchCancel}
+                                        style={{ fontSize: '12px', color: 'var(--danger)', borderColor: 'var(--danger)' }}
+                                    >
+                                        Cancelar Lote
+                                    </button>
+                                    <button className="btn btn-primary" onClick={handleConfirm} disabled={saving}>
+                                        {saving ? 'Registrando...' : (
+                                            batch.editIndex + 1 >= batch.editQueue.length
+                                                ? 'Confirmar e Finalizar'
+                                                : 'Confirmar e Proxima'
+                                        )}
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                    <button className="btn btn-secondary" onClick={() => { setNfeData(null); setItemStates([]); }}>
+                                        Cancelar
+                                    </button>
+                                    <button className="btn btn-primary" onClick={handleConfirm} disabled={saving}>
+                                        {saving ? 'Registrando...' : (
+                                            (isEntry || (mode === 'both' && nfeData.tipo === 'E'))
+                                                ? 'Registrar Entrada'
+                                                : 'Registrar Saida'
+                                        )}
+                                    </button>
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>
