@@ -45,7 +45,17 @@ export default function ShippingList({
         return items.sort((a, b) => new Date(b.date) - new Date(a.date));
     }, [shippings, searchTerm, statusFilter, shipPeriodFilter, shipCustomMonth, shipCustomYear]);
 
-    // Atualizar rastreio via Melhor Envio (individual)
+    // Status progression — only advances, never regresses
+    const STATUS_RANK = { DESPACHADO: 0, EM_TRANSITO: 1, ENTREGUE: 2, DEVOLVIDO: 2 };
+    const VALID_STATUSES = ['DESPACHADO', 'EM_TRANSITO', 'ENTREGUE', 'DEVOLVIDO'];
+
+    const shouldUpdateStatus = (currentStatus, newStatus) => {
+        if (!VALID_STATUSES.includes(newStatus)) return false;
+        if (currentStatus === 'ENTREGUE' || currentStatus === 'DEVOLVIDO') return false;
+        return (STATUS_RANK[newStatus] ?? -1) > (STATUS_RANK[currentStatus] ?? -1);
+    };
+
+    // Atualizar rastreio (individual)
     const atualizarRastreioMelhorEnvio = async (shipping) => {
         if (!shipping.melhorEnvioId && !shipping.codigoRastreio) {
             setError('Informe o ID da etiqueta ou código de rastreio');
@@ -54,14 +64,30 @@ export default function ShippingList({
         setAtualizandoRastreio(true);
         try {
             const info = await fetchTrackingInfo(shipping);
-            if (info && info.status) {
-                await onUpdate(shipping.id, {
-                    status: info.status,
-                    codigoRastreio: info.codigoRastreio || shipping.codigoRastreio,
+            if (info) {
+                const updateData = {
                     ultimaAtualizacaoRastreio: new Date().toISOString(),
                     rastreioInfo: info,
-                });
-                setSuccess(`Rastreio atualizado: ${info.status}`);
+                };
+                // Only update status if it's a valid progression
+                if (info.status && shouldUpdateStatus(shipping.status, info.status)) {
+                    updateData.status = info.status;
+                }
+                if (info.codigoRastreio) {
+                    updateData.codigoRastreio = info.codigoRastreio;
+                }
+                await onUpdate(shipping.id, updateData);
+
+                const statusMsg = updateData.status
+                    ? `${shipping.status} → ${updateData.status}`
+                    : shipping.status;
+                const eventoMsg = info.ultimoEvento
+                    ? ` | ${info.ultimoEvento}`
+                    : '';
+                setSuccess(`Rastreio atualizado: ${statusMsg}${eventoMsg}`);
+                setTimeout(() => setSuccess(''), 5000);
+            } else {
+                setSuccess('Nenhuma atualização disponível');
                 setTimeout(() => setSuccess(''), 3000);
             }
         } catch (err) {
@@ -85,24 +111,34 @@ export default function ShippingList({
         }
         setAtualizandoRastreio(true);
         let atualizados = 0;
+        let erros = 0;
         for (const shipping of pendentes) {
             try {
                 const info = await fetchTrackingInfo(shipping);
-                if (info && info.status) {
-                    await onUpdate(shipping.id, {
-                        status: info.status,
-                        codigoRastreio: info.codigoRastreio || shipping.codigoRastreio,
+                if (info) {
+                    const updateData = {
                         ultimaAtualizacaoRastreio: new Date().toISOString(),
                         rastreioInfo: info,
-                    });
+                    };
+                    if (info.status && shouldUpdateStatus(shipping.status, info.status)) {
+                        updateData.status = info.status;
+                    }
+                    if (info.codigoRastreio) {
+                        updateData.codigoRastreio = info.codigoRastreio;
+                    }
+                    await onUpdate(shipping.id, updateData);
                     atualizados++;
                 }
             } catch (err) {
-                console.error('Erro ao atualizar rastreio:', shipping.nfNumero, err);
+                console.error('Erro ao atualizar rastreio:', shipping.nfNumero, err.message);
+                erros++;
             }
         }
         setAtualizandoRastreio(false);
-        setSuccess(`${atualizados} rastreio(s) atualizado(s)`);
+        const msg = erros > 0
+            ? `${atualizados} atualizado(s), ${erros} com erro`
+            : `${atualizados} rastreio(s) atualizado(s)`;
+        setSuccess(msg);
         setTimeout(() => setSuccess(''), 5000);
     };
 
@@ -215,6 +251,19 @@ export default function ShippingList({
                                                        style={{marginLeft: '8px', fontSize: '11px'}}>
                                                         Rastrear
                                                     </a>
+                                                )}
+                                                {s.rastreioInfo?.ultimoEvento && (
+                                                    <div style={{fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
+                                                        {s.rastreioInfo.ultimoEvento}
+                                                        {s.rastreioInfo.dataUltimoEvento && (
+                                                            <span style={{marginLeft: '4px', opacity: 0.7}}>({s.rastreioInfo.dataUltimoEvento})</span>
+                                                        )}
+                                                    </div>
+                                                )}
+                                                {s.rastreioInfo?.erro && (
+                                                    <div style={{fontSize: '10px', color: '#ef4444', marginTop: '2px'}}>
+                                                        ⚠ {s.rastreioInfo.erro.substring(0, 60)}{s.rastreioInfo.erro.length > 60 ? '...' : ''}
+                                                    </div>
                                                 )}
                                             </div>
                                         ) : (
@@ -338,15 +387,15 @@ export default function ShippingList({
                                     </td>
                                     <td>
                                         <div style={{display: 'flex', gap: '4px'}}>
-                                            {(s.melhorEnvioId || s.transportadora === 'Melhor Envio') && (
+                                            {(s.codigoRastreio || s.melhorEnvioId) && (
                                                 <button
-                                                    className="btn btn-icon btn-primary btn-sm"
+                                                    className="btn btn-primary btn-sm"
                                                     onClick={() => atualizarRastreioMelhorEnvio(s)}
                                                     disabled={atualizandoRastreio}
-                                                    title="Atualizar status via Melhor Envio"
-                                                    style={{fontSize: '10px'}}
+                                                    title="Atualizar rastreio"
+                                                    style={{fontSize: '10px', padding: '4px 8px'}}
                                                 >
-                                                    {atualizandoRastreio ? '...' : ''}
+                                                    {atualizandoRastreio ? '...' : '⟳'}
                                                 </button>
                                             )}
                                             {isStockAdmin && (<button
