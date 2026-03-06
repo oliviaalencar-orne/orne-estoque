@@ -90,7 +90,7 @@ export async function getTrackingUpdate(shipping) {
 
 /**
  * Filter shippings that are pending tracking updates.
- * Excludes ENTREGUE, CANCELADO, DEVOLVIDO statuses.
+ * Excludes ENTREGUE and DEVOLVIDO (final statuses).
  *
  * @param {Array} shippings - Array of shipping objects
  * @returns {Array} Filtered shippings that have tracking identifiers
@@ -98,7 +98,6 @@ export async function getTrackingUpdate(shipping) {
 export function getPendingTrackingShippings(shippings) {
   return shippings.filter(s =>
     s.status !== 'ENTREGUE' &&
-    s.status !== 'CANCELADO' &&
     s.status !== 'DEVOLVIDO' &&
     (s.melhorEnvioId || s.codigoRastreio)
   );

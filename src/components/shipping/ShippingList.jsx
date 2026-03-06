@@ -502,9 +502,15 @@ export default function ShippingList({
                             </div>
                         </div>
 
-                        <div className="form-group">
-                            <label className="form-label">Observações</label>
-                            <textarea className="form-textarea" value={editingShipping.observacoes || ''} onChange={(e) => setEditingShipping({...editingShipping, observacoes: e.target.value})} placeholder="Informações adicionais..." />
+                        <div className="form-row">
+                            <div className="form-group">
+                                <label className="form-label">Telefone HUB</label>
+                                <input type="text" className="form-input" value={editingShipping.hubTelefone || ''} onChange={(e) => setEditingShipping({...editingShipping, hubTelefone: e.target.value})} placeholder="(00) 00000-0000" />
+                            </div>
+                            <div className="form-group" style={{flex: 2}}>
+                                <label className="form-label">Observações</label>
+                                <textarea className="form-textarea" value={editingShipping.observacoes || ''} onChange={(e) => setEditingShipping({...editingShipping, observacoes: e.target.value})} placeholder="Informações adicionais..." />
+                            </div>
                         </div>
 
                         <div className="btn-group">
@@ -522,6 +528,7 @@ export default function ShippingList({
                                         melhorEnvioId: editingShipping.melhorEnvioId,
                                         status: editingShipping.status,
                                         observacoes: editingShipping.observacoes,
+                                        hubTelefone: editingShipping.hubTelefone,
                                         updatedAt: new Date().toISOString()
                                     });
                                     setEditingShipping(null);

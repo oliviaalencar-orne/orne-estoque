@@ -118,7 +118,7 @@ export const processarXML = (file, stock, locaisOrigem) => {
                     linkRastreio: '',
                     melhorEnvioId: '',
                     observacoes: '',
-                    status: 'PENDENTE',
+                    status: 'DESPACHADO',
                     selected: true,
                     vinculados: produtos.filter(p => p.autoVinculado).length,
                     total: produtos.length
