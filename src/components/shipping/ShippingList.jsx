@@ -91,8 +91,15 @@ export default function ShippingList({
                 setTimeout(() => setSuccess(''), 3000);
             }
         } catch (err) {
+            // Save the error to rastreioInfo so it persists in the UI
+            try {
+                await onUpdate(shipping.id, {
+                    ultimaAtualizacaoRastreio: new Date().toISOString(),
+                    rastreioInfo: { erro: err.message },
+                });
+            } catch (_) { /* ignore save error */ }
             setError('Erro ao atualizar rastreio: ' + err.message);
-            setTimeout(() => setError(''), 5000);
+            setTimeout(() => setError(''), 8000);
         } finally {
             setAtualizandoRastreio(false);
         }
@@ -131,6 +138,13 @@ export default function ShippingList({
                 }
             } catch (err) {
                 console.error('Erro ao atualizar rastreio:', shipping.nfNumero, err.message);
+                // Save error info to DB so it shows in the rastreio column
+                try {
+                    await onUpdate(shipping.id, {
+                        ultimaAtualizacaoRastreio: new Date().toISOString(),
+                        rastreioInfo: { erro: err.message },
+                    });
+                } catch (_) { /* ignore save error */ }
                 erros++;
             }
         }
@@ -261,8 +275,8 @@ export default function ShippingList({
                                                     </div>
                                                 )}
                                                 {s.rastreioInfo?.erro && (
-                                                    <div style={{fontSize: '10px', color: '#ef4444', marginTop: '2px'}}>
-                                                        ⚠ {s.rastreioInfo.erro.substring(0, 60)}{s.rastreioInfo.erro.length > 60 ? '...' : ''}
+                                                    <div style={{fontSize: '10px', color: '#ef4444', marginTop: '2px', maxWidth: '250px', cursor: 'help'}} title={s.rastreioInfo.erro}>
+                                                        ⚠ {s.rastreioInfo.erro.substring(0, 100)}{s.rastreioInfo.erro.length > 100 ? '...' : ''}
                                                     </div>
                                                 )}
                                             </div>

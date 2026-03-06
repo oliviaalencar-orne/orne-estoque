@@ -61,3 +61,4 @@ Thumbs.db
 .yarn-integrity
 .node_repl_history
 .dataconnect
+.env*.local
