@@ -76,6 +76,10 @@ export default function ShippingList({
                 if (info.codigoRastreio) {
                     updateData.codigoRastreio = info.codigoRastreio;
                 }
+                // Save tracking link from Edge Function (carrier detection)
+                if (info.linkRastreio) {
+                    updateData.linkRastreio = info.linkRastreio;
+                }
                 await onUpdate(shipping.id, updateData);
 
                 const statusMsg = updateData.status
@@ -133,6 +137,10 @@ export default function ShippingList({
                     if (info.codigoRastreio) {
                         updateData.codigoRastreio = info.codigoRastreio;
                     }
+                    // Save tracking link from Edge Function (carrier detection)
+                    if (info.linkRastreio) {
+                        updateData.linkRastreio = info.linkRastreio;
+                    }
                     await onUpdate(shipping.id, updateData);
                     atualizados++;
                 }
@@ -164,16 +172,32 @@ export default function ShippingList({
         });
     };
 
-    // Gerar link de rastreio baseado na transportadora
+    // Gerar link de rastreio baseado na transportadora ou código
     const gerarLinkRastreio = (transportadora, codigo) => {
         if (!codigo) return '';
+        const c = codigo.trim().toUpperCase();
+
+        // Detect carrier from tracking code prefix
+        if (c.startsWith('LGI'))
+            return `https://t.17track.net/en#nums=${encodeURIComponent(codigo)}`;
+        if (c.startsWith('JD') || c.startsWith('JAD'))
+            return `https://www.jadlog.com.br/jadlog/tracking?cte=${encodeURIComponent(codigo)}`;
+
+        // Known carriers by name
         const links = {
             'Correios': `https://rastreamento.correios.com.br/app/index.php?objetos=${codigo}`,
             'Jadlog': `https://www.jadlog.com.br/jadlog/tracking?cte=${codigo}`,
             'Total Express': `https://totalexpress.com.br/rastreamento/?codigo=${codigo}`,
             'TNT': `https://radar.tntbrasil.com.br/radar/${codigo}`,
         };
-        return links[transportadora] || '';
+        if (links[transportadora]) return links[transportadora];
+
+        // Correios format: AA123456789BR
+        if (/^[A-Z]{2}\d{9}[A-Z]{2}$/.test(c))
+            return `https://rastreamento.correios.com.br/app/index.php?objetos=${codigo}`;
+
+        // Fallback: universal tracker
+        return `https://t.17track.net/en#nums=${encodeURIComponent(codigo)}`;
     };
 
     return (
@@ -260,14 +284,28 @@ export default function ShippingList({
                                         {s.codigoRastreio ? (
                                             <div>
                                                 <code style={{fontSize: '11px'}}>{s.codigoRastreio}</code>
-                                                {s.linkRastreio && (
-                                                    <a href={s.linkRastreio} target="_blank" rel="noopener noreferrer"
-                                                       style={{marginLeft: '8px', fontSize: '11px'}}>
-                                                        Rastrear
-                                                    </a>
-                                                )}
-                                                {s.rastreioInfo?.ultimoEvento && (
-                                                    <div style={{fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
+                                                {(() => {
+                                                    const trackLink = s.linkRastreio || s.rastreioInfo?.linkRastreio || gerarLinkRastreio(s.transportadora, s.codigoRastreio);
+                                                    return trackLink ? (
+                                                        <a href={trackLink} target="_blank" rel="noopener noreferrer"
+                                                           style={{marginLeft: '8px', fontSize: '11px', fontWeight: 500}}>
+                                                            Rastrear ↗
+                                                        </a>
+                                                    ) : null;
+                                                })()}
+                                                {s.rastreioInfo?.ultimoEvento && !s.rastreioInfo?.erro && (
+                                                    <div style={{
+                                                        fontSize: '10px',
+                                                        color: s.rastreioInfo.rastreioAutomatico === false ? '#2563eb' : 'var(--text-muted)',
+                                                        marginTop: '2px',
+                                                        maxWidth: '220px',
+                                                        overflow: 'hidden',
+                                                        textOverflow: 'ellipsis',
+                                                        whiteSpace: 'nowrap',
+                                                    }}>
+                                                        {s.rastreioInfo.rastreioAutomatico === false && (
+                                                            <span title={`Transportadora: ${s.rastreioInfo.transportadoraDetectada || 'Desconhecida'}`}>ℹ </span>
+                                                        )}
                                                         {s.rastreioInfo.ultimoEvento}
                                                         {s.rastreioInfo.dataUltimoEvento && (
                                                             <span style={{marginLeft: '4px', opacity: 0.7}}>({s.rastreioInfo.dataUltimoEvento})</span>
