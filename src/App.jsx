@@ -19,6 +19,7 @@ import { useLocaisOrigem } from '@/hooks/useLocaisOrigem';
 import { useHubs } from '@/hooks/useHubs';
 import { useStock } from '@/hooks/useStock';
 import { setupSupabaseCollection } from '@/hooks/useSupabaseCollection';
+import { useEquipeProducts, loadStockSummary } from '@/hooks/useEquipeData';
 
 // Mappers
 import { mapEntryFromDB, mapExitFromDB, mapShippingFromDB, mapSeparationFromDB } from '@/utils/mappers';
@@ -148,14 +149,29 @@ export default function App() {
   const { categories, setCategories, addCategory, updateCategory, deleteCategory } =
     useCategories(isStockAdmin);
 
-  const { locaisOrigem, initLocais, updateLocaisOrigem } =
+  const { locaisOrigem, setLocaisOrigem, initLocais, updateLocaisOrigem } =
     useLocaisOrigem(isStockAdmin);
 
-  const { hubs, initHubs, addHub, updateHub, deleteHub } =
+  const { hubs, setHubs, initHubs, addHub, updateHub, deleteHub } =
     useHubs(isStockAdmin);
 
+  // ── Equipe-specific data (lazy loaded, server-side search) ───────────
+  const {
+    equipeProducts,
+    totalCount: equipeTotalCount,
+    isLoading: equipeLoading,
+    hasMore: equipeHasMore,
+    loadMore: equipeLoadMore,
+    searchProducts: equipeSearch,
+    initLoad: equipeInitLoad,
+  } = useEquipeProducts();
+
+  const [equipeStockMap, setEquipeStockMap] = useState(null);
+
   // ── Stock calculation ─────────────────────────────────────────────────
-  const { stockMap, currentStock } = useStock(products, entries, exits);
+  // Equipe: uses precomputed stock map from RPC (avoids loading entries/exits)
+  // Admin: computes from entries/exits as before
+  const { stockMap, currentStock } = useStock(products, entries, exits, isEquipe ? equipeStockMap : null);
 
   // ── UI-only states ────────────────────────────────────────────────────
   const [syncStatus, setSyncStatus] = useState('syncing');
@@ -178,72 +194,121 @@ export default function App() {
     setActiveTab('shipping');
   }, []);
 
-  // ── Data loading (realtime subscriptions + paginated fetch) ───────────
+  // ── Data loading (role-based: admin=full subs, equipe=minimal) ───────
+  const userRole = userProfile?.role || null;
+
   useEffect(() => {
-    if (!user) return;
+    if (!user || !userRole) return;
 
     setSyncStatus('syncing');
     const channels = [];
 
-    // Categories — insert defaults if empty
-    channels.push(
-      setupSupabaseCollection('categories', (cats) => {
-        if (cats.length === 0) {
-          DEFAULT_CATEGORIES.forEach((cat) => {
-            supabaseClient.from('categories').upsert(cat);
-          });
-          setCategories(DEFAULT_CATEGORIES);
-        } else {
-          setCategories(cats);
-        }
-      })
-    );
+    if (isEquipe) {
+      // ═══ EQUIPE MODE: 2 realtime channels (shippings + separations) ═══
 
-    // Products — no Realtime, paginated fetch (> 1000 products)
-    loadProducts().then(() => setSyncStatus('online'));
+      // Categories — fetch once, no realtime
+      supabaseClient.from('categories').select('*').then(({ data }) => {
+        if (data && data.length > 0) setCategories(data);
+        else setCategories(DEFAULT_CATEGORIES);
+      });
 
-    // Entries
-    channels.push(
-      setupSupabaseCollection('entries', setEntries, {
-        transform: mapEntryFromDB,
-      })
-    );
+      // Products — paginated fetch, no realtime (needed for Dashboard & SeparationManager)
+      loadProducts();
 
-    // Exits
-    channels.push(
-      setupSupabaseCollection('exits', setExits, {
-        transform: mapExitFromDB,
-      })
-    );
+      // Stock summary via RPC (for Dashboard — avoids loading entries/exits)
+      loadStockSummary().then((map) => setEquipeStockMap(map));
 
-    // Shippings
-    channels.push(
-      setupSupabaseCollection('shippings', setShippings, {
-        transform: mapShippingFromDB,
-      })
-    );
+      // Equipe products — paginated via RPC (for StockView server-side search)
+      equipeInitLoad();
 
-    // Separations
-    channels.push(
-      setupSupabaseCollection('separations', setSeparations, {
-        transform: mapSeparationFromDB,
-      })
-    );
+      // Shippings — realtime
+      channels.push(
+        setupSupabaseCollection('shippings', setShippings, {
+          transform: mapShippingFromDB,
+        })
+      );
 
-    // Locais de origem (fetch + realtime channel)
-    const locaisChannel = initLocais();
-    channels.push(locaisChannel);
+      // Separations — realtime
+      channels.push(
+        setupSupabaseCollection('separations', setSeparations, {
+          transform: mapSeparationFromDB,
+        })
+      );
 
-    // Hubs (fetch + realtime channel)
-    const hubsChannel = initHubs();
-    channels.push(hubsChannel);
+      // Locais — fetch once, no realtime
+      supabaseClient.from('locais_origem').select('name').order('id').then(({ data }) => {
+        if (data && data.length > 0) setLocaisOrigem(data.map((d) => d.name));
+      });
 
-    setSyncStatus('online');
+      // Hubs — fetch once, no realtime
+      supabaseClient.from('hubs').select('*').order('name').then(({ data }) => {
+        if (data) setHubs(data);
+      });
+
+      setSyncStatus('online');
+    } else {
+      // ═══ ADMIN MODE: Full subscriptions (7 realtime channels) ═══
+
+      // Categories — realtime + insert defaults if empty
+      channels.push(
+        setupSupabaseCollection('categories', (cats) => {
+          if (cats.length === 0) {
+            DEFAULT_CATEGORIES.forEach((cat) => {
+              supabaseClient.from('categories').upsert(cat);
+            });
+            setCategories(DEFAULT_CATEGORIES);
+          } else {
+            setCategories(cats);
+          }
+        })
+      );
+
+      // Products — no Realtime, paginated fetch (> 1000 products)
+      loadProducts().then(() => setSyncStatus('online'));
+
+      // Entries — realtime
+      channels.push(
+        setupSupabaseCollection('entries', setEntries, {
+          transform: mapEntryFromDB,
+        })
+      );
+
+      // Exits — realtime
+      channels.push(
+        setupSupabaseCollection('exits', setExits, {
+          transform: mapExitFromDB,
+        })
+      );
+
+      // Shippings — realtime
+      channels.push(
+        setupSupabaseCollection('shippings', setShippings, {
+          transform: mapShippingFromDB,
+        })
+      );
+
+      // Separations — realtime
+      channels.push(
+        setupSupabaseCollection('separations', setSeparations, {
+          transform: mapSeparationFromDB,
+        })
+      );
+
+      // Locais de origem (fetch + realtime channel)
+      const locaisChannel = initLocais();
+      channels.push(locaisChannel);
+
+      // Hubs (fetch + realtime channel)
+      const hubsChannel = initHubs();
+      channels.push(hubsChannel);
+
+      setSyncStatus('online');
+    }
 
     return () => {
       channels.forEach((ch) => supabaseClient.removeChannel(ch));
     };
-  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [user, userRole]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Refetch wrapper for TinyERPPage ───────────────────────────────────
   const handleDataChanged = useCallback(() => {
@@ -526,6 +591,13 @@ export default function App() {
               onUpdateCategory={updateCategory}
               onDeleteCategory={deleteCategory}
               products={products}
+              isEquipe={isEquipe}
+              equipeProducts={equipeProducts}
+              equipeLoading={equipeLoading}
+              equipeHasMore={equipeHasMore}
+              onEquipeLoadMore={equipeLoadMore}
+              onEquipeSearch={equipeSearch}
+              equipeTotalCount={equipeTotalCount}
             />
           </div>
           <div style={{ display: activeTab === 'categories' ? 'block' : 'none' }}>

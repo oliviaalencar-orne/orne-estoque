@@ -8,9 +8,13 @@ import { Icon, CategoryIcon } from '@/utils/icons';
 import { formatBRL } from '@/utils/formatters';
 import CategorySelectInline from '@/components/ui/CategorySelectInline';
 
-export default function StockView({ stock, categories, onUpdate, onDelete, searchTerm, setSearchTerm, entries, exits, locaisOrigem, onAddCategory, onUpdateCategory, onDeleteCategory, products }) {
-    // Loading state enquanto produtos ainda nao carregaram
-    if (stock.length === 0) {
+export default function StockView({ stock, categories, onUpdate, onDelete, searchTerm, setSearchTerm, entries, exits, locaisOrigem, onAddCategory, onUpdateCategory, onDeleteCategory, products, isEquipe, equipeProducts, equipeLoading, equipeHasMore, onEquipeLoadMore, onEquipeSearch, equipeTotalCount }) {
+    // Loading state: equipe uses equipeProducts from RPC, admin uses stock from useStock
+    const showInitialLoading = isEquipe
+        ? ((equipeProducts || []).length === 0 && equipeLoading)
+        : (stock.length === 0);
+
+    if (showInitialLoading) {
         return (
             <div style={{ padding: '60px 20px', textAlign: 'center' }}>
                 <div style={{
@@ -39,9 +43,13 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
         const timer = setTimeout(() => {
             setDebouncedSearch(searchInput);
             setSearchTerm(searchInput);
+            // Equipe: trigger server-side search via RPC
+            if (isEquipe && onEquipeSearch) {
+                onEquipeSearch(searchInput);
+            }
         }, 300);
         return () => clearTimeout(timer);
-    }, [searchInput]);
+    }, [searchInput]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Ordenacao e filtros
     const [sortBy, setSortBy] = useState('name');
@@ -89,11 +97,13 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
     const hasSearch = debouncedSearch.trim() !== '';
 
     // Produtos agrupados por categoria (PERFORMANCE: useMemo)
+    // Equipe: uses equipeProducts (server-side filtered/paginated)
+    // Admin: uses stock (client-side filtered)
     const groupedProducts = useMemo(() => {
-        let filtered = stock;
+        let filtered = isEquipe ? (equipeProducts || []) : stock;
 
-        // Filtro de busca
-        if (hasSearch) {
+        // Filtro de busca — admin only (equipe uses server-side search)
+        if (!isEquipe && hasSearch) {
             const term = debouncedSearch.toLowerCase();
             filtered = filtered.filter(p =>
                 (p.name || '').toLowerCase().includes(term) ||
@@ -103,13 +113,13 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
             );
         }
 
-        // Filtro de status (abas)
+        // Filtro de status (abas) — works for both
         if (filter !== 'all') {
             filtered = filtered.filter(p => p.status === filter);
         }
 
-        // Ocultar zerados (exceto na aba "Zerado")
-        if (hideZeroStock && filter !== 'empty') {
+        // Ocultar zerados — admin only (equipe shows all loaded products)
+        if (!isEquipe && hideZeroStock && filter !== 'empty') {
             filtered = filtered.filter(p => p.currentQuantity > 0);
         }
 
@@ -130,17 +140,19 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
         });
 
         return groups;
-    }, [stock, categories, debouncedSearch, hideZeroStock, sortBy, sortOrder, filter]);
+    }, [stock, equipeProducts, isEquipe, categories, debouncedSearch, hideZeroStock, sortBy, sortOrder, filter]);
 
     // Contagem total de produtos filtrados
     const totalFiltered = useMemo(() => {
         return Object.values(groupedProducts).reduce((sum, arr) => sum + arr.length, 0);
     }, [groupedProducts]);
 
-    // Contagens para as abas de status (sem filtro de status mas com busca e hideZeroStock)
+    // Contagens para as abas de status
+    // Equipe: counts from loaded equipeProducts (server-side filtered)
+    // Admin: counts from stock (client-side filtered)
     const statusCounts = useMemo(() => {
-        let base = stock;
-        if (hasSearch) {
+        let base = isEquipe ? (equipeProducts || []) : stock;
+        if (!isEquipe && hasSearch) {
             const term = debouncedSearch.toLowerCase();
             base = base.filter(p =>
                 (p.name || '').toLowerCase().includes(term) ||
@@ -149,13 +161,13 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                 (p.nfOrigem || '').toLowerCase().includes(term)
             );
         }
-        const all = hideZeroStock ? base.filter(p => p.currentQuantity > 0) : base;
+        const all = (!isEquipe && hideZeroStock) ? base.filter(p => p.currentQuantity > 0) : base;
         return {
             all: all.length,
             ok: base.filter(p => p.status === 'ok').length,
             empty: base.filter(p => p.status === 'empty').length,
         };
-    }, [stock, debouncedSearch, hideZeroStock]);
+    }, [stock, equipeProducts, isEquipe, debouncedSearch, hideZeroStock]);
 
     // Quando busca ativa, expandir tudo automaticamente
     useEffect(() => {
@@ -531,7 +543,7 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                         onChange={(e) => setSearchInput(e.target.value)}
                     />
                     {searchInput && (
-                        <button className="search-clear" onClick={() => { setSearchInput(''); setDebouncedSearch(''); setSearchTerm(''); }} title="Limpar busca">&times;</button>
+                        <button className="search-clear" onClick={() => { setSearchInput(''); setDebouncedSearch(''); setSearchTerm(''); if (isEquipe && onEquipeSearch) onEquipeSearch(''); }} title="Limpar busca">&times;</button>
                     )}
                 </div>
 
@@ -549,19 +561,30 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                 </div>
             </div>
 
+            {/* Equipe: server-side product count */}
+            {isEquipe && equipeTotalCount > 0 && (
+                <div style={{ textAlign: 'center', fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                    Mostrando {(equipeProducts || []).length} de {equipeTotalCount} produtos
+                </div>
+            )}
+
             {/* Filtros: ocultar zerados + ordenacao */}
             <div style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 padding: '8px 0', marginBottom: '16px', flexWrap: 'wrap', gap: '12px'
             }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#555', cursor: 'pointer' }}>
-                    <input
-                        type="checkbox"
-                        checked={hideZeroStock}
-                        onChange={e => setHideZeroStock(e.target.checked)}
-                    />
-                    Ocultar produtos zerados
-                </label>
+                {!isEquipe ? (
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#555', cursor: 'pointer' }}>
+                        <input
+                            type="checkbox"
+                            checked={hideZeroStock}
+                            onChange={e => setHideZeroStock(e.target.checked)}
+                        />
+                        Ocultar produtos zerados
+                    </label>
+                ) : (
+                    <div />
+                )}
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{ fontSize: '13px', color: '#555' }}>Ordenar por:</span>
@@ -655,9 +678,13 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                                                         <span className="obs-tooltip">{p.observations}</span>
                                                     )}
                                                 </span>
-                                                <button className="btn btn-icon btn-secondary" onClick={() => setHistoryProduct(p)} title="Ver Historico"><Icon name="clipboard" size={14} /></button>
-                                                <button className="btn btn-icon btn-secondary" onClick={() => openEditModal(p)} title="Editar"><Icon name="edit" size={14} /></button>
-                                                <button className="btn btn-icon btn-secondary" onClick={() => handleDelete(p)} title="Excluir"><Icon name="delete" size={14} /></button>
+                                                {!isEquipe && (
+                                                    <>
+                                                        <button className="btn btn-icon btn-secondary" onClick={() => setHistoryProduct(p)} title="Ver Historico"><Icon name="clipboard" size={14} /></button>
+                                                        <button className="btn btn-icon btn-secondary" onClick={() => openEditModal(p)} title="Editar"><Icon name="edit" size={14} /></button>
+                                                        <button className="btn btn-icon btn-secondary" onClick={() => handleDelete(p)} title="Excluir"><Icon name="delete" size={14} /></button>
+                                                    </>
+                                                )}
                                             </div>
 
                                             <span className="product-category-badge" style={{color: getCategoryColor(p.category), background: getCategoryColor(p.category) + '10', border: '1px solid ' + getCategoryColor(p.category) + '20'}}>
@@ -685,6 +712,34 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                         </div>
                     );
                 })
+            )}
+
+            {/* Equipe: "Carregar mais" button for pagination */}
+            {isEquipe && equipeHasMore && (
+                <div style={{ textAlign: 'center', padding: '24px 0' }}>
+                    <button
+                        className="btn btn-secondary"
+                        onClick={onEquipeLoadMore}
+                        disabled={equipeLoading}
+                        style={{ minWidth: '200px' }}
+                    >
+                        {equipeLoading ? 'Carregando...' : 'Carregar mais produtos'}
+                    </button>
+                </div>
+            )}
+
+            {/* Equipe: loading indicator when fetching more */}
+            {isEquipe && equipeLoading && (equipeProducts || []).length > 0 && (
+                <div style={{ textAlign: 'center', padding: '16px 0' }}>
+                    <div style={{
+                        width: '24px', height: '24px',
+                        border: '2px solid var(--border-default)',
+                        borderTopColor: 'var(--accent-primary)',
+                        borderRadius: '50%',
+                        animation: 'spin 0.8s linear infinite',
+                        margin: '0 auto'
+                    }} />
+                </div>
             )}
         </div>
     );
