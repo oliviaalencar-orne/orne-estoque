@@ -7,7 +7,7 @@
 import React, { useState, useMemo } from 'react';
 import { Icon } from '@/utils/icons';
 import PeriodFilter, { filterByPeriod } from '@/components/ui/PeriodFilter';
-import { fetchTrackingInfo } from '@/services/trackingService';
+import { fetchTrackingInfo, buscarRastreioPorNF } from '@/services/trackingService';
 import { supabaseClient } from '@/config/supabase';
 
 export default function ShippingList({
@@ -21,6 +21,7 @@ export default function ShippingList({
     const [shipCustomYear, setShipCustomYear] = useState(new Date().getFullYear());
     const [editingShipping, setEditingShipping] = useState(null);
     const [atualizandoRastreio, setAtualizandoRastreio] = useState(false);
+    const [buscandoNF, setBuscandoNF] = useState(null); // shipping id being searched
     const [openStatusMenu, setOpenStatusMenu] = useState(null);
     const [success, setSuccess] = useState('');
     const [error, setError] = useState('');
@@ -172,6 +173,38 @@ export default function ShippingList({
         });
     };
 
+    // Buscar rastreio no Melhor Envio pelo número da NF
+    const buscarRastreioNF = async (shipping) => {
+        if (!shipping.nfNumero) {
+            setError('Despacho sem número de NF');
+            return;
+        }
+        setBuscandoNF(shipping.id);
+        try {
+            const result = await buscarRastreioPorNF(shipping.nfNumero);
+            if (result?.encontrado) {
+                const updateData = {
+                    ultimaAtualizacaoRastreio: new Date().toISOString(),
+                };
+                if (result.melhor_envio_id) updateData.melhorEnvioId = result.melhor_envio_id;
+                if (result.codigo_rastreio) updateData.codigoRastreio = result.codigo_rastreio;
+                if (result.link_rastreio) updateData.linkRastreio = result.link_rastreio;
+                if (result.transportadora) updateData.transportadora = result.transportadora;
+                await onUpdate(shipping.id, updateData);
+                setSuccess(`Rastreio encontrado: ${result.codigo_rastreio || result.melhor_envio_id} (${result.transportadora})`);
+                setTimeout(() => setSuccess(''), 5000);
+            } else {
+                setError(result?.motivo || 'NF não encontrada no Melhor Envio');
+                setTimeout(() => setError(''), 5000);
+            }
+        } catch (err) {
+            setError('Erro ao buscar NF: ' + err.message);
+            setTimeout(() => setError(''), 8000);
+        } finally {
+            setBuscandoNF(null);
+        }
+    };
+
     // Gerar link de rastreio baseado na transportadora ou código
     const gerarLinkRastreio = (transportadora, codigo) => {
         if (!codigo) return '';
@@ -192,8 +225,8 @@ export default function ShippingList({
         };
         if (links[transportadora]) return links[transportadora];
 
-        // Correios format: AA123456789BR
-        if (/^[A-Z]{2}\d{9}[A-Z]{2}$/.test(c))
+        // Correios format: AA123456789BR or AD184454690BR (9-10 digits)
+        if (/^[A-Z]{2}\d{9,10}[A-Z]{2}$/.test(c))
             return `https://rastreamento.correios.com.br/app/index.php?objetos=${codigo}`;
 
         // Fallback: universal tracker
@@ -448,6 +481,17 @@ export default function ShippingList({
                                                     style={{fontSize: '10px', padding: '4px 8px'}}
                                                 >
                                                     {atualizandoRastreio ? '...' : '⟳'}
+                                                </button>
+                                            )}
+                                            {s.nfNumero && (!s.codigoRastreio || !s.melhorEnvioId) && (
+                                                <button
+                                                    className="btn btn-secondary btn-sm"
+                                                    onClick={() => buscarRastreioNF(s)}
+                                                    disabled={buscandoNF === s.id}
+                                                    title="Buscar rastreio no Melhor Envio pela NF"
+                                                    style={{fontSize: '10px', padding: '4px 8px'}}
+                                                >
+                                                    {buscandoNF === s.id ? '...' : '🔍 ME'}
                                                 </button>
                                             )}
                                             {isStockAdmin && (<button

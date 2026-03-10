@@ -102,3 +102,41 @@ export function getPendingTrackingShippings(shippings) {
     (s.melhorEnvioId || s.codigoRastreio)
   );
 }
+
+/**
+ * Search Melhor Envio for tracking data by NF number.
+ * Calls the Edge Function with { buscarPorNF: [nfNumero] }.
+ * The Edge Function also auto-saves found data to DB.
+ *
+ * @param {string} nfNumero - Invoice number to search
+ * @returns {Promise<Object|null>} Result { encontrado, melhor_envio_id, codigo_rastreio, ... } or null
+ */
+export async function buscarRastreioPorNF(nfNumero) {
+  if (!nfNumero) return null;
+
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  const token = session?.access_token;
+  if (!token) throw new Error('Sessao expirada. Faca login novamente.');
+
+  const response = await fetch(`${FUNCTIONS_URL}/rastrear-envio`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({ buscarPorNF: [nfNumero] }),
+  });
+
+  const result = await response.json();
+
+  if (result.success && result.data) {
+    const info = result.data[nfNumero];
+    return info || null;
+  }
+
+  if (result.error) {
+    throw new Error(result.error);
+  }
+
+  return null;
+}

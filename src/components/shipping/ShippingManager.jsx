@@ -14,6 +14,7 @@ import ShippingList from './ShippingList';
 import ShippingForm from './ShippingForm';
 import ShippingXMLImport from './ShippingXMLImport';
 import ShippingBatchImport from './ShippingBatchImport';
+import { buscarRastreioPorNF } from '@/services/trackingService';
 
 // Constantes
 const transportadoras = ['Melhor Envio', 'Correios', 'Jadlog', 'Total Express', 'Braspress', 'TNT', 'Azul Cargo', 'Loggi', 'Outro'];
@@ -68,6 +69,29 @@ export default function ShippingManager({
         produtos: [],
         observacoes: ''
     });
+
+    // Auto-search ME for tracking data in background (fire-and-forget)
+    const tentarBuscarRastreioME = (shippingId, nfNumero) => {
+        if (!nfNumero) return;
+        // Run in background — don't block the UI
+        buscarRastreioPorNF(nfNumero).then(result => {
+            if (result?.encontrado) {
+                const updateData = {};
+                if (result.melhor_envio_id) updateData.melhorEnvioId = result.melhor_envio_id;
+                if (result.codigo_rastreio) updateData.codigoRastreio = result.codigo_rastreio;
+                if (result.link_rastreio) updateData.linkRastreio = result.link_rastreio;
+                if (result.transportadora) updateData.transportadora = result.transportadora;
+                if (Object.keys(updateData).length > 0) {
+                    onUpdate(shippingId, updateData);
+                    console.log(`[auto-ME] NF ${nfNumero}: encontrado rastreio ${result.codigo_rastreio} (${result.transportadora})`);
+                }
+            } else {
+                console.log(`[auto-ME] NF ${nfNumero}: não encontrado no ME`);
+            }
+        }).catch(err => {
+            console.log(`[auto-ME] NF ${nfNumero}: erro ${err.message}`);
+        });
+    };
 
     // Gerar link de rastreio baseado na transportadora
     const gerarLinkRastreio = (transportadora, codigo) => {
@@ -137,6 +161,10 @@ export default function ShippingManager({
                     } catch (updateErr) {
                         console.error('Erro ao atualizar JSONB batch:', updateErr);
                     }
+                }
+                // Auto-search ME for tracking
+                if (shippingId && shippingData.nfNumero) {
+                    tentarBuscarRastreioME(shippingId, shippingData.nfNumero);
                 }
             }
             return true;
@@ -249,6 +277,11 @@ export default function ShippingManager({
                         });
                     }
                 }
+            }
+
+            // Auto-search ME for tracking if no tracking code was provided
+            if (!form.codigoRastreio && !form.melhorEnvioId && form.nfNumero && shippingId) {
+                tentarBuscarRastreioME(shippingId, form.nfNumero);
             }
 
             setSuccess('Despacho registrado com sucesso!');

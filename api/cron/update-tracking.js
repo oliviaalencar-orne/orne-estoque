@@ -90,6 +90,61 @@ export default async function handler(req, res) {
 
     const allShippings = await shippingsRes.json();
 
+    // ── Step 1.5: NF search — find tracking for shippings without codes ──
+    const semRastreio = allShippings.filter(
+      s => (!s.codigo_rastreio || !s.codigo_rastreio.trim()) &&
+           (!s.melhor_envio_id || !s.melhor_envio_id.trim()) &&
+           s.nf_numero && s.nf_numero.trim() &&
+           s.status === 'DESPACHADO'
+    );
+
+    let nfFound = 0;
+    if (semRastreio.length > 0) {
+      console.log(`[CRON] Buscando rastreio por NF para ${semRastreio.length} despachos sem código`);
+      // Process in batches of 10 (Edge Function limit)
+      for (let i = 0; i < semRastreio.length; i += 10) {
+        const batch = semRastreio.slice(i, i + 10);
+        const nfNumbers = batch.map(s => s.nf_numero.trim());
+        try {
+          const nfRes = await fetch(`${FUNCTIONS_URL}/rastrear-envio`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
+            },
+            body: JSON.stringify({ buscarPorNF: nfNumbers }),
+          });
+          const nfData = await nfRes.json();
+          if (nfData.success && nfData.data) {
+            for (const shipping of batch) {
+              const result = nfData.data[shipping.nf_numero.trim()];
+              if (result?.encontrado) {
+                // Edge Function already saved to DB, but update local record too
+                const payload = { ultima_atualizacao_rastreio: now };
+                if (result.codigo_rastreio) payload.codigo_rastreio = result.codigo_rastreio;
+                if (result.melhor_envio_id) payload.melhor_envio_id = result.melhor_envio_id;
+                if (result.link_rastreio) payload.link_rastreio = result.link_rastreio;
+                if (result.transportadora) payload.transportadora = result.transportadora;
+                await patchShipping(REST_URL, supabaseHeaders, shipping.id, payload);
+                // Update local object so step 2 can track it
+                if (result.melhor_envio_id) shipping.melhor_envio_id = result.melhor_envio_id;
+                if (result.codigo_rastreio) shipping.codigo_rastreio = result.codigo_rastreio;
+                console.log(`[CRON] NF ${shipping.nf_numero}: encontrado ${result.codigo_rastreio} (${result.transportadora})`);
+                nfFound++;
+              }
+            }
+          }
+        } catch (err) {
+          console.error('[CRON] Erro ao buscar NFs:', err.message);
+        }
+        // Rate limit between batches
+        if (i + 10 < semRastreio.length) {
+          await new Promise(r => setTimeout(r, 2000));
+        }
+      }
+      console.log(`[CRON] Busca por NF: ${nfFound} encontrados de ${semRastreio.length}`);
+    }
+
     // Filtrar: precisa ter código de rastreio OU melhor_envio_id
     const shippings = allShippings.filter(
       s => (s.codigo_rastreio && s.codigo_rastreio.trim()) || (s.melhor_envio_id && s.melhor_envio_id.trim())
@@ -248,6 +303,8 @@ export default async function handler(req, res) {
     const summary = {
       message: 'Cron job concluído',
       total: shippings.length,
+      nfSearched: semRastreio.length,
+      nfFound,
       melhorEnvio: porMelhorEnvio.length,
       codigoRastreio: porCodigo.length,
       checked,
