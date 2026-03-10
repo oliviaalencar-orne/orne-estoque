@@ -105,18 +105,25 @@ export function getPendingTrackingShippings(shippings) {
 
 /**
  * Search Melhor Envio for tracking data by NF number.
- * Calls the Edge Function with { buscarPorNF: [nfNumero] }.
+ * Calls the Edge Function with { buscarPorNF: [nfNumero], clientes: { nf: nome } }.
+ * The Edge Function uses the client name as fallback search when NF number yields no results.
  * The Edge Function also auto-saves found data to DB.
  *
  * @param {string} nfNumero - Invoice number to search
- * @returns {Promise<Object|null>} Result { encontrado, melhor_envio_id, codigo_rastreio, ... } or null
+ * @param {string} [clienteNome] - Client name for fallback search
+ * @returns {Promise<Object|null>} Result { encontrado, melhor_envio_id, codigo_rastreio, debug, ... } or null
  */
-export async function buscarRastreioPorNF(nfNumero) {
+export async function buscarRastreioPorNF(nfNumero, clienteNome) {
   if (!nfNumero) return null;
 
   const { data: { session } } = await supabaseClient.auth.getSession();
   const token = session?.access_token;
   if (!token) throw new Error('Sessao expirada. Faca login novamente.');
+
+  const payload = { buscarPorNF: [nfNumero] };
+  if (clienteNome) {
+    payload.clientes = { [nfNumero]: clienteNome };
+  }
 
   const response = await fetch(`${FUNCTIONS_URL}/rastrear-envio`, {
     method: 'POST',
@@ -124,7 +131,7 @@ export async function buscarRastreioPorNF(nfNumero) {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`,
     },
-    body: JSON.stringify({ buscarPorNF: [nfNumero] }),
+    body: JSON.stringify(payload),
   });
 
   const result = await response.json();

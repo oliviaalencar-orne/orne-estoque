@@ -71,10 +71,10 @@ export default function ShippingManager({
     });
 
     // Auto-search ME for tracking data in background (fire-and-forget)
-    const tentarBuscarRastreioME = (shippingId, nfNumero) => {
+    const tentarBuscarRastreioME = (shippingId, nfNumero, clienteNome) => {
         if (!nfNumero) return;
         // Run in background — don't block the UI
-        buscarRastreioPorNF(nfNumero).then(result => {
+        buscarRastreioPorNF(nfNumero, clienteNome).then(result => {
             if (result?.encontrado) {
                 const updateData = {};
                 if (result.melhor_envio_id) updateData.melhorEnvioId = result.melhor_envio_id;
@@ -164,7 +164,7 @@ export default function ShippingManager({
                 }
                 // Auto-search ME for tracking
                 if (shippingId && shippingData.nfNumero) {
-                    tentarBuscarRastreioME(shippingId, shippingData.nfNumero);
+                    tentarBuscarRastreioME(shippingId, shippingData.nfNumero, shippingData.cliente);
                 }
             }
             return true;
@@ -281,7 +281,7 @@ export default function ShippingManager({
 
             // Auto-search ME for tracking if no tracking code was provided
             if (!form.codigoRastreio && !form.melhorEnvioId && form.nfNumero && shippingId) {
-                tentarBuscarRastreioME(shippingId, form.nfNumero);
+                tentarBuscarRastreioME(shippingId, form.nfNumero, form.cliente);
             }
 
             setSuccess('Despacho registrado com sucesso!');

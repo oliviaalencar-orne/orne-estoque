@@ -173,7 +173,7 @@ export default function ShippingList({
         });
     };
 
-    // Buscar rastreio no Melhor Envio pelo número da NF
+    // Buscar rastreio no Melhor Envio pelo número da NF (com nome do cliente como fallback)
     const buscarRastreioNF = async (shipping) => {
         if (!shipping.nfNumero) {
             setError('Despacho sem número de NF');
@@ -181,7 +181,7 @@ export default function ShippingList({
         }
         setBuscandoNF(shipping.id);
         try {
-            const result = await buscarRastreioPorNF(shipping.nfNumero);
+            const result = await buscarRastreioPorNF(shipping.nfNumero, shipping.cliente);
             if (result?.encontrado) {
                 const updateData = {
                     ultimaAtualizacaoRastreio: new Date().toISOString(),
@@ -194,8 +194,11 @@ export default function ShippingList({
                 setSuccess(`Rastreio encontrado: ${result.codigo_rastreio || result.melhor_envio_id} (${result.transportadora})`);
                 setTimeout(() => setSuccess(''), 5000);
             } else {
-                setError(result?.motivo || 'NF não encontrada no Melhor Envio');
-                setTimeout(() => setError(''), 5000);
+                const debugInfo = result?.debug ? '\nDebug:\n' + result.debug.join('\n') : '';
+                const msg = (result?.motivo || 'NF não encontrada no Melhor Envio') + debugInfo;
+                console.log(`[ME] NF ${shipping.nfNumero} não encontrada.`, result?.debug || []);
+                setError(msg);
+                setTimeout(() => setError(''), 12000);
             }
         } catch (err) {
             setError('Erro ao buscar NF: ' + err.message);

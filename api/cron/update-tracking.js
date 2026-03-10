@@ -74,7 +74,7 @@ export default async function handler(req, res) {
   try {
     // 1. Buscar shippings pendentes de atualização
     const query = new URLSearchParams({
-      select: 'id,nf_numero,status,codigo_rastreio,melhor_envio_id,transportadora',
+      select: 'id,nf_numero,cliente,status,codigo_rastreio,melhor_envio_id,transportadora',
       or: '(status.eq.DESPACHADO,status.eq.EM_TRANSITO)',
     });
 
@@ -105,14 +105,20 @@ export default async function handler(req, res) {
       for (let i = 0; i < semRastreio.length; i += 10) {
         const batch = semRastreio.slice(i, i + 10);
         const nfNumbers = batch.map(s => s.nf_numero.trim());
+        const clientes = {};
+        for (const s of batch) {
+          if (s.cliente) clientes[s.nf_numero.trim()] = s.cliente;
+        }
         try {
+          const payload = { buscarPorNF: nfNumbers };
+          if (Object.keys(clientes).length > 0) payload.clientes = clientes;
           const nfRes = await fetch(`${FUNCTIONS_URL}/rastrear-envio`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
             },
-            body: JSON.stringify({ buscarPorNF: nfNumbers }),
+            body: JSON.stringify(payload),
           });
           const nfData = await nfRes.json();
           if (nfData.success && nfData.data) {
