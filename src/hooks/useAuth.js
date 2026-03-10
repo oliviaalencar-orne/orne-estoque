@@ -20,8 +20,6 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(true);
-  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
-
   // Permission flags (role-based)
   const isApproved = userProfile?.status === 'approved';
   const isStockAdmin =
@@ -41,10 +39,6 @@ export function useAuth() {
     const {
       data: { subscription },
     } = supabaseClient.auth.onAuthStateChange((event, session) => {
-      // Detect password recovery flow
-      if (event === 'PASSWORD_RECOVERY') {
-        setIsPasswordRecovery(true);
-      }
       const newUser = session?.user ?? null;
       // Only update reference if user ACTUALLY changed (login/logout/switch)
       // TOKEN_REFRESHED with same user.id keeps reference → avoids cascade
@@ -107,16 +101,12 @@ export function useAuth() {
 
   const handleLogout = () => supabaseClient.auth.signOut();
 
-  const clearPasswordRecovery = () => setIsPasswordRecovery(false);
-
   return {
     user,
     userProfile,
     isStockAdmin,
     isEquipe,
     isSuperAdmin,
-    isPasswordRecovery,
-    clearPasswordRecovery,
     loading,
     profileLoading,
     handleLogout,

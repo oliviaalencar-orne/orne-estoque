@@ -12,6 +12,14 @@ const STATUS_CONFIG = {
   despachado: { label: 'Despachado', color: '#10b981', bg: '#d1fae5' },
 };
 
+// Equipe sees simplified labels: pendente/separado → "Em separação", embalado → "Embalando"
+const EQUIPE_STATUS_CONFIG = {
+  pendente: { label: 'Em separação', color: '#3b82f6', bg: '#dbeafe' },
+  separado: { label: 'Em separação', color: '#3b82f6', bg: '#dbeafe' },
+  embalado: { label: 'Embalando', color: '#f59e0b', bg: '#fef3c7' },
+  despachado: { label: 'Despachado', color: '#10b981', bg: '#d1fae5' },
+};
+
 const NEXT_STATUS = {
   pendente: 'separado',
   separado: 'embalado',
@@ -22,7 +30,7 @@ const ALL_STATUSES = ['pendente', 'separado', 'embalado', 'despachado'];
 export default function SeparationList({
   separations, onUpdate, onDelete, onEdit, onSendToDispatch,
   onBatchStatusChange, onBatchDispatch,
-  hubs, showHubBadge
+  hubs, showHubBadge, isStockAdmin
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -33,7 +41,10 @@ export default function SeparationList({
   const [copiedId, setCopiedId] = useState(null);
   const shareMenuSepRef = useRef(null);
 
-  // Batch selection state
+  // Use equipe labels when not admin
+  const displayConfig = isStockAdmin ? STATUS_CONFIG : EQUIPE_STATUS_CONFIG;
+
+  // Batch selection state (admin only)
   const [selectedIds, setSelectedIds] = useState(new Set());
 
   const formatDate = (dateStr) => {
@@ -45,7 +56,12 @@ export default function SeparationList({
   const filtered = useMemo(() => {
     let items = [...separations];
     if (statusFilter !== 'all') {
-      items = items.filter(s => s.status === statusFilter);
+      if (!isStockAdmin && statusFilter === 'em_separacao') {
+        // Equipe merged filter: "Em separação" = pendente + separado
+        items = items.filter(s => s.status === 'pendente' || s.status === 'separado');
+      } else {
+        items = items.filter(s => s.status === statusFilter);
+      }
     }
     if (searchTerm) {
       const q = searchTerm.toLowerCase();
@@ -56,7 +72,7 @@ export default function SeparationList({
       );
     }
     return items.sort((a, b) => new Date(b.date) - new Date(a.date));
-  }, [separations, searchTerm, statusFilter]);
+  }, [separations, searchTerm, statusFilter, isStockAdmin]);
 
   const counts = useMemo(() => {
     const c = { all: separations.length, pendente: 0, separado: 0, embalado: 0, despachado: 0 };
@@ -175,6 +191,26 @@ export default function SeparationList({
     separations.filter(s => activeSelectedIds.has(s.id)),
   [separations, activeSelectedIds]);
 
+  // Build filter tabs based on role
+  const filterTabs = useMemo(() => {
+    if (isStockAdmin) {
+      return [
+        { key: 'all', label: `Todos (${counts.all})` },
+        { key: 'pendente', label: `Pendente (${counts.pendente})` },
+        { key: 'separado', label: `Separado (${counts.separado})` },
+        { key: 'embalado', label: `Embalado (${counts.embalado})` },
+        { key: 'despachado', label: `Despachado (${counts.despachado})` },
+      ];
+    }
+    // Equipe: merge pendente+separado as "Em separação"
+    return [
+      { key: 'all', label: `Todos (${counts.all})` },
+      { key: 'em_separacao', label: `Em separação (${counts.pendente + counts.separado})` },
+      { key: 'embalado', label: `Embalando (${counts.embalado})` },
+      { key: 'despachado', label: `Despachado (${counts.despachado})` },
+    ];
+  }, [isStockAdmin, counts]);
+
   return (
     <div>
       {/* Search + Filters */}
@@ -195,13 +231,7 @@ export default function SeparationList({
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
           <div className="filter-tabs">
-            {[
-              { key: 'all', label: `Todos (${counts.all})` },
-              { key: 'pendente', label: `Pendente (${counts.pendente})` },
-              { key: 'separado', label: `Separado (${counts.separado})` },
-              { key: 'embalado', label: `Embalado (${counts.embalado})` },
-              { key: 'despachado', label: `Despachado (${counts.despachado})` },
-            ].map(f => (
+            {filterTabs.map(f => (
               <button
                 key={f.key}
                 className={`filter-tab ${statusFilter === f.key ? 'active' : ''}`}
@@ -209,8 +239,8 @@ export default function SeparationList({
               >{f.label}</button>
             ))}
           </div>
-          {/* Select All checkbox */}
-          {selectableItems.length > 0 && (
+          {/* Select All checkbox — admin only */}
+          {isStockAdmin && selectableItems.length > 0 && (
             <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
               <input
                 type="checkbox"
@@ -232,7 +262,7 @@ export default function SeparationList({
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {filtered.map(sep => {
-            const cfg = STATUS_CONFIG[sep.status] || STATUS_CONFIG.pendente;
+            const cfg = displayConfig[sep.status] || displayConfig.pendente;
             const action = getActionButton(sep);
             const prodCount = (sep.produtos || []).length;
             const isLoading = loadingId === sep.id;
@@ -243,13 +273,13 @@ export default function SeparationList({
             return (
               <div key={sep.id} className="card" style={{
                 padding: '16px',
-                borderLeft: isSuccess ? '3px solid var(--success)' : isSelected ? '3px solid var(--primary)' : undefined,
-                background: isSelected ? 'var(--bg-secondary)' : undefined,
+                borderLeft: isSuccess ? '3px solid var(--success)' : (isStockAdmin && isSelected) ? '3px solid var(--primary)' : undefined,
+                background: (isStockAdmin && isSelected) ? 'var(--bg-secondary)' : undefined,
                 transition: 'border-left 0.3s, background 0.2s',
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', flexWrap: 'wrap' }}>
-                  {/* Checkbox */}
-                  {isSelectable && (
+                  {/* Checkbox — admin only */}
+                  {isStockAdmin && isSelectable && (
                     <div style={{ display: 'flex', alignItems: 'center', paddingTop: '2px' }}>
                       <input
                         type="checkbox"
@@ -305,61 +335,64 @@ export default function SeparationList({
                       </div>
                     )}
                   </div>
-                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
-                    {action && (
-                      <button
-                        className="btn btn-primary"
-                        style={{ fontSize: '12px', padding: '6px 12px', opacity: isLoading ? 0.7 : 1 }}
-                        onClick={() => handleStatusAdvance(sep)}
-                        disabled={isLoading}
-                      >
-                        {isLoading ? 'Atualizando...' : (
-                          <><Icon name={action.icon} size={14} /> {action.label}</>
-                        )}
-                      </button>
-                    )}
-                    {/* Individual share button */}
-                    {sep.status !== 'despachado' && (
-                      <button
-                        className="btn btn-secondary"
-                        style={{
-                          fontSize: '12px',
-                          padding: '6px 10px',
-                          color: '#25D366',
-                          borderColor: '#25D366',
-                        }}
-                        onClick={(e) => openShareMenu(sep.id, e.currentTarget)}
-                        title="Compartilhar separação"
-                        disabled={isLoading}
-                      >
-                        <Icon name="whatsapp" size={14} style={{ color: '#25D366' }} />
-                      </button>
-                    )}
-                    {sep.status !== 'despachado' && (
-                      <>
+                  {/* Action buttons — admin only */}
+                  {isStockAdmin && (
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+                      {action && (
                         <button
-                          className="btn btn-secondary"
-                          style={{ fontSize: '12px', padding: '6px 10px' }}
-                          onClick={() => onEdit(sep)}
-                          title="Editar"
+                          className="btn btn-primary"
+                          style={{ fontSize: '12px', padding: '6px 12px', opacity: isLoading ? 0.7 : 1 }}
+                          onClick={() => handleStatusAdvance(sep)}
                           disabled={isLoading}
                         >
-                          <Icon name="edit" size={14} />
+                          {isLoading ? 'Atualizando...' : (
+                            <><Icon name={action.icon} size={14} /> {action.label}</>
+                          )}
                         </button>
+                      )}
+                      {/* Individual share button */}
+                      {sep.status !== 'despachado' && (
                         <button
                           className="btn btn-secondary"
-                          style={{ fontSize: '12px', padding: '6px 10px', color: 'var(--danger)' }}
-                          onClick={() => {
-                            if (confirm('Excluir esta separação?')) onDelete(sep.id);
+                          style={{
+                            fontSize: '12px',
+                            padding: '6px 10px',
+                            color: '#25D366',
+                            borderColor: '#25D366',
                           }}
-                          title="Excluir"
+                          onClick={(e) => openShareMenu(sep.id, e.currentTarget)}
+                          title="Compartilhar separação"
                           disabled={isLoading}
                         >
-                          <Icon name="delete" size={14} />
+                          <Icon name="whatsapp" size={14} style={{ color: '#25D366' }} />
                         </button>
-                      </>
-                    )}
-                  </div>
+                      )}
+                      {sep.status !== 'despachado' && (
+                        <>
+                          <button
+                            className="btn btn-secondary"
+                            style={{ fontSize: '12px', padding: '6px 10px' }}
+                            onClick={() => onEdit(sep)}
+                            title="Editar"
+                            disabled={isLoading}
+                          >
+                            <Icon name="edit" size={14} />
+                          </button>
+                          <button
+                            className="btn btn-secondary"
+                            style={{ fontSize: '12px', padding: '6px 10px', color: 'var(--danger)' }}
+                            onClick={() => {
+                              if (confirm('Excluir esta separação?')) onDelete(sep.id);
+                            }}
+                            title="Excluir"
+                            disabled={isLoading}
+                          >
+                            <Icon name="delete" size={14} />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -367,8 +400,8 @@ export default function SeparationList({
         </div>
       )}
 
-      {/* ── Floating batch action bar ── */}
-      {selectedCount > 0 && (
+      {/* ── Floating batch action bar — admin only ── */}
+      {isStockAdmin && selectedCount > 0 && (
         <div style={{
           position: 'fixed',
           bottom: '20px',
@@ -436,8 +469,8 @@ export default function SeparationList({
         </div>
       )}
 
-      {/* Individual share dropdown — fixed, outside any container */}
-      {shareMenuId && shareMenuSepRef.current && (
+      {/* Individual share dropdown — fixed, outside any container (admin only) */}
+      {isStockAdmin && shareMenuId && shareMenuSepRef.current && (
         <>
           <div
             style={{ position: 'fixed', inset: 0, zIndex: 9998 }}

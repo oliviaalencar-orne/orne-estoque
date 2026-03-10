@@ -364,8 +364,8 @@ export default function SeparationManager({
         </div>
       )}
 
-      {/* Consolidated export button — only on specific HUB tabs */}
-      {isHubSelected && (
+      {/* Consolidated export button — only on specific HUB tabs, admin only */}
+      {isStockAdmin && isHubSelected && (
         <div className="card" style={{ marginBottom: '12px', padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
             {hasPending
@@ -402,8 +402,8 @@ export default function SeparationManager({
         </div>
       )}
 
-      {/* Share dropdown — rendered as fixed portal outside any container */}
-      {showShareMenu && (
+      {/* Share dropdown — rendered as fixed portal outside any container (admin only) */}
+      {isStockAdmin && showShareMenu && (
         <>
           <div
             style={{ position: 'fixed', inset: 0, zIndex: 9998 }}
@@ -516,6 +516,7 @@ export default function SeparationManager({
           onBatchDispatch={handleBatchDispatch}
           hubs={hubs}
           showHubBadge={selectedHubId === 'all'}
+          isStockAdmin={isStockAdmin}
         />
       )}
 

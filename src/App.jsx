@@ -32,7 +32,6 @@ import LoginScreen from '@/components/auth/LoginScreen';
 import PendingApprovalScreen from '@/components/auth/PendingApprovalScreen';
 import RejectedScreen from '@/components/auth/RejectedScreen';
 import AccessRestricted from '@/components/auth/AccessRestricted';
-import ResetPassword from '@/components/auth/ResetPassword';
 
 // Page components
 import Dashboard from '@/components/dashboard/Dashboard';
@@ -96,8 +95,6 @@ export default function App() {
     isStockAdmin,
     isEquipe,
     isSuperAdmin,
-    isPasswordRecovery,
-    clearPasswordRecovery,
     loading,
     profileLoading,
     handleLogout,
@@ -316,9 +313,6 @@ export default function App() {
   }, [refetchData, setEntries, setExits]);
 
   // ── Conditional rendering: auth gates ─────────────────────────────────
-  if (isPasswordRecovery && user) {
-    return <ResetPassword onComplete={clearPasswordRecovery} />;
-  }
   if (!user) return <LoginScreen loading={loading} />;
   if (profileLoading) return <LoginScreen loading={true} />;
   if (userProfile?.status === 'pending')

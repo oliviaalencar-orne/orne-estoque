@@ -289,14 +289,16 @@ export default function ShippingList({
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
-                <button
-                    className="btn btn-primary"
-                    onClick={atualizarTodosRastreios}
-                    disabled={atualizandoRastreio}
-                    style={{whiteSpace: 'nowrap'}}
-                >
-                    {atualizandoRastreio ? 'Atualizando...' : 'Atualizar Rastreios'}
-                </button>
+                {isStockAdmin && (
+                    <button
+                        className="btn btn-primary"
+                        onClick={atualizarTodosRastreios}
+                        disabled={atualizandoRastreio}
+                        style={{whiteSpace: 'nowrap'}}
+                    >
+                        {atualizandoRastreio ? 'Atualizando...' : 'Atualizar Rastreios'}
+                    </button>
+                )}
             </div>
 
             <div className="filter-tabs" style={{marginBottom: '12px'}}>
@@ -392,13 +394,17 @@ export default function ShippingList({
                                                 )}
                                             </div>
                                         ) : (
-                                            <button
-                                                className="btn btn-secondary btn-sm"
-                                                onClick={() => setEditingShipping({...s})}
-                                                style={{fontSize: '11px', padding: '4px 8px'}}
-                                            >
-                                                + Adicionar
-                                            </button>
+                                            isStockAdmin ? (
+                                                <button
+                                                    className="btn btn-secondary btn-sm"
+                                                    onClick={() => setEditingShipping({...s})}
+                                                    style={{fontSize: '11px', padding: '4px 8px'}}
+                                                >
+                                                    + Adicionar
+                                                </button>
+                                            ) : (
+                                                <span style={{fontSize: '11px', color: 'var(--text-muted)'}}>-</span>
+                                            )
                                         )}
                                     </td>
                                     <td>
