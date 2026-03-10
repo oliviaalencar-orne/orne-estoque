@@ -5,11 +5,13 @@
  */
 
 /**
- * Format current date as DD/MM/AAAA
+ * Format current date as DD/MM/AAAA às HH:mm
  */
 function formatDateBR() {
   const d = new Date();
-  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const date = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const time = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
+  return `${date} às ${time}`;
 }
 
 /**

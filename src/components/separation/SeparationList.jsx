@@ -1,5 +1,5 @@
 /**
- * SeparationList.jsx — List of separations with filters, status actions, and share
+ * SeparationList.jsx — List of separations with filters, batch selection, status actions, and share
  */
 import React, { useState, useMemo, useCallback, useRef } from 'react';
 import { Icon } from '@/utils/icons';
@@ -17,8 +17,11 @@ const NEXT_STATUS = {
   separado: 'embalado',
 };
 
+const ALL_STATUSES = ['pendente', 'separado', 'embalado', 'despachado'];
+
 export default function SeparationList({
   separations, onUpdate, onDelete, onEdit, onSendToDispatch,
+  onBatchStatusChange, onBatchDispatch,
   hubs, showHubBadge
 }) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -29,6 +32,9 @@ export default function SeparationList({
   const [shareMenuPos, setShareMenuPos] = useState({ top: 0, right: 0 });
   const [copiedId, setCopiedId] = useState(null);
   const shareMenuSepRef = useRef(null);
+
+  // Batch selection state
+  const [selectedIds, setSelectedIds] = useState(new Set());
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '-';
@@ -57,6 +63,49 @@ export default function SeparationList({
     separations.forEach(s => { if (c[s.status] !== undefined) c[s.status]++; });
     return c;
   }, [separations]);
+
+  // Only non-despachado items in the current filtered list are selectable
+  const selectableItems = useMemo(() =>
+    filtered.filter(s => s.status !== 'despachado'),
+  [filtered]);
+
+  // Clean up selectedIds when filtered list changes (remove stale IDs)
+  const activeSelectedIds = useMemo(() => {
+    const filteredIdSet = new Set(selectableItems.map(s => s.id));
+    return new Set([...selectedIds].filter(id => filteredIdSet.has(id)));
+  }, [selectedIds, selectableItems]);
+
+  const selectedCount = activeSelectedIds.size;
+  const allSelected = selectableItems.length > 0 && selectedCount === selectableItems.length;
+
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (allSelected) {
+      // Deselect all visible
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        selectableItems.forEach(s => next.delete(s.id));
+        return next;
+      });
+    } else {
+      // Select all visible
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        selectableItems.forEach(s => next.add(s.id));
+        return next;
+      });
+    }
+  };
+
+  const clearSelection = () => setSelectedIds(new Set());
 
   const handleStatusAdvance = async (sep) => {
     if (loadingId) return;
@@ -121,6 +170,11 @@ export default function SeparationList({
     setShareMenuId(sepId);
   };
 
+  // Get the selected separation objects
+  const selectedSeparations = useMemo(() =>
+    separations.filter(s => activeSelectedIds.has(s.id)),
+  [separations, activeSelectedIds]);
+
   return (
     <div>
       {/* Search + Filters */}
@@ -139,20 +193,34 @@ export default function SeparationList({
             <button className="search-clear" onClick={() => setSearchTerm('')}>&times;</button>
           )}
         </div>
-        <div className="filter-tabs">
-          {[
-            { key: 'all', label: `Todos (${counts.all})` },
-            { key: 'pendente', label: `Pendente (${counts.pendente})` },
-            { key: 'separado', label: `Separado (${counts.separado})` },
-            { key: 'embalado', label: `Embalado (${counts.embalado})` },
-            { key: 'despachado', label: `Despachado (${counts.despachado})` },
-          ].map(f => (
-            <button
-              key={f.key}
-              className={`filter-tab ${statusFilter === f.key ? 'active' : ''}`}
-              onClick={() => setStatusFilter(f.key)}
-            >{f.label}</button>
-          ))}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+          <div className="filter-tabs">
+            {[
+              { key: 'all', label: `Todos (${counts.all})` },
+              { key: 'pendente', label: `Pendente (${counts.pendente})` },
+              { key: 'separado', label: `Separado (${counts.separado})` },
+              { key: 'embalado', label: `Embalado (${counts.embalado})` },
+              { key: 'despachado', label: `Despachado (${counts.despachado})` },
+            ].map(f => (
+              <button
+                key={f.key}
+                className={`filter-tab ${statusFilter === f.key ? 'active' : ''}`}
+                onClick={() => setStatusFilter(f.key)}
+              >{f.label}</button>
+            ))}
+          </div>
+          {/* Select All checkbox */}
+          {selectableItems.length > 0 && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
+              <input
+                type="checkbox"
+                checked={allSelected}
+                onChange={toggleSelectAll}
+                style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+              />
+              Selecionar Todos
+            </label>
+          )}
         </div>
       </div>
 
@@ -170,13 +238,27 @@ export default function SeparationList({
             const isLoading = loadingId === sep.id;
             const isSuccess = successId === sep.id;
             const isCopied = copiedId === sep.id;
+            const isSelectable = sep.status !== 'despachado';
+            const isSelected = activeSelectedIds.has(sep.id);
             return (
               <div key={sep.id} className="card" style={{
                 padding: '16px',
-                borderLeft: isSuccess ? '3px solid var(--success)' : undefined,
-                transition: 'border-left 0.3s',
+                borderLeft: isSuccess ? '3px solid var(--success)' : isSelected ? '3px solid var(--primary)' : undefined,
+                background: isSelected ? 'var(--bg-secondary)' : undefined,
+                transition: 'border-left 0.3s, background 0.2s',
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', flexWrap: 'wrap' }}>
+                  {/* Checkbox */}
+                  {isSelectable && (
+                    <div style={{ display: 'flex', alignItems: 'center', paddingTop: '2px' }}>
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleSelect(sep.id)}
+                        style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                      />
+                    </div>
+                  )}
                   <div style={{ flex: 1, minWidth: '200px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
                       {sep.nfNumero && (
@@ -285,6 +367,75 @@ export default function SeparationList({
         </div>
       )}
 
+      {/* ── Floating batch action bar ── */}
+      {selectedCount > 0 && (
+        <div style={{
+          position: 'fixed',
+          bottom: '20px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: '#1e293b',
+          color: '#fff',
+          borderRadius: '12px',
+          padding: '12px 20px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '16px',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+          zIndex: 9990,
+          flexWrap: 'wrap',
+          justifyContent: 'center',
+          maxWidth: '90vw',
+        }}>
+          <span style={{ fontSize: '13px', fontWeight: 600, whiteSpace: 'nowrap' }}>
+            {selectedCount} selecionado{selectedCount !== 1 ? 's' : ''}
+          </span>
+          <div style={{ width: '1px', height: '20px', background: 'rgba(255,255,255,0.2)' }} />
+          <BatchStatusDropdown
+            onChangeStatus={(newStatus) => {
+              if (onBatchStatusChange) {
+                onBatchStatusChange(selectedSeparations, newStatus, clearSelection);
+              }
+            }}
+          />
+          <button
+            className="btn"
+            style={{
+              fontSize: '12px',
+              padding: '6px 14px',
+              background: '#10b981',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontWeight: 600,
+              whiteSpace: 'nowrap',
+            }}
+            onClick={() => {
+              if (onBatchDispatch) {
+                onBatchDispatch(selectedSeparations, clearSelection);
+              }
+            }}
+          >
+            <Icon name="shipping" size={14} /> Enviar para Despacho
+          </button>
+          <button
+            style={{
+              background: 'transparent',
+              border: '1px solid rgba(255,255,255,0.3)',
+              color: '#fff',
+              borderRadius: '6px',
+              padding: '4px 10px',
+              fontSize: '12px',
+              cursor: 'pointer',
+            }}
+            onClick={clearSelection}
+          >
+            Limpar
+          </button>
+        </div>
+      )}
+
       {/* Individual share dropdown — fixed, outside any container */}
       {shareMenuId && shareMenuSepRef.current && (
         <>
@@ -355,6 +506,52 @@ export default function SeparationList({
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+/**
+ * BatchStatusDropdown — inline dropdown + button for batch status change
+ */
+function BatchStatusDropdown({ onChangeStatus }) {
+  const [status, setStatus] = useState('separado');
+  return (
+    <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+      <select
+        value={status}
+        onChange={e => setStatus(e.target.value)}
+        style={{
+          fontSize: '12px',
+          padding: '5px 8px',
+          borderRadius: '6px',
+          border: '1px solid rgba(255,255,255,0.3)',
+          background: 'rgba(255,255,255,0.1)',
+          color: '#fff',
+          cursor: 'pointer',
+        }}
+      >
+        {ALL_STATUSES.map(s => (
+          <option key={s} value={s} style={{ color: '#000' }}>
+            {STATUS_CONFIG[s].label}
+          </option>
+        ))}
+      </select>
+      <button
+        style={{
+          fontSize: '12px',
+          padding: '5px 12px',
+          borderRadius: '6px',
+          border: '1px solid rgba(255,255,255,0.3)',
+          background: 'rgba(255,255,255,0.15)',
+          color: '#fff',
+          cursor: 'pointer',
+          fontWeight: 600,
+          whiteSpace: 'nowrap',
+        }}
+        onClick={() => onChangeStatus(status)}
+      >
+        Alterar Status
+      </button>
     </div>
   );
 }

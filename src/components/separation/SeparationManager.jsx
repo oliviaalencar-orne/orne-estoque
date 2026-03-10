@@ -5,8 +5,9 @@
  * Hub tabs: Todos | <dynamic hub names>
  * Handles view switching, separation CRUD, dispatch handoff, and WhatsApp export.
  */
-import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
 import { Icon } from '@/utils/icons';
+import { supabaseClient } from '@/config/supabase';
 import { buildSeparationMessage, openWhatsAppWithMessage, copyToClipboard } from '@/utils/separationMessage';
 import TinyNFeImport from '@/components/import/TinyNFeImport';
 import SeparationList from './SeparationList';
@@ -18,7 +19,7 @@ export default function SeparationManager({
   products, stock, entries, exits, shippings,
   categories, locaisOrigem, onUpdateLocais,
   onAddProduct, onAddCategory, onUpdateCategory, onDeleteCategory,
-  user, onSendToDispatch, isStockAdmin,
+  user, onSendToDispatch, onAddShipping, onAddExit, isStockAdmin,
   hubs, onAddHub, onUpdateHub, onDeleteHub
 }) {
   const [activeView, setActiveView] = useState('list');
@@ -29,6 +30,7 @@ export default function SeparationManager({
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [shareMenuPos, setShareMenuPos] = useState({ top: 0, right: 0 });
   const [copiedHub, setCopiedHub] = useState(false);
+  const [batchProgress, setBatchProgress] = useState(null); // { current, total, message }
   const shareBtnRef = useRef(null);
 
   // Count active (non-despachado) separations per hub
@@ -188,6 +190,128 @@ export default function SeparationManager({
     };
     await onUpdate(separation.id, { status: 'despachado', shippingId: 'pending' });
     onSendToDispatch(dispatchData);
+  };
+
+  // ── Batch status change ──────────────────────────────────────────────
+  const handleBatchStatusChange = async (selectedSeparations, newStatus, clearSelection) => {
+    if (!selectedSeparations.length) return;
+    const total = selectedSeparations.length;
+    let updated = 0;
+    let errors = 0;
+    setBatchProgress({ current: 0, total, message: `Atualizando 0/${total}...` });
+
+    for (let i = 0; i < selectedSeparations.length; i++) {
+      const sep = selectedSeparations[i];
+      setBatchProgress({ current: i + 1, total, message: `Atualizando ${i + 1}/${total}...` });
+      try {
+        await onUpdate(sep.id, { status: newStatus });
+        updated++;
+      } catch (err) {
+        console.error(`Erro ao atualizar separação ${sep.nfNumero}:`, err);
+        errors++;
+      }
+    }
+
+    setBatchProgress(null);
+    clearSelection();
+    const msg = errors > 0
+      ? `${updated} atualizado(s), ${errors} com erro`
+      : `${updated} separação(ões) atualizada(s) para "${newStatus}"`;
+    setSuccess(msg);
+    setTimeout(() => setSuccess(''), 5000);
+  };
+
+  // ── Batch dispatch — create shippings + exits ──────────────────────
+  const handleBatchDispatch = async (selectedSeparations, clearSelection) => {
+    if (!selectedSeparations.length) return;
+    if (!onAddShipping) {
+      alert('Função de criar despacho não disponível');
+      return;
+    }
+
+    const total = selectedSeparations.length;
+    let created = 0;
+    let errors = 0;
+    setBatchProgress({ current: 0, total, message: `Criando despacho 0/${total}...` });
+
+    for (let i = 0; i < selectedSeparations.length; i++) {
+      const sep = selectedSeparations[i];
+      setBatchProgress({ current: i + 1, total, message: `Criando despacho ${i + 1}/${total}... (NF ${sep.nfNumero || '-'})` });
+
+      try {
+        // Determine local de origem from hub
+        const hub = (hubs || []).find(h => h.id === sep.hubId);
+        const localOrigem = hub?.name || '';
+
+        // Create the shipping
+        const shippingResult = await onAddShipping({
+          nfNumero: sep.nfNumero || '',
+          cliente: sep.cliente || '',
+          destino: sep.destino || '',
+          localOrigem,
+          transportadora: '',
+          codigoRastreio: '',
+          linkRastreio: '',
+          melhorEnvioId: '',
+          produtos: sep.produtos || [],
+          observacoes: sep.observacoes || '',
+          status: 'DESPACHADO',
+        });
+
+        const shippingId = shippingResult?.id;
+        if (!shippingId) throw new Error('Despacho criado mas sem ID');
+
+        // Process stock exits for products with baixarEstoque
+        if (onAddExit && sep.produtos && sep.produtos.length > 0) {
+          const produtosComExit = [...sep.produtos];
+          for (let j = 0; j < produtosComExit.length; j++) {
+            const prod = produtosComExit[j];
+            if (prod.produtoEstoque && prod.baixarEstoque) {
+              try {
+                const exitResult = await onAddExit({
+                  type: 'VENDA',
+                  sku: prod.produtoEstoque.sku || prod.sku,
+                  quantity: prod.quantidade || 1,
+                  client: sep.cliente || '',
+                  nf: sep.nfNumero || '',
+                  nfOrigem: (prod.nfOrigem && prod.nfOrigem !== 'Sem NF' && prod.nfOrigem !== 'SEM_NF')
+                    ? prod.nfOrigem : null,
+                });
+                if (exitResult?.id) {
+                  produtosComExit[j] = { ...produtosComExit[j], exitId: exitResult.id, baixouEstoque: true };
+                }
+              } catch (exitErr) {
+                console.error(`Erro exit: ${prod.sku}`, exitErr);
+              }
+            }
+          }
+          // Update shipping produtos with exit info
+          const hasExit = produtosComExit.some(p => p.exitId);
+          if (hasExit) {
+            try {
+              await supabaseClient.from('shippings').update({ produtos: produtosComExit }).eq('id', shippingId);
+            } catch (updateErr) {
+              console.error('Erro ao atualizar produtos do despacho:', updateErr);
+            }
+          }
+        }
+
+        // Update separation: status='despachado', shipping_id
+        await onUpdate(sep.id, { status: 'despachado', shippingId });
+        created++;
+      } catch (err) {
+        console.error(`Erro ao criar despacho para NF ${sep.nfNumero}:`, err);
+        errors++;
+      }
+    }
+
+    setBatchProgress(null);
+    clearSelection();
+    const msg = errors > 0
+      ? `${created} despacho(s) criado(s), ${errors} com erro`
+      : `${created} despacho(s) criado(s) com sucesso!`;
+    setSuccess(msg);
+    setTimeout(() => setSuccess(''), 8000);
   };
 
   const hasPending = pendingSeparationsForHub.length > 0;
@@ -388,6 +512,8 @@ export default function SeparationManager({
           onDelete={onDelete}
           onEdit={handleEdit}
           onSendToDispatch={handleSendToDispatch}
+          onBatchStatusChange={handleBatchStatusChange}
+          onBatchDispatch={handleBatchDispatch}
           hubs={hubs}
           showHubBadge={selectedHubId === 'all'}
         />
@@ -465,6 +591,48 @@ export default function SeparationManager({
           separations={separations}
           onClose={() => setShowHubsModal(false)}
         />
+      )}
+
+      {/* Batch progress overlay */}
+      {batchProgress && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000,
+        }}>
+          <div className="card" style={{
+            padding: '32px 40px',
+            textAlign: 'center',
+            maxWidth: '400px',
+            width: '90vw',
+          }}>
+            <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px' }}>
+              {batchProgress.message}
+            </div>
+            <div style={{
+              width: '100%',
+              height: '6px',
+              background: 'var(--bg-secondary)',
+              borderRadius: '3px',
+              overflow: 'hidden',
+            }}>
+              <div style={{
+                width: `${(batchProgress.current / batchProgress.total) * 100}%`,
+                height: '100%',
+                background: 'var(--primary)',
+                borderRadius: '3px',
+                transition: 'width 0.3s',
+              }} />
+            </div>
+            <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px' }}>
+              {batchProgress.current} de {batchProgress.total}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

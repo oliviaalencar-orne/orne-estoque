@@ -553,6 +553,8 @@ export default function App() {
                 onDeleteCategory={deleteCategory}
                 user={user}
                 onSendToDispatch={handleSendSeparationToDispatch}
+                onAddShipping={addShipping}
+                onAddExit={addExit}
                 isStockAdmin={isStockAdmin}
                 hubs={hubs}
                 onAddHub={addHub}
