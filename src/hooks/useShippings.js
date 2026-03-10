@@ -40,6 +40,7 @@ export function useShippings(user, isStockAdmin) {
         produtos: shipping.produtos || [],
         observacoes: shipping.observacoes || '',
         hub_telefone: shipping.hubTelefone || '',
+        telefone_cliente: shipping.telefoneCliente || '',
         status: shipping.status || 'DESPACHADO',
         date: new Date().toISOString(),
         user_id: user.email,
@@ -83,6 +84,7 @@ export function useShippings(user, isStockAdmin) {
         mapped.ultima_atualizacao_rastreio = data.ultimaAtualizacaoRastreio;
       if (data.rastreioInfo !== undefined) mapped.rastreio_info = data.rastreioInfo;
       if (data.hubTelefone !== undefined) mapped.hub_telefone = data.hubTelefone;
+      if (data.telefoneCliente !== undefined) mapped.telefone_cliente = data.telefoneCliente;
       const { error } = await supabaseClient
         .from('shippings')
         .update(mapped)

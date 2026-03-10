@@ -9,6 +9,11 @@ import { Icon } from '@/utils/icons';
 import PeriodFilter, { filterByPeriod } from '@/components/ui/PeriodFilter';
 import { fetchTrackingInfo, buscarRastreioPorNF } from '@/services/trackingService';
 import { supabaseClient } from '@/config/supabase';
+import {
+    buildClientShippingMessage,
+    openWhatsAppForClient,
+    copyMessageToClipboard,
+} from '@/utils/shippingMessage';
 
 export default function ShippingList({
     shippings, onUpdate, onDelete, isStockAdmin, locaisOrigem,
@@ -25,6 +30,38 @@ export default function ShippingList({
     const [openStatusMenu, setOpenStatusMenu] = useState(null);
     const [success, setSuccess] = useState('');
     const [error, setError] = useState('');
+
+    // WhatsApp modal state
+    const [whatsappModal, setWhatsappModal] = useState(null); // shipping object
+    const [whatsappPhone, setWhatsappPhone] = useState('');
+
+    // WhatsApp handlers
+    const openWhatsappModal = (shipping) => {
+        setWhatsappPhone(shipping.telefoneCliente || '');
+        setWhatsappModal(shipping);
+    };
+
+    const handleSendWhatsApp = async () => {
+        if (!whatsappModal) return;
+        const message = buildClientShippingMessage(whatsappModal, statusList);
+        // Save phone if provided
+        if (whatsappPhone && whatsappPhone !== (whatsappModal.telefoneCliente || '')) {
+            await onUpdate(whatsappModal.id, { telefoneCliente: whatsappPhone });
+        }
+        openWhatsAppForClient(whatsappPhone, message);
+        setWhatsappModal(null);
+    };
+
+    const handleCopyClientMessage = async (shipping) => {
+        const message = buildClientShippingMessage(shipping || whatsappModal, statusList);
+        const ok = await copyMessageToClipboard(message);
+        if (ok) {
+            setSuccess('Mensagem copiada!');
+            setTimeout(() => setSuccess(''), 3000);
+        }
+        if (shipping) return; // quick copy, don't close modal
+        setWhatsappModal(null);
+    };
 
     const formatDate = (dateStr) => {
         if (!dateStr) return '-';
@@ -300,7 +337,7 @@ export default function ShippingList({
                                 <th>Transportadora</th>
                                 <th>Rastreio</th>
                                 <th>Status</th>
-                                {isStockAdmin && <th>Ações</th>}
+                                <th>Ações</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -474,8 +511,26 @@ export default function ShippingList({
                                         )}
                                     </td>
                                     <td>
-                                        <div style={{display: 'flex', gap: '4px'}}>
-                                            {(s.codigoRastreio || s.melhorEnvioId) && (
+                                        <div style={{display: 'flex', gap: '4px', flexWrap: 'wrap'}}>
+                                            {/* WhatsApp + Copy — visible to all */}
+                                            <button
+                                                className="btn btn-sm"
+                                                onClick={() => openWhatsappModal(s)}
+                                                title="Enviar WhatsApp para cliente"
+                                                style={{fontSize: '10px', padding: '4px 8px', background: '#25D366', color: '#fff', border: 'none', borderRadius: '6px'}}
+                                            >
+                                                📱
+                                            </button>
+                                            <button
+                                                className="btn btn-secondary btn-sm"
+                                                onClick={() => handleCopyClientMessage(s)}
+                                                title="Copiar mensagem do cliente"
+                                                style={{fontSize: '10px', padding: '4px 8px'}}
+                                            >
+                                                📋
+                                            </button>
+                                            {/* Tracking — admin only */}
+                                            {isStockAdmin && (s.codigoRastreio || s.melhorEnvioId) && (
                                                 <button
                                                     className="btn btn-primary btn-sm"
                                                     onClick={() => atualizarRastreioMelhorEnvio(s)}
@@ -486,7 +541,7 @@ export default function ShippingList({
                                                     {atualizandoRastreio ? '...' : '⟳'}
                                                 </button>
                                             )}
-                                            {s.nfNumero && (!s.codigoRastreio || !s.melhorEnvioId) && (
+                                            {isStockAdmin && s.nfNumero && (!s.codigoRastreio || !s.melhorEnvioId) && (
                                                 <button
                                                     className="btn btn-secondary btn-sm"
                                                     onClick={() => buscarRastreioNF(s)}
@@ -515,6 +570,64 @@ export default function ShippingList({
                             ))}
                         </tbody>
                     </table>
+                </div>
+            )}
+
+            {/* Modal WhatsApp Cliente */}
+            {whatsappModal && (
+                <div className="modal-overlay">
+                    <div className="modal-content" style={{maxWidth: '480px'}}>
+                        <h2 className="modal-title">📱 WhatsApp para Cliente</h2>
+                        <p style={{fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px'}}>
+                            <strong>{whatsappModal.cliente}</strong> — NF {whatsappModal.nfNumero}
+                        </p>
+
+                        <div className="form-group">
+                            <label className="form-label">Telefone do Cliente</label>
+                            <input
+                                type="text"
+                                className="form-input"
+                                value={whatsappPhone}
+                                onChange={(e) => setWhatsappPhone(e.target.value)}
+                                placeholder="(00) 00000-0000"
+                                autoFocus
+                            />
+                            <small style={{fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block'}}>
+                                O código do país (55) será adicionado automaticamente
+                            </small>
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label">Prévia da Mensagem</label>
+                            <textarea
+                                className="form-textarea"
+                                readOnly
+                                value={buildClientShippingMessage(whatsappModal, statusList)}
+                                rows={8}
+                                style={{fontSize: '12px', background: 'var(--bg-secondary)', cursor: 'default'}}
+                            />
+                        </div>
+
+                        <div className="btn-group" style={{gap: '8px'}}>
+                            <button
+                                className="btn btn-primary"
+                                onClick={handleSendWhatsApp}
+                                style={{background: '#25D366', borderColor: '#25D366', display: 'flex', alignItems: 'center', gap: '6px'}}
+                            >
+                                📱 Enviar via WhatsApp
+                            </button>
+                            <button
+                                className="btn btn-secondary"
+                                onClick={() => handleCopyClientMessage(null)}
+                                style={{display: 'flex', alignItems: 'center', gap: '6px'}}
+                            >
+                                📋 Copiar Mensagem
+                            </button>
+                            <button className="btn btn-secondary" onClick={() => setWhatsappModal(null)}>
+                                Cancelar
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
 
@@ -592,10 +705,15 @@ export default function ShippingList({
                                 <label className="form-label">Telefone HUB</label>
                                 <input type="text" className="form-input" value={editingShipping.hubTelefone || ''} onChange={(e) => setEditingShipping({...editingShipping, hubTelefone: e.target.value})} placeholder="(00) 00000-0000" />
                             </div>
-                            <div className="form-group" style={{flex: 2}}>
-                                <label className="form-label">Observações</label>
-                                <textarea className="form-textarea" value={editingShipping.observacoes || ''} onChange={(e) => setEditingShipping({...editingShipping, observacoes: e.target.value})} placeholder="Informações adicionais..." />
+                            <div className="form-group">
+                                <label className="form-label">Telefone Cliente</label>
+                                <input type="text" className="form-input" value={editingShipping.telefoneCliente || ''} onChange={(e) => setEditingShipping({...editingShipping, telefoneCliente: e.target.value})} placeholder="(00) 00000-0000" />
                             </div>
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label">Observações</label>
+                            <textarea className="form-textarea" value={editingShipping.observacoes || ''} onChange={(e) => setEditingShipping({...editingShipping, observacoes: e.target.value})} placeholder="Informações adicionais..." />
                         </div>
 
                         <div className="btn-group">
@@ -614,6 +732,7 @@ export default function ShippingList({
                                         status: editingShipping.status,
                                         observacoes: editingShipping.observacoes,
                                         hubTelefone: editingShipping.hubTelefone,
+                                        telefoneCliente: editingShipping.telefoneCliente,
                                         updatedAt: new Date().toISOString()
                                     });
                                     setEditingShipping(null);

@@ -57,6 +57,7 @@ export const mapShippingFromDB = (row) => ({
   observacoes: row.observacoes || '',
   status: row.status || 'DESPACHADO',
   hubTelefone: row.hub_telefone || '',
+  telefoneCliente: row.telefone_cliente || '',
   date: row.date,
   userId: row.user_id || '',
   ultimaAtualizacaoRastreio: row.ultima_atualizacao_rastreio || '',

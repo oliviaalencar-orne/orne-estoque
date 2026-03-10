@@ -31,6 +31,7 @@ import LoginScreen from '@/components/auth/LoginScreen';
 import PendingApprovalScreen from '@/components/auth/PendingApprovalScreen';
 import RejectedScreen from '@/components/auth/RejectedScreen';
 import AccessRestricted from '@/components/auth/AccessRestricted';
+import ResetPassword from '@/components/auth/ResetPassword';
 
 // Page components
 import Dashboard from '@/components/dashboard/Dashboard';
@@ -92,11 +93,18 @@ export default function App() {
     user,
     userProfile,
     isStockAdmin,
+    isEquipe,
     isSuperAdmin,
+    isPasswordRecovery,
+    clearPasswordRecovery,
     loading,
     profileLoading,
     handleLogout,
   } = useAuth();
+
+  // Equipe has read access to separation and shipping (but no admin actions)
+  const canViewSeparation = isStockAdmin || isEquipe;
+  const canViewShipping = isStockAdmin || isEquipe;
 
   // ── Tab navigation (persisted in sessionStorage) ─────────────────────
   const [activeTab, setActiveTabRaw] = useState(() => {
@@ -243,6 +251,9 @@ export default function App() {
   }, [refetchData, setEntries, setExits]);
 
   // ── Conditional rendering: auth gates ─────────────────────────────────
+  if (isPasswordRecovery && user) {
+    return <ResetPassword onComplete={clearPasswordRecovery} />;
+  }
   if (!user) return <LoginScreen loading={loading} />;
   if (profileLoading) return <LoginScreen loading={true} />;
   if (userProfile?.status === 'pending')
@@ -283,45 +294,71 @@ export default function App() {
         </div>
 
         <div className="user-info">
+          {userProfile?.nome && (
+            <div style={{ fontSize: '13px', fontWeight: 600, color: 'rgba(255,255,255,0.95)', marginBottom: '2px' }}>
+              {userProfile.nome}
+            </div>
+          )}
           <div className="user-email">{user.email}</div>
           <button className="btn-logout" onClick={handleLogout}>
             Sair
           </button>
         </div>
 
-        <div style={{ padding: '0 14px', marginBottom: '16px' }}>
-          <button
-            onClick={() => {
-              const url = window.location.origin + '/consulta.html';
-              navigator.clipboard.writeText(url);
-              alert(
-                'Link copiado!\n\n' +
-                  url +
-                  '\n\nCompartilhe com sua equipe para visualização (somente leitura).'
-              );
-            }}
-            style={{
+        {isStockAdmin && (
+          <div style={{ padding: '0 14px', marginBottom: '16px' }}>
+            <button
+              onClick={() => {
+                const url = window.location.origin + '/consulta.html';
+                navigator.clipboard.writeText(url);
+                alert(
+                  'Link copiado!\n\n' +
+                    url +
+                    '\n\nCompartilhe com sua equipe para visualização (somente leitura).'
+                );
+              }}
+              style={{
+                width: '100%',
+                padding: '9px',
+                background: 'rgba(255,255,255,0.12)',
+                border: '1px solid rgba(255,255,255,0.18)',
+                borderRadius: '10px',
+                color: 'rgba(255,255,255,0.85)',
+                cursor: 'pointer',
+                fontSize: '13px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                fontFamily: 'inherit',
+                fontWeight: '400',
+                letterSpacing: '0.2px',
+                transition: 'all 0.2s',
+              }}
+            >
+              <Icon name="share" size={14} /> Compartilhar Consulta
+            </button>
+          </div>
+        )}
+
+        {isEquipe && (
+          <div style={{ padding: '0 14px', marginBottom: '16px' }}>
+            <div style={{
               width: '100%',
               padding: '9px',
-              background: 'rgba(255,255,255,0.12)',
-              border: '1px solid rgba(255,255,255,0.18)',
+              background: 'rgba(255,255,255,0.08)',
+              border: '1px solid rgba(255,255,255,0.12)',
               borderRadius: '10px',
-              color: 'rgba(255,255,255,0.85)',
-              cursor: 'pointer',
-              fontSize: '13px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
+              color: 'rgba(255,255,255,0.65)',
+              fontSize: '11px',
+              textAlign: 'center',
               fontFamily: 'inherit',
-              fontWeight: '400',
               letterSpacing: '0.2px',
-              transition: 'all 0.2s',
-            }}
-          >
-            <Icon name="share" size={14} /> Compartilhar Consulta
-          </button>
-        </div>
+            }}>
+              Acesso: Consulta
+            </div>
+          </div>
+        )}
 
         <ul className="nav-menu">
           <li className="nav-item">
@@ -349,33 +386,37 @@ export default function App() {
             </a>
           </li>
 
-          {isStockAdmin && (
+          {(isStockAdmin || isEquipe) && (
             <>
               <div className="nav-section">Movimentações</div>
-              <li className="nav-item">
-                <a
-                  className={`nav-link ${activeTab === 'entry' ? 'active' : ''}`}
-                  onClick={() => handleTabChange('entry')}
-                >
-                  <span
-                    className="nav-icon"
-                    dangerouslySetInnerHTML={{ __html: ICONS.entry }}
-                  ></span>
-                  Entrada
-                </a>
-              </li>
-              <li className="nav-item">
-                <a
-                  className={`nav-link ${activeTab === 'exit' ? 'active' : ''}`}
-                  onClick={() => handleTabChange('exit')}
-                >
-                  <span
-                    className="nav-icon"
-                    dangerouslySetInnerHTML={{ __html: ICONS.exit }}
-                  ></span>
-                  Saída
-                </a>
-              </li>
+              {isStockAdmin && (
+                <li className="nav-item">
+                  <a
+                    className={`nav-link ${activeTab === 'entry' ? 'active' : ''}`}
+                    onClick={() => handleTabChange('entry')}
+                  >
+                    <span
+                      className="nav-icon"
+                      dangerouslySetInnerHTML={{ __html: ICONS.entry }}
+                    ></span>
+                    Entrada
+                  </a>
+                </li>
+              )}
+              {isStockAdmin && (
+                <li className="nav-item">
+                  <a
+                    className={`nav-link ${activeTab === 'exit' ? 'active' : ''}`}
+                    onClick={() => handleTabChange('exit')}
+                  >
+                    <span
+                      className="nav-icon"
+                      dangerouslySetInnerHTML={{ __html: ICONS.exit }}
+                    ></span>
+                    Saída
+                  </a>
+                </li>
+              )}
               <li className="nav-item">
                 <a
                   className={`nav-link ${activeTab === 'separation' ? 'active' : ''}`}
@@ -403,33 +444,37 @@ export default function App() {
             </>
           )}
 
-          <div className="nav-section">Relatórios</div>
-          <li className="nav-item">
-            <a
-              className={`nav-link ${activeTab === 'history' ? 'active' : ''}`}
-              onClick={() => handleTabChange('history')}
-            >
-              <span
-                className="nav-icon"
-                dangerouslySetInnerHTML={{ __html: ICONS.history }}
-              ></span>
-              Histórico
-            </a>
-          </li>
+          {isStockAdmin && (
+            <>
+              <div className="nav-section">Relatórios</div>
+              <li className="nav-item">
+                <a
+                  className={`nav-link ${activeTab === 'history' ? 'active' : ''}`}
+                  onClick={() => handleTabChange('history')}
+                >
+                  <span
+                    className="nav-icon"
+                    dangerouslySetInnerHTML={{ __html: ICONS.history }}
+                  ></span>
+                  Histórico
+                </a>
+              </li>
 
-          <div className="nav-section">Integrações</div>
-          <li className="nav-item">
-            <a
-              className={`nav-link ${activeTab === 'tiny' ? 'active' : ''}`}
-              onClick={() => handleTabChange('tiny')}
-            >
-              <span
-                className="nav-icon"
-                dangerouslySetInnerHTML={{ __html: ICONS.tiny }}
-              ></span>
-              Tiny ERP
-            </a>
-          </li>
+              <div className="nav-section">Integrações</div>
+              <li className="nav-item">
+                <a
+                  className={`nav-link ${activeTab === 'tiny' ? 'active' : ''}`}
+                  onClick={() => handleTabChange('tiny')}
+                >
+                  <span
+                    className="nav-icon"
+                    dangerouslySetInnerHTML={{ __html: ICONS.tiny }}
+                  ></span>
+                  Tiny ERP
+                </a>
+              </li>
+            </>
+          )}
 
           {isSuperAdmin && (
             <>
@@ -533,7 +578,7 @@ export default function App() {
             )}
           </div>
           <div style={{ display: activeTab === 'separation' ? 'block' : 'none' }}>
-            {isStockAdmin ? (
+            {canViewSeparation ? (
               <SeparationManager
                 separations={separations}
                 onAdd={addSeparation}
@@ -701,7 +746,7 @@ export default function App() {
             <span>Novo</span>
           </button>
         )}
-        {isStockAdmin && (
+        {(isStockAdmin || isEquipe) && (
           <button
             className={`nav-tab ${['entry', 'exit', 'separation', 'shipping', 'history'].includes(activeTab) ? 'active' : ''}`}
             onClick={() =>
@@ -736,20 +781,24 @@ export default function App() {
       >
         <div className="bottom-sheet-handle"></div>
         <div className="bottom-sheet-title">Movimentações</div>
-        <button
-          className="bottom-sheet-item"
-          onClick={() => handleTabChange('entry')}
-        >
-          <span dangerouslySetInnerHTML={{ __html: ICONS.entry }}></span>
-          Entrada de Estoque
-        </button>
-        <button
-          className="bottom-sheet-item"
-          onClick={() => handleTabChange('exit')}
-        >
-          <span dangerouslySetInnerHTML={{ __html: ICONS.exit }}></span>
-          Saída de Estoque
-        </button>
+        {isStockAdmin && (
+          <button
+            className="bottom-sheet-item"
+            onClick={() => handleTabChange('entry')}
+          >
+            <span dangerouslySetInnerHTML={{ __html: ICONS.entry }}></span>
+            Entrada de Estoque
+          </button>
+        )}
+        {isStockAdmin && (
+          <button
+            className="bottom-sheet-item"
+            onClick={() => handleTabChange('exit')}
+          >
+            <span dangerouslySetInnerHTML={{ __html: ICONS.exit }}></span>
+            Saída de Estoque
+          </button>
+        )}
         <button
           className="bottom-sheet-item"
           onClick={() => handleTabChange('separation')}
@@ -764,13 +813,15 @@ export default function App() {
           <span dangerouslySetInnerHTML={{ __html: ICONS.shipping }}></span>
           Despachos
         </button>
-        <button
-          className="bottom-sheet-item"
-          onClick={() => handleTabChange('history')}
-        >
-          <span dangerouslySetInnerHTML={{ __html: ICONS.history }}></span>
-          Histórico
-        </button>
+        {isStockAdmin && (
+          <button
+            className="bottom-sheet-item"
+            onClick={() => handleTabChange('history')}
+          >
+            <span dangerouslySetInnerHTML={{ __html: ICONS.history }}></span>
+            Histórico
+          </button>
+        )}
       </div>
     </div>
     </ErrorBoundary>

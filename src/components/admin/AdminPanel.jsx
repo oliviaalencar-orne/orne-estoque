@@ -43,9 +43,13 @@ export default function AdminPanel({ currentUserId }) {
   };
 
   const roleBadge = (role) => {
-    return role === 'admin'
-      ? <span className="badge badge-info">Admin</span>
-      : <span className="badge" style={{background: 'var(--bg-tertiary)', color: 'var(--text-secondary)'}}>Usuário</span>;
+    const map = {
+      'admin': { label: 'Admin', cls: 'badge-info' },
+      'equipe': { label: 'Equipe', cls: 'badge-warning' },
+      'user': { label: 'Usuário', cls: '' },
+    };
+    const r = map[role] || { label: role || 'Usuário', cls: '' };
+    return <span className={`badge ${r.cls}`} style={!r.cls ? {background: 'var(--bg-tertiary)', color: 'var(--text-secondary)'} : undefined}>{r.label}</span>;
   };
 
   const formatDate = (d) => d ? new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
@@ -67,7 +71,7 @@ export default function AdminPanel({ currentUserId }) {
             <table className="table">
               <thead>
                 <tr>
-                  <th>E-mail</th>
+                  <th>Usuário</th>
                   <th>Função</th>
                   <th>Status</th>
                   <th>Cadastro</th>
@@ -77,8 +81,29 @@ export default function AdminPanel({ currentUserId }) {
               <tbody>
                 {users.map(u => (
                   <tr key={u.id}>
-                    <td style={{fontWeight: 500}}>{u.email || '—'}</td>
-                    <td>{roleBadge(u.role)}</td>
+                    <td>
+                      <div style={{fontWeight: 500}}>{u.nome || u.email || '—'}</div>
+                      {u.nome && <div style={{fontSize: '11px', color: 'var(--text-muted)'}}>{u.email}</div>}
+                    </td>
+                    <td>
+                      {u.id === currentUserId ? (
+                        roleBadge(u.role)
+                      ) : u.status === 'approved' ? (
+                        <select
+                          className="form-select"
+                          value={u.role || 'user'}
+                          onChange={(e) => updateUser(u.id, { role: e.target.value })}
+                          disabled={actionLoading === u.id}
+                          style={{fontSize: '12px', padding: '4px 8px', minHeight: 'auto', width: 'auto', minWidth: '100px'}}
+                        >
+                          <option value="admin">Admin</option>
+                          <option value="equipe">Equipe</option>
+                          <option value="user">Usuário</option>
+                        </select>
+                      ) : (
+                        roleBadge(u.role)
+                      )}
+                    </td>
                     <td>{statusBadge(u.status)}</td>
                     <td style={{fontSize: '12px', color: 'var(--text-secondary)'}}>{formatDate(u.created_at)}</td>
                     <td>
@@ -88,7 +113,7 @@ export default function AdminPanel({ currentUserId }) {
                             className="btn btn-primary"
                             style={{fontSize: '12px', padding: '4px 10px', minHeight: 'auto', background: 'var(--accent-success)', borderColor: 'var(--accent-success)'}}
                             disabled={actionLoading === u.id}
-                            onClick={() => updateUser(u.id, { status: 'approved' })}
+                            onClick={() => updateUser(u.id, { status: 'approved', role: u.role || 'equipe' })}
                           >Aprovar</button>
                         )}
                         {u.status !== 'rejected' && u.id !== currentUserId && (
@@ -98,22 +123,6 @@ export default function AdminPanel({ currentUserId }) {
                             disabled={actionLoading === u.id}
                             onClick={() => updateUser(u.id, { status: 'rejected' })}
                           >Rejeitar</button>
-                        )}
-                        {u.status === 'approved' && u.role !== 'admin' && (
-                          <button
-                            className="btn btn-secondary"
-                            style={{fontSize: '12px', padding: '4px 10px', minHeight: 'auto'}}
-                            disabled={actionLoading === u.id}
-                            onClick={() => updateUser(u.id, { role: 'admin' })}
-                          >Tornar Admin</button>
-                        )}
-                        {u.role === 'admin' && u.id !== currentUserId && (
-                          <button
-                            className="btn btn-secondary"
-                            style={{fontSize: '12px', padding: '4px 10px', minHeight: 'auto'}}
-                            disabled={actionLoading === u.id}
-                            onClick={() => updateUser(u.id, { role: 'user' })}
-                          >Remover Admin</button>
                         )}
                       </div>
                     </td>

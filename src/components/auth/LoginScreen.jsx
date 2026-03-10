@@ -9,7 +9,9 @@ import { supabaseClient } from '@/config/supabase';
 export default function LoginScreen({ loading }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [nome, setNome] = useState('');
   const [isLogin, setIsLogin] = useState(true);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -30,16 +32,42 @@ export default function LoginScreen({ loading }) {
     setIsLoading(true);
 
     try {
-      if (isLogin) {
+      if (isForgotPassword) {
+        const { error: resetError } = await supabaseClient.auth.resetPasswordForEmail(email, {
+          redirectTo: window.location.origin + '/reset-password',
+        });
+        if (resetError) throw resetError;
+        setSuccessMsg('E-mail de recuperação enviado! Verifique sua caixa de entrada.');
+        setIsForgotPassword(false);
+      } else if (isLogin) {
         const { data, error: authError } = await supabaseClient.auth.signInWithPassword({ email, password });
         if (authError) throw authError;
       } else {
-        const { data, error: authError } = await supabaseClient.auth.signUp({ email, password });
+        if (!nome.trim()) {
+          setError('Informe seu nome');
+          setIsLoading(false);
+          return;
+        }
+        const { data, error: authError } = await supabaseClient.auth.signUp({
+          email,
+          password,
+          options: { data: { nome: nome.trim() } },
+        });
         if (authError) throw authError;
+
+        // Save nome to user_profiles (the trigger creates the profile, we update with nome)
+        // Small delay for the trigger to fire
+        await new Promise((r) => setTimeout(r, 1000));
+        const { data: { user: newUser } } = await supabaseClient.auth.getUser();
+        if (newUser) {
+          await supabaseClient.from('user_profiles').update({ nome: nome.trim() }).eq('id', newUser.id);
+        }
+
         // Sign out so they see the success message
         await supabaseClient.auth.signOut();
         setSuccessMsg('Conta criada com sucesso! Aguarde a aprovação do administrador.');
         setIsLogin(true);
+        setNome('');
       }
     } catch (err) {
       const messages = {
@@ -59,8 +87,14 @@ export default function LoginScreen({ loading }) {
     <div className="login-container">
       <div className="login-box">
         <img src="logo-orne.png" alt="Orne" className="login-logo" onError={(e) => e.target.style.display='none'} />
-        <h1 className="login-title">{isLogin ? 'Entrar' : 'Criar conta'}</h1>
-        <p className="login-subtitle">Sistema de Gestão de Estoque</p>
+        <h1 className="login-title">
+          {isForgotPassword ? 'Recuperar Senha' : isLogin ? 'Entrar' : 'Criar conta'}
+        </h1>
+        <p className="login-subtitle">
+          {isForgotPassword
+            ? 'Informe seu e-mail para receber o link de recuperação'
+            : 'Sistema de Gestão de Estoque'}
+        </p>
 
         {successMsg && (
           <div style={{padding: '12px 16px', borderRadius: '8px', background: 'var(--accent-success-subtle)', color: 'var(--accent-success)', fontSize: '13px', marginBottom: '16px', lineHeight: '1.5', border: '1px solid rgba(61, 139, 95, 0.2)'}}>
@@ -69,26 +103,61 @@ export default function LoginScreen({ loading }) {
         )}
 
         <form className="login-form" onSubmit={handleSubmit}>
+          {!isLogin && !isForgotPassword && (
+            <div className="form-group">
+              <label className="form-label">Nome</label>
+              <input type="text" className="form-input" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Seu nome completo" required />
+            </div>
+          )}
           <div className="form-group">
             <label className="form-label">E-mail</label>
             <input type="email" className="form-input" value={email} onChange={(e) => setEmail(e.target.value)} required />
           </div>
-          <div className="form-group">
-            <label className="form-label">Senha</label>
-            <input type="password" className="form-input" value={password} onChange={(e) => setPassword(e.target.value)} required />
-          </div>
+          {!isForgotPassword && (
+            <div className="form-group">
+              <label className="form-label">Senha</label>
+              <input type="password" className="form-input" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            </div>
+          )}
           <button type="submit" className="btn-login" disabled={isLoading}>
-            {isLoading ? 'Aguarde...' : isLogin ? 'Entrar' : 'Criar conta'}
+            {isLoading ? 'Aguarde...' : isForgotPassword ? 'Enviar Link' : isLogin ? 'Entrar' : 'Criar conta'}
           </button>
         </form>
 
         {error && <div className="login-error">{error}</div>}
 
+        {isLogin && !isForgotPassword && (
+          <div style={{ textAlign: 'center', marginTop: '12px' }}>
+            <button
+              onClick={() => { setIsForgotPassword(true); setError(''); setSuccessMsg(''); }}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--accent-primary)',
+                cursor: 'pointer',
+                fontSize: '13px',
+                textDecoration: 'underline',
+                fontFamily: 'inherit',
+              }}
+            >
+              Esqueceu a senha?
+            </button>
+          </div>
+        )}
+
         <div className="login-toggle">
-          {isLogin ? 'Não tem conta? ' : 'Já tem conta? '}
-          <button onClick={() => { setIsLogin(!isLogin); setError(''); setSuccessMsg(''); }}>
-            {isLogin ? 'Criar conta' : 'Fazer login'}
-          </button>
+          {isForgotPassword ? (
+            <button onClick={() => { setIsForgotPassword(false); setError(''); setSuccessMsg(''); }}>
+              Voltar ao login
+            </button>
+          ) : (
+            <>
+              {isLogin ? 'Não tem conta? ' : 'Já tem conta? '}
+              <button onClick={() => { setIsLogin(!isLogin); setIsForgotPassword(false); setError(''); setSuccessMsg(''); }}>
+                {isLogin ? 'Criar conta' : 'Fazer login'}
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
