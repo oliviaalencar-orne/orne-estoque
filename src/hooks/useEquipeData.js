@@ -14,7 +14,7 @@ import { useState, useCallback, useRef } from 'react';
 import { supabaseClient } from '@/config/supabase';
 import { mapProductFromDB } from '@/utils/mappers';
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 100;
 
 /**
  * Hook for paginated products with server-side stock calculation.
@@ -73,6 +73,7 @@ export function useEquipeProducts() {
           local: row.local,
           created_at: row.created_at,
           tiny_id: row.tiny_id,
+          imagem_url: row.imagem_url,
         }),
         // Pre-calculated stock from RPC
         currentQuantity: Number(row.current_stock) || 0,

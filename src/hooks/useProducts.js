@@ -18,7 +18,7 @@ import { mapProductFromDB, mapEntryFromDB, mapExitFromDB } from '@/utils/mappers
 import { generateId } from '@/utils/helpers';
 import { fetchAllRows } from './useSupabaseCollection';
 
-const PRODUCT_FIELDS = 'id, name, sku, ean, category, min_stock, observations, nf_origem, created_at, tiny_id, unit_price, local';
+const PRODUCT_FIELDS = 'id, name, sku, ean, category, min_stock, observations, nf_origem, created_at, tiny_id, unit_price, local, imagem_url';
 const PRODUCT_FILTERS = [(q) => q.neq('sku', ''), (q) => q.neq('name', '')];
 
 /**

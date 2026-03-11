@@ -16,6 +16,7 @@ export const mapProductFromDB = (row) => ({
   unitPrice: parseFloat(row.unit_price) || 0,
   tinyId: row.tiny_id || '',
   local: row.local || '',
+  imagemUrl: row.imagem_url || '',
   createdAt: row.created_at,
 });
 

@@ -1,15 +1,15 @@
 /**
- * StockView.jsx — Stock view with category groups, search, edit/delete
+ * StockView.jsx — Stock table view with sortable columns, detail modal, search
  *
- * Extracted from index-legacy.html L3831-4477
+ * Rewritten from card-based to table-based layout.
  */
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Icon, CategoryIcon } from '@/utils/icons';
 import { formatBRL } from '@/utils/formatters';
 import CategorySelectInline from '@/components/ui/CategorySelectInline';
 
 export default function StockView({ stock, categories, onUpdate, onDelete, searchTerm, setSearchTerm, entries, exits, locaisOrigem, onAddCategory, onUpdateCategory, onDeleteCategory, products, isEquipe, equipeProducts, equipeLoading, equipeHasMore, onEquipeLoadMore, onEquipeSearch, equipeTotalCount }) {
-    // Loading state: equipe uses equipeProducts from RPC, admin uses stock from useStock
+    // Loading state
     const showInitialLoading = isEquipe
         ? ((equipeProducts || []).length === 0 && equipeLoading)
         : (stock.length === 0);
@@ -31,42 +31,46 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
     }
 
     const [filter, setFilter] = useState('all');
+    const [detailProduct, setDetailProduct] = useState(null);
     const [editingProduct, setEditingProduct] = useState(null);
     const [editForm, setEditForm] = useState({});
     const [successMsg, setSuccessMsg] = useState('');
-    const [historyProduct, setHistoryProduct] = useState(null);
+    const [hideZeroStock, setHideZeroStock] = useState(true);
 
-    // Busca com debounce
+    // Search with debounce
     const [searchInput, setSearchInput] = useState(searchTerm || '');
     const [debouncedSearch, setDebouncedSearch] = useState(searchTerm || '');
     useEffect(() => {
         const timer = setTimeout(() => {
             setDebouncedSearch(searchInput);
             setSearchTerm(searchInput);
-            // Equipe: trigger server-side search via RPC
-            if (isEquipe && onEquipeSearch) {
-                onEquipeSearch(searchInput);
-            }
+            if (isEquipe && onEquipeSearch) onEquipeSearch(searchInput);
         }, 300);
         return () => clearTimeout(timer);
     }, [searchInput]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Ordenacao e filtros
+    // Sort state
     const [sortBy, setSortBy] = useState('name');
     const [sortOrder, setSortOrder] = useState('asc');
-    const [hideZeroStock, setHideZeroStock] = useState(true);
 
-    // Categorias expandidas/recolhidas
-    const [expandedCategories, setExpandedCategories] = useState(() => {
-        const initial = {};
-        categories.forEach(cat => { initial[cat.name] = true; });
-        initial['Sem categoria'] = false;
-        return initial;
-    });
-
-    const toggleCategory = (catName) => {
-        setExpandedCategories(prev => ({ ...prev, [catName]: !prev[catName] }));
+    const handleSortClick = (field) => {
+        if (sortBy === field) {
+            setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortBy(field);
+            setSortOrder('asc');
+        }
     };
+
+    const SortHeader = ({ field, children, className }) => (
+        <th
+            onClick={() => handleSortClick(field)}
+            style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+            className={className || ''}
+        >
+            {children} {sortBy === field ? (sortOrder === 'asc' ? '\u2191' : '\u2193') : ''}
+        </th>
+    );
 
     const getCategoryName = (catId) => {
         const cat = categories.find(c => c.id === catId);
@@ -78,13 +82,14 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
         return cat?.color || '#6b7280';
     };
 
-    // Funcao de ordenacao
+    // Sort function
     const sortProducts = (prods, by, order) => {
         return [...prods].sort((a, b) => {
             let cmp = 0;
             switch (by) {
                 case 'name': cmp = (a.name || '').localeCompare(b.name || ''); break;
-                case 'date': cmp = new Date(a.createdAt || 0) - new Date(b.createdAt || 0); break;
+                case 'sku': cmp = (a.sku || '').localeCompare(b.sku || ''); break;
+                case 'category': cmp = getCategoryName(a.category).localeCompare(getCategoryName(b.category)); break;
                 case 'price': cmp = (a.unitPrice || 0) - (b.unitPrice || 0); break;
                 case 'quantity': cmp = (a.currentQuantity || 0) - (b.currentQuantity || 0); break;
                 default: cmp = 0;
@@ -93,16 +98,13 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
         });
     };
 
-    // Busca ativa = mostrar tudo independente do toggle
     const hasSearch = debouncedSearch.trim() !== '';
 
-    // Produtos agrupados por categoria (PERFORMANCE: useMemo)
-    // Equipe: uses equipeProducts (server-side filtered/paginated)
-    // Admin: uses stock (client-side filtered)
-    const groupedProducts = useMemo(() => {
+    // Filtered + sorted flat list (no category grouping)
+    const filteredProducts = useMemo(() => {
         let filtered = isEquipe ? (equipeProducts || []) : stock;
 
-        // Filtro de busca — admin only (equipe uses server-side search)
+        // Search filter — admin only (equipe uses server-side search)
         if (!isEquipe && hasSearch) {
             const term = debouncedSearch.toLowerCase();
             filtered = filtered.filter(p =>
@@ -113,43 +115,20 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
             );
         }
 
-        // Filtro de status (abas) — works for both
+        // Status filter
         if (filter !== 'all') {
             filtered = filtered.filter(p => p.status === filter);
         }
 
-        // Ocultar zerados — admin only (equipe shows all loaded products)
-        if (!isEquipe && hideZeroStock && filter !== 'empty') {
+        // Hide zero stock
+        if (hideZeroStock && filter !== 'empty') {
             filtered = filtered.filter(p => p.currentQuantity > 0);
         }
 
-        // Agrupar por categoria
-        const groups = {};
-        categories.forEach(cat => { groups[cat.name] = []; });
-        groups['Sem categoria'] = [];
-
-        filtered.forEach(product => {
-            const catName = getCategoryName(product.category);
-            if (!groups[catName]) groups[catName] = [];
-            groups[catName].push(product);
-        });
-
-        // Ordenar dentro de cada grupo
-        Object.keys(groups).forEach(catName => {
-            groups[catName] = sortProducts(groups[catName], sortBy, sortOrder);
-        });
-
-        return groups;
+        return sortProducts(filtered, sortBy, sortOrder);
     }, [stock, equipeProducts, isEquipe, categories, debouncedSearch, hideZeroStock, sortBy, sortOrder, filter]);
 
-    // Contagem total de produtos filtrados
-    const totalFiltered = useMemo(() => {
-        return Object.values(groupedProducts).reduce((sum, arr) => sum + arr.length, 0);
-    }, [groupedProducts]);
-
-    // Contagens para as abas de status
-    // Equipe: counts from loaded equipeProducts (server-side filtered)
-    // Admin: counts from stock (client-side filtered)
+    // Status counts
     const statusCounts = useMemo(() => {
         let base = isEquipe ? (equipeProducts || []) : stock;
         if (!isEquipe && hasSearch) {
@@ -161,7 +140,7 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                 (p.nfOrigem || '').toLowerCase().includes(term)
             );
         }
-        const all = (!isEquipe && hideZeroStock) ? base.filter(p => p.currentQuantity > 0) : base;
+        const all = hideZeroStock ? base.filter(p => p.currentQuantity > 0) : base;
         return {
             all: all.length,
             ok: base.filter(p => p.status === 'ok').length,
@@ -169,17 +148,33 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
         };
     }, [stock, equipeProducts, isEquipe, debouncedSearch, hideZeroStock]);
 
-    // Quando busca ativa, expandir tudo automaticamente
-    useEffect(() => {
-        if (debouncedSearch.trim() !== '') {
-            setExpandedCategories(prev => {
-                const next = { ...prev };
-                categories.forEach(cat => { next[cat.name] = true; });
-                next['Sem categoria'] = true;
-                return next;
-            });
-        }
-    }, [debouncedSearch]);
+    // Product NFs for detail/edit modal
+    const getProductNFs = (sku) => {
+        const productEntries = (entries || []).filter(e => e.sku === sku && e.nf && e.nf.trim() !== '');
+        const nfMap = {};
+        productEntries.forEach(e => {
+            if (!nfMap[e.nf]) {
+                nfMap[e.nf] = { nf: e.nf, date: e.date, quantity: e.quantity };
+            } else {
+                nfMap[e.nf].quantity += e.quantity;
+                if (new Date(e.date) > new Date(nfMap[e.nf].date)) nfMap[e.nf].date = e.date;
+            }
+        });
+        return Object.values(nfMap).sort((a, b) => new Date(b.date) - new Date(a.date));
+    };
+
+    // Product history
+    const getProductHistory = (sku) => {
+        const productEntries = (entries || []).filter(e => e.sku === sku).map(e => ({...e, movimento: 'ENTRADA'}));
+        const productExits = (exits || []).filter(e => e.sku === sku).map(e => ({...e, movimento: 'SAIDA'}));
+        return [...productEntries, ...productExits].sort((a, b) => new Date(b.date) - new Date(a.date));
+    };
+
+    const formatDate = (dateStr) => {
+        if (!dateStr) return '-';
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('pt-BR') + ' ' + date.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'});
+    };
 
     const openEditModal = (product) => {
         setEditForm({
@@ -192,36 +187,6 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
             local: product.local || '',
         });
         setEditingProduct(product);
-    };
-
-    // Obter todas as NFs de entrada do produto
-    const getProductNFs = (sku) => {
-        const productEntries = (entries || []).filter(e => e.sku === sku && e.nf && e.nf.trim() !== '');
-        const nfMap = {};
-        productEntries.forEach(e => {
-            if (!nfMap[e.nf]) {
-                nfMap[e.nf] = { nf: e.nf, date: e.date, quantity: e.quantity };
-            } else {
-                nfMap[e.nf].quantity += e.quantity;
-                if (new Date(e.date) > new Date(nfMap[e.nf].date)) {
-                    nfMap[e.nf].date = e.date;
-                }
-            }
-        });
-        return Object.values(nfMap).sort((a, b) => new Date(b.date) - new Date(a.date));
-    };
-
-    // Obter historico de movimentacoes do produto
-    const getProductHistory = (sku) => {
-        const productEntries = (entries || []).filter(e => e.sku === sku).map(e => ({...e, movimento: 'ENTRADA'}));
-        const productExits = (exits || []).filter(e => e.sku === sku).map(e => ({...e, movimento: 'SAIDA'}));
-        return [...productEntries, ...productExits].sort((a, b) => new Date(b.date) - new Date(a.date));
-    };
-
-    const formatDate = (dateStr) => {
-        if (!dateStr) return '-';
-        const date = new Date(dateStr);
-        return date.toLocaleDateString('pt-BR') + ' ' + date.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'});
     };
 
     const handleSaveEdit = async () => {
@@ -238,6 +203,36 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
         }
     };
 
+    // Equipe infinite scroll
+    const sentinelRef = useRef(null);
+    useEffect(() => {
+        if (!isEquipe || !equipeHasMore) return;
+        const obs = new IntersectionObserver(([e]) => {
+            if (e.isIntersecting && !equipeLoading) onEquipeLoadMore();
+        }, { threshold: 0.1 });
+        if (sentinelRef.current) obs.observe(sentinelRef.current);
+        return () => obs.disconnect();
+    }, [isEquipe, equipeHasMore, equipeLoading, onEquipeLoadMore]);
+
+    // NF balance calculation for detail modal
+    const getNfBalance = (sku) => {
+        const history = getProductHistory(sku);
+        const entradas = history.filter(h => h.movimento === 'ENTRADA');
+        const saidas = history.filter(h => h.movimento === 'SAIDA');
+        const saldoPorNF = {};
+        entradas.forEach(e => {
+            const nfKey = e.nf || 'SEM_NF';
+            if (!saldoPorNF[nfKey]) saldoPorNF[nfKey] = { entradas: 0, saidas: 0, local: e.localEntrada || '-' };
+            saldoPorNF[nfKey].entradas += e.quantity;
+        });
+        saidas.forEach(s => {
+            const nfKey = s.nfOrigem || 'SEM_NF';
+            if (!saldoPorNF[nfKey]) saldoPorNF[nfKey] = { entradas: 0, saidas: 0, local: '-' };
+            saldoPorNF[nfKey].saidas += s.quantity;
+        });
+        return Object.entries(saldoPorNF).filter(([, dados]) => dados.entradas - dados.saidas > 0);
+    };
+
     return (
         <div>
             <div className="page-header">
@@ -247,179 +242,59 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
 
             {successMsg && <div className="alert alert-success">{successMsg}</div>}
 
-            {/* Modal de Edicao */}
-            {editingProduct && (
-                <div className="modal-overlay">
-                    <div className="modal-content">
-                        <h2 className="modal-title">Editar Produto</h2>
-                        <p className="modal-subtitle">Atualize as informacoes do produto</p>
-
-                        <div className="form-group">
-                            <label className="form-label">Nome do Produto</label>
-                            <input
-                                type="text"
-                                className="form-input"
-                                value={editForm.name}
-                                onChange={(e) => setEditForm({...editForm, name: e.target.value})}
-                            />
-                        </div>
-
-                        <div className="form-row">
-                            <div className="form-group">
-                                <label className="form-label">SKU</label>
-                                <input
-                                    type="text"
-                                    className="form-input"
-                                    value={editForm.sku}
-                                    onChange={(e) => setEditForm({...editForm, sku: e.target.value})}
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label className="form-label">EAN</label>
-                                <input
-                                    type="text"
-                                    className="form-input"
-                                    value={editForm.ean}
-                                    onChange={(e) => setEditForm({...editForm, ean: e.target.value})}
-                                />
-                            </div>
-                        </div>
-
-                        <CategorySelectInline
-                            categories={categories}
-                            value={editForm.category}
-                            onChange={(val) => setEditForm({...editForm, category: val})}
-                            onAddCategory={onAddCategory}
-                            onUpdateCategory={onUpdateCategory}
-                            onDeleteCategory={onDeleteCategory}
-                            products={products || stock}
-                        />
-
-                        <div className="form-group">
-                            <label className="form-label">Estoque Minimo</label>
-                            <input
-                                type="number"
-                                className="form-input"
-                                value={editForm.minStock}
-                                onChange={(e) => setEditForm({...editForm, minStock: e.target.value})}
-                            />
-                        </div>
-
-                        <div className="form-group">
-                            <label className="form-label">Local</label>
-                            <select
-                                className="form-select"
-                                value={editForm.local || ''}
-                                onChange={(e) => setEditForm({...editForm, local: e.target.value})}
-                            >
-                                <option value="">Selecione o local</option>
-                                {(locaisOrigem || []).map(l => (
-                                    <option key={l} value={l}>{l}</option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {editingProduct && editingProduct.unitPrice > 0 && (
-                            <div className="form-row">
-                                <div className="form-group">
-                                    <label className="form-label">Preco Unitario</label>
-                                    <div style={{padding: '8px 0', fontSize: '14px', color: 'var(--text-primary)'}}>
-                                        R$ {formatBRL(editingProduct.unitPrice)}
-                                    </div>
-                                    <span style={{color: 'var(--text-tertiary)', fontSize: '11px'}}>Sincronizado via Tiny ERP</span>
-                                </div>
-                                <div className="form-group"></div>
-                            </div>
-                        )}
-
-                        <div className="form-group">
-                            <label className="form-label">Notas Fiscais de Entrada</label>
-                            {(() => {
-                                const nfs = getProductNFs(editingProduct.sku);
-                                if (nfs.length === 0) {
-                                    return (
-                                        <div style={{ padding: '8px 12px', fontSize: '13px', color: 'var(--text-muted)', background: 'var(--bg-secondary)', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
-                                            Nenhuma NF registrada para este produto
-                                        </div>
-                                    );
-                                }
-                                return (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                        {nfs.map((nfInfo, idx) => (
-                                            <div key={idx} style={{
-                                                display: 'flex',
-                                                justifyContent: 'space-between',
-                                                alignItems: 'center',
-                                                padding: '6px 12px',
-                                                fontSize: '13px',
-                                                background: 'var(--bg-secondary)',
-                                                borderRadius: 'var(--radius)',
-                                                border: '1px solid var(--border)',
-                                            }}>
-                                                <span style={{ fontWeight: 500 }}>NF {nfInfo.nf}</span>
-                                                <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
-                                                    {nfInfo.quantity} un. — {new Date(nfInfo.date).toLocaleDateString('pt-BR')}
-                                                </span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                );
-                            })()}
-                            <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
-                                NFs registradas via Entradas de estoque
-                            </span>
-                        </div>
-
-                        <div className="form-group">
-                            <label className="form-label">Observacoes</label>
-                            <textarea
-                                className="form-textarea"
-                                value={editForm.observations}
-                                onChange={(e) => setEditForm({...editForm, observations: e.target.value})}
-                                placeholder="Informacoes adicionais sobre o produto..."
-                            />
-                        </div>
-
-                        <div style={{background: 'var(--bg-primary)', padding: '12px', borderRadius: 'var(--radius)', marginBottom: '16px', fontSize: '13px'}}>
-                            <strong>Estoque atual:</strong> {editingProduct.currentQuantity} unidades
-                            <div style={{fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px'}}>
-                                Para alterar quantidade, use Entrada ou Saida
-                            </div>
-                        </div>
-
-                        <div className="btn-group">
-                            <button className="btn btn-primary" onClick={handleSaveEdit}>Salvar</button>
-                            <button className="btn btn-secondary" onClick={() => setEditingProduct(null)}>Cancelar</button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Modal de Historico de Movimentacoes */}
-            {historyProduct && (
+            {/* Detail Modal — read-only info + history */}
+            {detailProduct && !editingProduct && (
                 <div className="modal-overlay">
                     <div className="modal-content" style={{maxWidth: '800px'}}>
-                        <h2 className="modal-title">Historico de Movimentacoes</h2>
-                        <p className="modal-subtitle">{historyProduct.name}</p>
+                        <h2 className="modal-title">Detalhes do Produto</h2>
 
-                        <div style={{background: 'var(--bg-primary)', padding: '12px', borderRadius: 'var(--radius)', marginBottom: '16px'}}>
-                            <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '13px'}}>
-                                <div><strong>SKU:</strong> {historyProduct.sku}</div>
-                                <div><strong>Estoque Atual:</strong> {historyProduct.currentQuantity} un.</div>
+                        {/* Product info */}
+                        <div style={{display: 'flex', gap: '16px', marginBottom: '16px', flexWrap: 'wrap'}}>
+                            {detailProduct.imagemUrl && (
+                                <img src={detailProduct.imagemUrl} alt={detailProduct.name} style={{width: '80px', height: '80px', objectFit: 'contain', borderRadius: '8px', border: '1px solid var(--border-color)', background: '#fff'}} />
+                            )}
+                            <div style={{flex: 1, minWidth: '200px'}}>
+                                <div style={{fontWeight: 600, fontSize: '16px', marginBottom: '4px'}}>{detailProduct.name}</div>
+                                <div style={{display: 'flex', gap: '12px', flexWrap: 'wrap', fontSize: '13px', color: 'var(--text-secondary)'}}>
+                                    <span>SKU: <strong>{detailProduct.sku}</strong></span>
+                                    {detailProduct.ean && <span>EAN: {detailProduct.ean}</span>}
+                                    {detailProduct.local && <span>{'\uD83D\uDCCD'} {detailProduct.local}</span>}
+                                    {detailProduct.unitPrice > 0 && <span>R$ {formatBRL(detailProduct.unitPrice)}</span>}
+                                </div>
+                                <div style={{marginTop: '8px'}}>
+                                    <span style={{
+                                        background: getCategoryColor(detailProduct.category) + '15',
+                                        color: getCategoryColor(detailProduct.category),
+                                        border: '1px solid ' + getCategoryColor(detailProduct.category) + '30',
+                                        padding: '2px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: 500,
+                                    }}>
+                                        {getCategoryName(detailProduct.category)}
+                                    </span>
+                                    <span style={{
+                                        marginLeft: '8px',
+                                        padding: '2px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: 600,
+                                        background: detailProduct.currentQuantity > 0 ? 'var(--accent-success-subtle)' : 'var(--accent-error-subtle)',
+                                        color: detailProduct.currentQuantity > 0 ? 'var(--accent-success)' : 'var(--accent-error)',
+                                    }}>
+                                        {detailProduct.currentQuantity} un.
+                                    </span>
+                                </div>
+                                {detailProduct.observations && (
+                                    <div style={{marginTop: '8px', fontSize: '13px', color: 'var(--text-secondary)', fontStyle: 'italic'}}>
+                                        {detailProduct.observations}
+                                    </div>
+                                )}
                             </div>
                         </div>
 
-                        {(() => {
-                            const history = getProductHistory(historyProduct.sku);
+                        {/* History table */}
+                        {!isEquipe && (() => {
+                            const history = getProductHistory(detailProduct.sku);
                             if (history.length === 0) {
-                                return (
-                                    <div style={{textAlign: 'center', padding: '24px', color: 'var(--text-muted)'}}>
-                                        Nenhuma movimentacao registrada
-                                    </div>
-                                );
+                                return <div style={{textAlign: 'center', padding: '16px', color: 'var(--text-muted)', fontSize: '13px'}}>Nenhuma movimentacao registrada</div>;
                             }
                             return (
-                                <div className="table-container" style={{maxHeight: '350px', overflowY: 'auto'}}>
+                                <div className="table-container" style={{maxHeight: '280px', overflowY: 'auto', marginBottom: '12px'}}>
                                     <table className="table">
                                         <thead>
                                             <tr>
@@ -440,10 +315,7 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                                                         <span style={{
                                                             background: mov.movimento === 'ENTRADA' ? 'var(--success-light)' : 'var(--danger-light)',
                                                             color: mov.movimento === 'ENTRADA' ? 'var(--success)' : 'var(--danger)',
-                                                            padding: '2px 8px',
-                                                            borderRadius: '10px',
-                                                            fontSize: '10px',
-                                                            fontWeight: '600'
+                                                            padding: '2px 8px', borderRadius: '10px', fontSize: '10px', fontWeight: '600'
                                                         }}>
                                                             {mov.movimento}
                                                         </span>
@@ -451,23 +323,13 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                                                     <td style={{fontWeight: '600'}}>{mov.quantity}</td>
                                                     <td style={{fontSize: '11px'}}>
                                                         {mov.localEntrada && (
-                                                            <span style={{
-                                                                background: 'var(--accent-bg)',
-                                                                color: 'var(--accent)',
-                                                                padding: '2px 6px',
-                                                                borderRadius: '8px',
-                                                                fontSize: '10px'
-                                                            }}>
+                                                            <span style={{background: 'var(--accent-bg)', color: 'var(--accent)', padding: '2px 6px', borderRadius: '8px', fontSize: '10px'}}>
                                                                 {mov.localEntrada}
                                                             </span>
                                                         )}
                                                     </td>
-                                                    <td style={{fontFamily: 'monospace', fontSize: '11px'}}>
-                                                        {mov.movimento === 'ENTRADA' ? (mov.nf || '-') : (mov.nfOrigem || '-')}
-                                                    </td>
-                                                    <td style={{fontFamily: 'monospace', fontSize: '11px'}}>
-                                                        {mov.movimento === 'SAIDA' ? (mov.nf || '-') : '-'}
-                                                    </td>
+                                                    <td style={{fontFamily: 'monospace', fontSize: '11px'}}>{mov.movimento === 'ENTRADA' ? (mov.nf || '-') : (mov.nfOrigem || '-')}</td>
+                                                    <td style={{fontFamily: 'monospace', fontSize: '11px'}}>{mov.movimento === 'SAIDA' ? (mov.nf || '-') : '-'}</td>
                                                     <td style={{fontSize: '12px'}}>{mov.supplier || mov.client || '-'}</td>
                                                 </tr>
                                             ))}
@@ -477,45 +339,19 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                             );
                         })()}
 
-                        {/* Resumo por NF de entrada */}
-                        {(() => {
-                            const history = getProductHistory(historyProduct.sku);
-                            const entradas = history.filter(h => h.movimento === 'ENTRADA');
-                            const saidas = history.filter(h => h.movimento === 'SAIDA');
-
-                            // Calcular saldo por NF incluindo local
-                            const saldoPorNF = {};
-                            entradas.forEach(e => {
-                                const nfKey = e.nf || 'SEM_NF';
-                                if (!saldoPorNF[nfKey]) saldoPorNF[nfKey] = { entradas: 0, saidas: 0, local: e.localEntrada || '-' };
-                                saldoPorNF[nfKey].entradas += e.quantity;
-                            });
-                            saidas.forEach(s => {
-                                const nfKey = s.nfOrigem || 'SEM_NF';
-                                if (!saldoPorNF[nfKey]) saldoPorNF[nfKey] = { entradas: 0, saidas: 0, local: '-' };
-                                saldoPorNF[nfKey].saidas += s.quantity;
-                            });
-
-                            const nfsComSaldo = Object.entries(saldoPorNF).filter(([nf, dados]) => dados.entradas - dados.saidas > 0);
-
+                        {/* NF balance */}
+                        {!isEquipe && (() => {
+                            const nfsComSaldo = getNfBalance(detailProduct.sku);
                             if (nfsComSaldo.length === 0) return null;
-
                             return (
-                                <div style={{marginTop: '16px', padding: '12px', background: 'var(--info-light)', borderRadius: 'var(--radius)'}}>
+                                <div style={{padding: '12px', background: 'var(--info-light)', borderRadius: 'var(--radius)', marginBottom: '12px'}}>
                                     <div style={{fontWeight: '600', marginBottom: '8px', fontSize: '13px'}}>Estoque por NF de Entrada:</div>
                                     <div style={{display: 'flex', flexWrap: 'wrap', gap: '8px'}}>
                                         {nfsComSaldo.map(([nf, dados]) => (
-                                            <div key={nf} style={{
-                                                background: 'white',
-                                                padding: '6px 12px',
-                                                borderRadius: 'var(--radius)',
-                                                fontSize: '12px'
-                                            }}>
+                                            <div key={nf} style={{background: 'white', padding: '6px 12px', borderRadius: 'var(--radius)', fontSize: '12px'}}>
                                                 <strong>NF {nf === 'SEM_NF' ? '(sem NF)' : nf}:</strong> {dados.entradas - dados.saidas} un.
                                                 {dados.local && dados.local !== '-' && (
-                                                    <span style={{marginLeft: '6px', color: 'var(--accent)', fontSize: '11px'}}>
-                                                        {dados.local}
-                                                    </span>
+                                                    <span style={{marginLeft: '6px', color: 'var(--accent)', fontSize: '11px'}}>{dados.local}</span>
                                                 )}
                                             </div>
                                         ))}
@@ -524,14 +360,116 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                             );
                         })()}
 
-                        <div className="btn-group" style={{marginTop: '16px'}}>
-                            <button className="btn btn-secondary" onClick={() => setHistoryProduct(null)}>Fechar</button>
+                        <div className="btn-group" style={{gap: '8px'}}>
+                            {!isEquipe && (
+                                <>
+                                    <button className="btn btn-primary" onClick={() => { openEditModal(detailProduct); }}>Editar</button>
+                                    <button className="btn btn-secondary" onClick={() => { handleDelete(detailProduct); setDetailProduct(null); }} style={{color: 'var(--accent-error)', borderColor: 'var(--accent-error)'}}>Excluir</button>
+                                </>
+                            )}
+                            <button className="btn btn-secondary" onClick={() => setDetailProduct(null)}>Fechar</button>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* Barra de busca */}
+            {/* Edit Modal */}
+            {editingProduct && (
+                <div className="modal-overlay">
+                    <div className="modal-content">
+                        <h2 className="modal-title">Editar Produto</h2>
+                        <p className="modal-subtitle">Atualize as informacoes do produto</p>
+
+                        <div className="form-group">
+                            <label className="form-label">Nome do Produto</label>
+                            <input type="text" className="form-input" value={editForm.name} onChange={(e) => setEditForm({...editForm, name: e.target.value})} />
+                        </div>
+
+                        <div className="form-row">
+                            <div className="form-group">
+                                <label className="form-label">SKU</label>
+                                <input type="text" className="form-input" value={editForm.sku} onChange={(e) => setEditForm({...editForm, sku: e.target.value})} />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">EAN</label>
+                                <input type="text" className="form-input" value={editForm.ean} onChange={(e) => setEditForm({...editForm, ean: e.target.value})} />
+                            </div>
+                        </div>
+
+                        <CategorySelectInline
+                            categories={categories}
+                            value={editForm.category}
+                            onChange={(val) => setEditForm({...editForm, category: val})}
+                            onAddCategory={onAddCategory}
+                            onUpdateCategory={onUpdateCategory}
+                            onDeleteCategory={onDeleteCategory}
+                            products={products || stock}
+                        />
+
+                        <div className="form-group">
+                            <label className="form-label">Estoque Minimo</label>
+                            <input type="number" className="form-input" value={editForm.minStock} onChange={(e) => setEditForm({...editForm, minStock: e.target.value})} />
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label">Local</label>
+                            <select className="form-select" value={editForm.local || ''} onChange={(e) => setEditForm({...editForm, local: e.target.value})}>
+                                <option value="">Selecione o local</option>
+                                {(locaisOrigem || []).map(l => (<option key={l} value={l}>{l}</option>))}
+                            </select>
+                        </div>
+
+                        {editingProduct.unitPrice > 0 && (
+                            <div className="form-row">
+                                <div className="form-group">
+                                    <label className="form-label">Preco Unitario</label>
+                                    <div style={{padding: '8px 0', fontSize: '14px', color: 'var(--text-primary)'}}>R$ {formatBRL(editingProduct.unitPrice)}</div>
+                                    <span style={{color: 'var(--text-tertiary)', fontSize: '11px'}}>Sincronizado via Tiny ERP</span>
+                                </div>
+                                <div className="form-group"></div>
+                            </div>
+                        )}
+
+                        <div className="form-group">
+                            <label className="form-label">Notas Fiscais de Entrada</label>
+                            {(() => {
+                                const nfs = getProductNFs(editingProduct.sku);
+                                if (nfs.length === 0) {
+                                    return <div style={{ padding: '8px 12px', fontSize: '13px', color: 'var(--text-muted)', background: 'var(--bg-secondary)', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>Nenhuma NF registrada para este produto</div>;
+                                }
+                                return (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                        {nfs.map((nfInfo, idx) => (
+                                            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 12px', fontSize: '13px', background: 'var(--bg-secondary)', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
+                                                <span style={{ fontWeight: 500 }}>NF {nfInfo.nf}</span>
+                                                <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{nfInfo.quantity} un. — {new Date(nfInfo.date).toLocaleDateString('pt-BR')}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                );
+                            })()}
+                            <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>NFs registradas via Entradas de estoque</span>
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label">Observacoes</label>
+                            <textarea className="form-textarea" value={editForm.observations} onChange={(e) => setEditForm({...editForm, observations: e.target.value})} placeholder="Informacoes adicionais sobre o produto..." />
+                        </div>
+
+                        <div style={{background: 'var(--bg-primary)', padding: '12px', borderRadius: 'var(--radius)', marginBottom: '16px', fontSize: '13px'}}>
+                            <strong>Estoque atual:</strong> {editingProduct.currentQuantity} unidades
+                            <div style={{fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px'}}>Para alterar quantidade, use Entrada ou Saida</div>
+                        </div>
+
+                        <div className="btn-group">
+                            <button className="btn btn-primary" onClick={handleSaveEdit}>Salvar</button>
+                            <button className="btn btn-secondary" onClick={() => setEditingProduct(null)}>Cancelar</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Search bar */}
             <div className="card" style={{marginBottom: '12px'}}>
                 <div className="search-box">
                     <span className="search-icon"><Icon name="search" size={14} /></span>
@@ -547,7 +485,7 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                     )}
                 </div>
 
-                {/* Abas de status */}
+                {/* Status tabs */}
                 <div className="filter-tabs">
                     <button className={`filter-tab ${filter === 'all' ? 'active' : ''}`} onClick={() => setFilter('all')}>
                         Todos ({statusCounts.all})
@@ -561,174 +499,112 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                 </div>
             </div>
 
-            {/* Equipe: server-side product count */}
+            {/* Equipe: server-side count */}
             {isEquipe && equipeTotalCount > 0 && (
                 <div style={{ textAlign: 'center', fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
                     Mostrando {(equipeProducts || []).length} de {equipeTotalCount} produtos
                 </div>
             )}
 
-            {/* Filtros: ocultar zerados + ordenacao */}
-            <div style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '8px 0', marginBottom: '16px', flexWrap: 'wrap', gap: '12px'
-            }}>
-                {!isEquipe ? (
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#555', cursor: 'pointer' }}>
-                        <input
-                            type="checkbox"
-                            checked={hideZeroStock}
-                            onChange={e => setHideZeroStock(e.target.checked)}
-                        />
-                        Ocultar produtos zerados
-                    </label>
-                ) : (
-                    <div />
-                )}
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '13px', color: '#555' }}>Ordenar por:</span>
-                    <select
-                        value={sortBy}
-                        onChange={e => setSortBy(e.target.value)}
-                        className="form-select"
-                        style={{ fontSize: '13px', padding: '4px 8px', minWidth: 'auto', width: 'auto' }}
-                    >
-                        <option value="name">Nome</option>
-                        <option value="date">Mais recentes</option>
-                        <option value="price">Preco</option>
-                        <option value="quantity">Quantidade</option>
-                    </select>
-                    <button
-                        onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
-                        className="btn btn-secondary"
-                        style={{ padding: '4px 10px', fontSize: '13px', minWidth: 'auto' }}
-                        title={sortOrder === 'asc' ? 'Crescente' : 'Decrescente'}
-                    >
-                        {sortOrder === 'asc' ? '\u2191' : '\u2193'}
-                    </button>
-                </div>
+            {/* Hide zero stock toggle */}
+            <div style={{ display: 'flex', alignItems: 'center', padding: '8px 0', marginBottom: '8px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                    <input type="checkbox" checked={hideZeroStock} onChange={e => setHideZeroStock(e.target.checked)} />
+                    Ocultar produtos zerados
+                </label>
             </div>
 
-            {/* Secoes agrupadas por categoria */}
-            {totalFiltered === 0 ? (
+            {/* Product table */}
+            {filteredProducts.length === 0 ? (
                 <div className="empty-state">
                     <div className="empty-state-icon"><Icon name="boxOpen" size={48} /></div>
                     <h3>Nenhum produto encontrado</h3>
                     <p>Tente ajustar os filtros ou a busca</p>
                 </div>
             ) : (
-                Object.entries(groupedProducts).map(([catName, prods]) => {
-                    if (prods.length === 0) return null;
-                    const catData = categories.find(c => c.name === catName);
-                    const isExpanded = expandedCategories[catName] !== false;
-
-                    return (
-                        <div key={catName} style={{ marginBottom: '16px' }}>
-                            {/* Header da secao */}
-                            <div
-                                onClick={() => toggleCategory(catName)}
-                                style={{
-                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                    padding: '12px 16px', background: '#f8f8f8', borderRadius: '8px',
-                                    cursor: 'pointer', userSelect: 'none',
-                                    marginBottom: isExpanded ? '12px' : '0',
-                                    border: '1px solid #eee'
-                                }}
-                            >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <span style={{
-                                        fontSize: '14px', transition: 'transform 0.2s',
-                                        transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
-                                        display: 'inline-block'
-                                    }}>{'\u25B6'}</span>
-                                    {catData ? (
-                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                                            <span style={{
-                                                background: catData.color || '#666', color: 'white',
-                                                width: '24px', height: '24px', borderRadius: '50%',
-                                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                                                fontSize: '12px'
-                                            }}>
-                                                <CategoryIcon icon={catData.icon} size={12} />
-                                            </span>
-                                            <span style={{ fontWeight: 600, fontSize: '14px', color: '#333' }}>
-                                                {catName}
-                                            </span>
-                                        </span>
-                                    ) : (
-                                        <span style={{ fontWeight: 600, fontSize: '14px', color: '#666' }}>{catName}</span>
-                                    )}
-                                    <span style={{ color: '#888', fontSize: '13px' }}>({prods.length})</span>
-                                </div>
-                            </div>
-
-                            {/* Grid de cards — so renderiza se expandido */}
-                            {isExpanded && (
-                                <div className="products-grid">
-                                    {prods.map(p => (
-                                        <div key={p.id} className={`product-card ${p.status}`}>
-                                            <div className="product-actions">
-                                                <span className={`obs-indicator${p.observations && p.observations.trim() ? ' has-obs' : ''}`}>
-                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                        <circle cx="12" cy="12" r="10"/>
-                                                        <path d="M12 16v-4M12 8h.01"/>
-                                                    </svg>
-                                                    {p.observations && p.observations.trim() && (
-                                                        <span className="obs-tooltip">{p.observations}</span>
-                                                    )}
-                                                </span>
-                                                {!isEquipe && (
-                                                    <>
-                                                        <button className="btn btn-icon btn-secondary" onClick={() => setHistoryProduct(p)} title="Ver Historico"><Icon name="clipboard" size={14} /></button>
-                                                        <button className="btn btn-icon btn-secondary" onClick={() => openEditModal(p)} title="Editar"><Icon name="edit" size={14} /></button>
-                                                        <button className="btn btn-icon btn-secondary" onClick={() => handleDelete(p)} title="Excluir"><Icon name="delete" size={14} /></button>
-                                                    </>
-                                                )}
-                                            </div>
-
-                                            <span className="product-category-badge" style={{color: getCategoryColor(p.category), background: getCategoryColor(p.category) + '10', border: '1px solid ' + getCategoryColor(p.category) + '20'}}>
-                                                {getCategoryName(p.category)}
-                                            </span>
-
-                                            <div className="product-name">{p.name}</div>
-                                            <div className="product-sku">SKU: {p.sku}</div>
-                                            {p.unitPrice > 0 && <div className="product-price">R$ {formatBRL(p.unitPrice)}</div>}
-
-                                            {p.local && p.local.trim() !== '' && (
-                                                <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
-                                                    {'\uD83D\uDCCD'} {p.local}
+                <div className="card">
+                    <div className="table-container">
+                        <table className="table">
+                            <thead>
+                                <tr>
+                                    <th style={{width: '48px'}}></th>
+                                    <SortHeader field="name">Produto</SortHeader>
+                                    <SortHeader field="sku" className="hide-mobile">SKU</SortHeader>
+                                    <SortHeader field="category">Categoria</SortHeader>
+                                    <SortHeader field="quantity">Estoque</SortHeader>
+                                    <SortHeader field="price" className="hide-mobile">Preco</SortHeader>
+                                    <th style={{width: '32px'}}></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filteredProducts.map(p => (
+                                    <tr
+                                        key={p.id}
+                                        onClick={() => setDetailProduct(p)}
+                                        style={{cursor: 'pointer'}}
+                                        className="stock-row"
+                                    >
+                                        <td style={{width: '48px', padding: '6px 8px'}}>
+                                            {p.imagemUrl ? (
+                                                <img
+                                                    src={p.imagemUrl}
+                                                    alt=""
+                                                    style={{width: '40px', height: '40px', objectFit: 'contain', borderRadius: '6px', border: '1px solid var(--border-color)', background: '#fff'}}
+                                                    onError={(e) => { e.target.style.display = 'none'; }}
+                                                />
+                                            ) : (
+                                                <div style={{width: '40px', height: '40px', borderRadius: '6px', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                                                    <Icon name="boxOpen" size={16} style={{opacity: 0.3}} />
                                                 </div>
                                             )}
-
-                                            <div className="product-quantity">{p.currentQuantity}</div>
-                                            <span className={`product-status status-${p.status}`}>
-                                                {p.status === 'ok' ? 'OK' : 'ZERADO'}
+                                        </td>
+                                        <td>
+                                            <div style={{fontWeight: 500, fontSize: '13px', lineHeight: '1.3'}}>{p.name}</div>
+                                            {p.local && <div style={{fontSize: '11px', color: 'var(--text-muted)'}}>{'\uD83D\uDCCD'} {p.local}</div>}
+                                        </td>
+                                        <td className="hide-mobile" style={{fontSize: '12px', fontFamily: 'monospace', color: 'var(--text-secondary)'}}>{p.sku}</td>
+                                        <td>
+                                            <span style={{
+                                                background: getCategoryColor(p.category) + '15',
+                                                color: getCategoryColor(p.category),
+                                                border: '1px solid ' + getCategoryColor(p.category) + '30',
+                                                padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 500, whiteSpace: 'nowrap',
+                                            }}>
+                                                {getCategoryName(p.category)}
                                             </span>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    );
-                })
-            )}
-
-            {/* Equipe: "Carregar mais" button for pagination */}
-            {isEquipe && equipeHasMore && (
-                <div style={{ textAlign: 'center', padding: '24px 0' }}>
-                    <button
-                        className="btn btn-secondary"
-                        onClick={onEquipeLoadMore}
-                        disabled={equipeLoading}
-                        style={{ minWidth: '200px' }}
-                    >
-                        {equipeLoading ? 'Carregando...' : 'Carregar mais produtos'}
-                    </button>
+                                        </td>
+                                        <td>
+                                            <span style={{
+                                                fontWeight: 600, fontSize: '14px',
+                                                color: p.currentQuantity > 0 ? 'var(--accent-success)' : 'var(--accent-error)',
+                                            }}>
+                                                {p.currentQuantity}
+                                            </span>
+                                        </td>
+                                        <td className="hide-mobile" style={{fontSize: '12px', color: 'var(--text-secondary)'}}>
+                                            {p.unitPrice > 0 ? `R$ ${formatBRL(p.unitPrice)}` : '-'}
+                                        </td>
+                                        <td style={{width: '32px', padding: '6px'}}>
+                                            {p.observations && p.observations.trim() && (
+                                                <span title={p.observations} style={{color: 'var(--accent-primary)', cursor: 'help'}}>
+                                                    <Icon name="info" size={14} />
+                                                </span>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             )}
 
-            {/* Equipe: loading indicator when fetching more */}
+            {/* Equipe: infinite scroll sentinel */}
+            {isEquipe && equipeHasMore && (
+                <div ref={sentinelRef} style={{height: '1px'}} />
+            )}
+
+            {/* Equipe: loading indicator */}
             {isEquipe && equipeLoading && (equipeProducts || []).length > 0 && (
                 <div style={{ textAlign: 'center', padding: '16px 0' }}>
                     <div style={{
@@ -741,6 +617,14 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                     }} />
                 </div>
             )}
+
+            <style>{`
+                .hide-mobile {}
+                @media (max-width: 768px) {
+                    .hide-mobile { display: none !important; }
+                }
+                .stock-row:hover { background: var(--bg-secondary); }
+            `}</style>
         </div>
     );
 }

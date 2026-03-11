@@ -10,6 +10,7 @@ export default function AdminPanel({ currentUserId }) {
   const [users, setUsers] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [actionLoading, setActionLoading] = useState(null);
+  const [hideRejected, setHideRejected] = useState(true);
 
   useEffect(() => {
     loadUsers();
@@ -67,6 +68,12 @@ export default function AdminPanel({ currentUserId }) {
         </div>
       ) : (
         <div className="card">
+          <div style={{display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 16px', borderBottom: '1px solid var(--border-color)'}}>
+            <label style={{display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none'}}>
+              <input type="checkbox" checked={hideRejected} onChange={(e) => setHideRejected(e.target.checked)} />
+              Ocultar rejeitados
+            </label>
+          </div>
           <div className="table-container">
             <table className="table">
               <thead>
@@ -79,7 +86,7 @@ export default function AdminPanel({ currentUserId }) {
                 </tr>
               </thead>
               <tbody>
-                {users.map(u => (
+                {(hideRejected ? users.filter(u => u.status !== 'rejected') : users).map(u => (
                   <tr key={u.id}>
                     <td>
                       <div style={{fontWeight: 500}}>{u.nome || u.email || '—'}</div>

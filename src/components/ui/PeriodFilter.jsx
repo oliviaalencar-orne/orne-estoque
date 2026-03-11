@@ -1,9 +1,9 @@
 /**
- * PeriodFilter.jsx — Period filter UI + filterByPeriod helper
- *
- * Extracted from index-legacy.html L10005-10078
+ * PeriodFilter.jsx — Compact period filter dropdown + filterByPeriod helper
  */
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+
+const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
 /**
  * Filter items by period (30/60/90 days, all, or custom month/year).
@@ -40,52 +40,94 @@ export function formatUserEmail(email) {
 }
 
 export default function PeriodFilter({ periodFilter, setPeriodFilter, customMonth, setCustomMonth, customYear, setCustomYear }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const getLabel = () => {
+    if (periodFilter === '30') return 'Últimos 30 dias';
+    if (periodFilter === '60') return 'Últimos 60 dias';
+    if (periodFilter === 'custom') return `${MONTHS[customMonth]} ${customYear}`;
+    return 'Últimos 30 dias';
+  };
+
+  const selectOption = (value) => {
+    setPeriodFilter(value);
+    if (value !== 'custom') setOpen(false);
+  };
+
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px',
-      flexWrap: 'wrap', padding: '10px 14px', background: '#f9f9f9', borderRadius: '8px'
-    }}>
-      <span style={{ fontSize: '13px', color: '#555', fontWeight: 500 }}>Período:</span>
-      {[
-        { value: '30', label: '30 dias' },
-        { value: '60', label: '60 dias' },
-        { value: '90', label: '90 dias' },
-        { value: 'all', label: 'Todos' },
-      ].map(opt => (
-        <button
-          key={opt.value}
-          onClick={() => setPeriodFilter(opt.value)}
-          style={{
-            padding: '5px 12px', fontSize: '12px', borderRadius: '6px', cursor: 'pointer',
-            border: periodFilter === opt.value ? '1px solid var(--accent-primary)' : '1px solid #ddd',
-            background: periodFilter === opt.value ? 'var(--accent-primary)' : 'white',
-            color: periodFilter === opt.value ? 'white' : '#333',
-            fontWeight: periodFilter === opt.value ? 600 : 400,
-          }}
-        >
-          {opt.label}
-        </button>
-      ))}
-      <span style={{ color: '#ddd' }}>|</span>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-        <select
-          value={customMonth}
-          onChange={e => { setCustomMonth(parseInt(e.target.value)); setPeriodFilter('custom'); }}
-          className="form-select"
-          style={{ fontSize: '12px', padding: '5px 8px', minWidth: 'auto', width: 'auto' }}
-        >
-          {['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
-            .map((m, i) => <option key={i} value={i}>{m}</option>)}
-        </select>
-        <select
-          value={customYear}
-          onChange={e => { setCustomYear(parseInt(e.target.value)); setPeriodFilter('custom'); }}
-          className="form-select"
-          style={{ fontSize: '12px', padding: '5px 8px', minWidth: 'auto', width: 'auto' }}
-        >
-          {[2024, 2025, 2026].map(y => <option key={y} value={y}>{y}</option>)}
-        </select>
-      </div>
+    <div ref={ref} style={{ position: 'relative', display: 'inline-block', marginBottom: '16px' }}>
+      <button
+        onClick={() => setOpen(!open)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: '6px',
+          padding: '6px 12px', fontSize: '13px', fontWeight: 500,
+          borderRadius: '8px', border: '1px solid var(--border-color)',
+          background: 'var(--bg-primary)', color: 'var(--text-primary)',
+          cursor: 'pointer',
+        }}
+      >
+        {getLabel()}
+        <span style={{ fontSize: '10px', opacity: 0.6 }}>{open ? '\u25B2' : '\u25BC'}</span>
+      </button>
+      {open && (
+        <div style={{
+          position: 'absolute', top: '100%', left: 0, marginTop: '4px', zIndex: 100,
+          background: 'var(--bg-primary)', border: '1px solid var(--border-color)',
+          borderRadius: '10px', boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+          minWidth: '200px', padding: '6px 0',
+        }}>
+          {[
+            { value: '30', label: 'Últimos 30 dias' },
+            { value: '60', label: 'Últimos 60 dias' },
+          ].map(opt => (
+            <button
+              key={opt.value}
+              onClick={() => selectOption(opt.value)}
+              style={{
+                display: 'block', width: '100%', textAlign: 'left',
+                padding: '8px 14px', fontSize: '13px', border: 'none',
+                background: periodFilter === opt.value ? 'var(--accent-primary-subtle)' : 'transparent',
+                color: periodFilter === opt.value ? 'var(--accent-primary)' : 'var(--text-primary)',
+                fontWeight: periodFilter === opt.value ? 600 : 400,
+                cursor: 'pointer',
+              }}
+            >
+              {opt.label}
+            </button>
+          ))}
+          <div style={{ borderTop: '1px solid var(--border-color)', margin: '4px 0' }} />
+          <div style={{ padding: '8px 14px' }}>
+            <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px', fontWeight: 500 }}>Mês/Ano</div>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <select
+                value={customMonth}
+                onChange={e => { setCustomMonth(parseInt(e.target.value)); setPeriodFilter('custom'); }}
+                className="form-select"
+                style={{ fontSize: '12px', padding: '4px 6px', minWidth: 'auto', width: 'auto', flex: 1 }}
+              >
+                {MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}
+              </select>
+              <select
+                value={customYear}
+                onChange={e => { setCustomYear(parseInt(e.target.value)); setPeriodFilter('custom'); }}
+                className="form-select"
+                style={{ fontSize: '12px', padding: '4px 6px', minWidth: 'auto', width: 'auto' }}
+              >
+                {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

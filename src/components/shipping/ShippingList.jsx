@@ -11,7 +11,6 @@ import { fetchTrackingInfo, buscarRastreioPorNF } from '@/services/trackingServi
 import { supabaseClient } from '@/config/supabase';
 import {
     buildClientShippingMessage,
-    openWhatsAppForClient,
     copyMessageToClipboard,
 } from '@/utils/shippingMessage';
 
@@ -31,36 +30,14 @@ export default function ShippingList({
     const [success, setSuccess] = useState('');
     const [error, setError] = useState('');
 
-    // WhatsApp modal state
-    const [whatsappModal, setWhatsappModal] = useState(null); // shipping object
-    const [whatsappPhone, setWhatsappPhone] = useState('');
-
-    // WhatsApp handlers
-    const openWhatsappModal = (shipping) => {
-        setWhatsappPhone(shipping.telefoneCliente || '');
-        setWhatsappModal(shipping);
-    };
-
-    const handleSendWhatsApp = async () => {
-        if (!whatsappModal) return;
-        const message = buildClientShippingMessage(whatsappModal, statusList);
-        // Save phone if provided
-        if (whatsappPhone && whatsappPhone !== (whatsappModal.telefoneCliente || '')) {
-            await onUpdate(whatsappModal.id, { telefoneCliente: whatsappPhone });
-        }
-        openWhatsAppForClient(whatsappPhone, message);
-        setWhatsappModal(null);
-    };
-
+    // WhatsApp copy handler
     const handleCopyClientMessage = async (shipping) => {
-        const message = buildClientShippingMessage(shipping || whatsappModal, statusList);
+        const message = buildClientShippingMessage(shipping, statusList);
         const ok = await copyMessageToClipboard(message);
         if (ok) {
-            setSuccess('Mensagem copiada!');
+            setSuccess('Copiado!');
             setTimeout(() => setSuccess(''), 3000);
         }
-        if (shipping) return; // quick copy, don't close modal
-        setWhatsappModal(null);
     };
 
     const formatDate = (dateStr) => {
@@ -518,22 +495,14 @@ export default function ShippingList({
                                     </td>
                                     <td>
                                         <div style={{display: 'flex', gap: '4px', flexWrap: 'wrap'}}>
-                                            {/* WhatsApp + Copy — visible to all */}
-                                            <button
-                                                className="btn btn-sm"
-                                                onClick={() => openWhatsappModal(s)}
-                                                title="Enviar WhatsApp para cliente"
-                                                style={{fontSize: '10px', padding: '4px 8px', background: '#25D366', color: '#fff', border: 'none', borderRadius: '6px'}}
-                                            >
-                                                📱
-                                            </button>
+                                            {/* WhatsApp copy — visible to all */}
                                             <button
                                                 className="btn btn-secondary btn-sm"
                                                 onClick={() => handleCopyClientMessage(s)}
-                                                title="Copiar mensagem do cliente"
-                                                style={{fontSize: '10px', padding: '4px 8px'}}
+                                                title="Copiar mensagem"
+                                                style={{fontSize: '10px', padding: '4px 8px', color: '#25D366', borderColor: '#25D366'}}
                                             >
-                                                📋
+                                                <Icon name="whatsapp" size={14} style={{color: '#25D366'}} />
                                             </button>
                                             {/* Tracking — admin only */}
                                             {isStockAdmin && (s.codigoRastreio || s.melhorEnvioId) && (
@@ -576,64 +545,6 @@ export default function ShippingList({
                             ))}
                         </tbody>
                     </table>
-                </div>
-            )}
-
-            {/* Modal WhatsApp Cliente */}
-            {whatsappModal && (
-                <div className="modal-overlay">
-                    <div className="modal-content" style={{maxWidth: '480px'}}>
-                        <h2 className="modal-title">📱 WhatsApp para Cliente</h2>
-                        <p style={{fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px'}}>
-                            <strong>{whatsappModal.cliente}</strong> — NF {whatsappModal.nfNumero}
-                        </p>
-
-                        <div className="form-group">
-                            <label className="form-label">Telefone do Cliente</label>
-                            <input
-                                type="text"
-                                className="form-input"
-                                value={whatsappPhone}
-                                onChange={(e) => setWhatsappPhone(e.target.value)}
-                                placeholder="(00) 00000-0000"
-                                autoFocus
-                            />
-                            <small style={{fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block'}}>
-                                O código do país (55) será adicionado automaticamente
-                            </small>
-                        </div>
-
-                        <div className="form-group">
-                            <label className="form-label">Prévia da Mensagem</label>
-                            <textarea
-                                className="form-textarea"
-                                readOnly
-                                value={buildClientShippingMessage(whatsappModal, statusList)}
-                                rows={8}
-                                style={{fontSize: '12px', background: 'var(--bg-secondary)', cursor: 'default'}}
-                            />
-                        </div>
-
-                        <div className="btn-group" style={{gap: '8px'}}>
-                            <button
-                                className="btn btn-primary"
-                                onClick={handleSendWhatsApp}
-                                style={{background: '#25D366', borderColor: '#25D366', display: 'flex', alignItems: 'center', gap: '6px'}}
-                            >
-                                📱 Enviar via WhatsApp
-                            </button>
-                            <button
-                                className="btn btn-secondary"
-                                onClick={() => handleCopyClientMessage(null)}
-                                style={{display: 'flex', alignItems: 'center', gap: '6px'}}
-                            >
-                                📋 Copiar Mensagem
-                            </button>
-                            <button className="btn btn-secondary" onClick={() => setWhatsappModal(null)}>
-                                Cancelar
-                            </button>
-                        </div>
-                    </div>
                 </div>
             )}
 
