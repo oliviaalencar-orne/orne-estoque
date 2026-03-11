@@ -283,21 +283,20 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
             className="stock-row"
         >
             <td style={{width: '48px', padding: '6px 8px'}}>
-                {p.imagemUrl ? (
+                {p.imagemUrl && p.imagemUrl !== 'sem-imagem' ? (
                     <img
                         src={p.imagemUrl}
                         alt=""
                         loading="lazy"
                         width={48}
                         height={48}
-                        style={{width: '48px', height: '48px', objectFit: 'contain', borderRadius: '8px', border: '1px solid var(--border-default)', background: '#fff'}}
-                        onError={(e) => { e.target.style.display = 'none'; }}
+                        style={{width: '48px', height: '48px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--border-default)', background: '#fff'}}
+                        onError={(e) => { e.target.style.display = 'none'; e.target.nextElementSibling && (e.target.nextElementSibling.style.display = 'flex'); }}
                     />
-                ) : (
-                    <div style={{width: '48px', height: '48px', borderRadius: '8px', background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-                        <Icon name="boxOpen" size={18} style={{opacity: 0.3}} />
-                    </div>
-                )}
+                ) : null}
+                <div style={{width: '48px', height: '48px', borderRadius: '8px', background: '#f3f4f6', display: (p.imagemUrl && p.imagemUrl !== 'sem-imagem') ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                    <Icon name="boxOpen" size={18} style={{opacity: 0.3}} />
+                </div>
             </td>
             <td>
                 <div className="product-name">{p.name}</div>
@@ -346,8 +345,8 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
 
                         {/* Product info */}
                         <div style={{display: 'flex', gap: '16px', marginBottom: '16px', flexWrap: 'wrap'}}>
-                            {detailProduct.imagemUrl && (
-                                <img src={detailProduct.imagemUrl} alt={detailProduct.name} style={{width: '80px', height: '80px', objectFit: 'contain', borderRadius: '8px', border: '1px solid var(--border-color)', background: '#fff'}} />
+                            {detailProduct.imagemUrl && detailProduct.imagemUrl !== 'sem-imagem' && (
+                                <img src={detailProduct.imagemUrl} alt={detailProduct.name} loading="lazy" style={{width: '80px', height: '80px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--border-default)', background: '#fff'}} />
                             )}
                             <div style={{flex: 1, minWidth: '200px'}}>
                                 <div style={{fontWeight: 600, fontSize: '16px', marginBottom: '4px'}}>{detailProduct.name}</div>
@@ -692,7 +691,8 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                 @media (max-width: 768px) {
                     .hide-mobile { display: none !important; }
                 }
-                .stock-row:hover { background: var(--bg-secondary); }
+                .stock-row:hover { background: #fafafa; }
+                .stock-row td { border-bottom: 1px solid #f0f0f0; }
                 .stock-category-section { margin-bottom: 2px; }
                 .stock-category-header {
                     display: flex; align-items: center; gap: 10px;

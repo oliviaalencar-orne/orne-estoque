@@ -37,6 +37,9 @@ export default function TinyERPPage({ user, onDataChanged, products, entries, ex
     const [histCustomYear, setHistCustomYear] = useState(new Date().getFullYear());
     const [nfeDateFrom, setNfeDateFrom] = useState('');
     const [nfeDateTo, setNfeDateTo] = useState('');
+    // Image sync state
+    const [imageSyncRunning, setImageSyncRunning] = useState(false);
+    const [imageSyncProgress, setImageSyncProgress] = useState(null);
     const [nfeNumber, setNfeNumber] = useState('');
 
     const FUNC_BASE = `${SUPABASE_URL}/functions/v1`;
@@ -350,6 +353,58 @@ export default function TinyERPPage({ user, onDataChanged, products, entries, ex
         }
     };
 
+    const handleImageSync = async () => {
+        if (imageSyncRunning) return;
+        setImageSyncRunning(true);
+        setImageSyncProgress({ status: 'running', message: 'Iniciando sincronização de imagens...' });
+        try {
+            let totalProcessados = 0;
+            let totalComImagem = 0;
+            let totalSemImagem = 0;
+            let restantes = 1; // start loop
+
+            while (restantes > 0) {
+                const data = await callFunction('tiny-sync-images', {});
+                if (!data.success) throw new Error(data.error || 'Erro na sincronização');
+
+                totalProcessados += data.processados || 0;
+                totalComImagem += data.comImagem || 0;
+                totalSemImagem += data.semImagem || 0;
+                restantes = data.restantes || 0;
+
+                if (data.processados === 0) {
+                    // Nothing left to process
+                    restantes = 0;
+                }
+
+                setImageSyncProgress({
+                    status: restantes > 0 ? 'running' : 'success',
+                    message: restantes > 0
+                        ? `Processados ${totalProcessados}... (${restantes} restantes)`
+                        : `Concluído! ${totalProcessados} produtos processados (${totalComImagem} com imagem, ${totalSemImagem} sem imagem)`,
+                    processados: totalProcessados,
+                    restantes,
+                });
+
+                if (restantes > 0) {
+                    // Wait 3s between batches
+                    await new Promise(r => setTimeout(r, 3000));
+                }
+            }
+
+            if (onDataChanged) await onDataChanged();
+        } catch (e) {
+            setImageSyncProgress({ status: 'error', message: e.message || 'Erro desconhecido' });
+        } finally {
+            setImageSyncRunning(false);
+        }
+    };
+
+    const stopImageSync = () => {
+        setImageSyncRunning(false);
+        setImageSyncProgress(prev => prev ? { ...prev, status: 'stopped', message: (prev.message || '') + ' (Parado pelo usuário)' } : null);
+    };
+
     const formatDate = (d) => {
         if (!d) return '-';
         return new Date(d).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -627,6 +682,50 @@ export default function TinyERPPage({ user, onDataChanged, products, entries, ex
                                         color: syncProgress.status === 'success' ? 'var(--success-dark)' : 'var(--danger-dark)',
                                     }}>
                                         {syncProgress.message}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Image sync card */}
+                            <div style={cardStyle}>
+                                <div style={{display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px'}}>
+                                    <div style={{width: '36px', height: '36px', borderRadius: 'var(--radius-sm)', background: '#f0f9ff', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                                        <span style={{fontSize: '18px'}}>🖼️</span>
+                                    </div>
+                                    <div>
+                                        <div style={{fontWeight: '600', fontSize: '14px'}}>Imagens</div>
+                                        <div style={{fontSize: '12px', color: 'var(--text-muted)'}}>Importar fotos do Tiny</div>
+                                    </div>
+                                </div>
+                                <p style={{fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '16px'}}>
+                                    Busca a imagem de cada produto no Tiny ERP (30 por vez). Produtos sem foto são marcados para não tentar novamente.
+                                </p>
+                                <button
+                                    className="btn btn-primary"
+                                    style={{width: '100%'}}
+                                    onClick={imageSyncRunning ? stopImageSync : handleImageSync}
+                                    disabled={syncLock}
+                                >
+                                    {imageSyncRunning
+                                        ? <><Icon name="spinner" size={14} style={{animation: 'spin 1s linear infinite'}} /> <span style={{marginLeft: '6px'}}>Parar</span></>
+                                        : <><Icon name="sync" size={14} /> <span style={{marginLeft: '6px'}}>Sincronizar Imagens</span></>
+                                    }
+                                </button>
+                                {imageSyncProgress && (
+                                    <div style={{
+                                        marginTop: '12px',
+                                        padding: '8px 12px',
+                                        borderRadius: 'var(--radius-xs)',
+                                        background: imageSyncProgress.status === 'success' ? 'var(--success-light)'
+                                            : imageSyncProgress.status === 'error' || imageSyncProgress.status === 'stopped' ? 'var(--danger-light)'
+                                            : 'var(--accent-bg)',
+                                        fontSize: '12px',
+                                        color: imageSyncProgress.status === 'success' ? 'var(--success-dark)'
+                                            : imageSyncProgress.status === 'error' || imageSyncProgress.status === 'stopped' ? 'var(--danger-dark)'
+                                            : 'var(--accent)',
+                                        fontWeight: '500',
+                                    }}>
+                                        {imageSyncProgress.message}
                                     </div>
                                 )}
                             </div>
