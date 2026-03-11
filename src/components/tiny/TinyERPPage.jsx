@@ -4,7 +4,7 @@
  * Extracted from index-legacy.html L10438-11157
  * Keeps ALL Edge Function calls (tiny-auth, tiny-sync-products, tiny-sync-stock, tiny-sync-nfe)
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Icon } from '@/utils/icons';
 import { supabaseClient, SUPABASE_URL, SUPABASE_ANON_KEY } from '@/config/supabase';
 import PeriodFilter, { filterByPeriod } from '@/components/ui/PeriodFilter';
@@ -40,6 +40,7 @@ export default function TinyERPPage({ user, onDataChanged, products, entries, ex
     // Image sync state
     const [imageSyncRunning, setImageSyncRunning] = useState(false);
     const [imageSyncProgress, setImageSyncProgress] = useState(null);
+    const imageSyncStopRef = useRef(false);
     const [nfeNumber, setNfeNumber] = useState('');
 
     const FUNC_BASE = `${SUPABASE_URL}/functions/v1`;
@@ -355,41 +356,55 @@ export default function TinyERPPage({ user, onDataChanged, products, entries, ex
 
     const handleImageSync = async () => {
         if (imageSyncRunning) return;
+        imageSyncStopRef.current = false;
         setImageSyncRunning(true);
         setImageSyncProgress({ status: 'running', message: 'Iniciando sincronização de imagens...' });
         try {
             let totalProcessados = 0;
             let totalComImagem = 0;
             let totalSemImagem = 0;
-            let restantes = 1; // start loop
+            let restantes = 1;
+            let retries = 0;
 
-            while (restantes > 0) {
-                const data = await callFunction('tiny-sync-images', {});
-                if (!data.success) throw new Error(data.error || 'Erro na sincronização');
+            while (restantes > 0 && !imageSyncStopRef.current) {
+                try {
+                    const data = await callFunction('tiny-sync-images', {});
+                    if (!data.success) throw new Error(data.error || 'Erro na sincronização');
 
-                totalProcessados += data.processados || 0;
-                totalComImagem += data.comImagem || 0;
-                totalSemImagem += data.semImagem || 0;
-                restantes = data.restantes || 0;
+                    retries = 0; // reset on success
+                    totalProcessados += data.processados || 0;
+                    totalComImagem += data.comImagem || 0;
+                    totalSemImagem += data.semImagem || 0;
+                    restantes = data.restantes || 0;
 
-                if (data.processados === 0) {
-                    // Nothing left to process
-                    restantes = 0;
+                    if (data.processados === 0) restantes = 0;
+
+                    setImageSyncProgress({
+                        status: restantes > 0 ? 'running' : 'success',
+                        message: restantes > 0
+                            ? `Processados ${totalProcessados}... (${restantes} restantes)`
+                            : `Concluído! ${totalProcessados} produtos processados (${totalComImagem} com imagem, ${totalSemImagem} sem imagem)`,
+                        processados: totalProcessados,
+                        restantes,
+                    });
+                } catch (batchErr) {
+                    retries++;
+                    if (retries >= 3) throw batchErr; // 3 failures in a row = abort
+                    setImageSyncProgress(prev => ({
+                        ...prev,
+                        message: `Erro temporário (tentativa ${retries}/3). Aguardando 5s para retry... ${prev?.processados ? `(${prev.processados} processados)` : ''}`,
+                    }));
+                    await new Promise(r => setTimeout(r, 5000));
+                    continue;
                 }
 
-                setImageSyncProgress({
-                    status: restantes > 0 ? 'running' : 'success',
-                    message: restantes > 0
-                        ? `Processados ${totalProcessados}... (${restantes} restantes)`
-                        : `Concluído! ${totalProcessados} produtos processados (${totalComImagem} com imagem, ${totalSemImagem} sem imagem)`,
-                    processados: totalProcessados,
-                    restantes,
-                });
-
-                if (restantes > 0) {
-                    // Wait 3s between batches
+                if (restantes > 0 && !imageSyncStopRef.current) {
                     await new Promise(r => setTimeout(r, 3000));
                 }
+            }
+
+            if (imageSyncStopRef.current) {
+                setImageSyncProgress(prev => prev ? { ...prev, status: 'stopped', message: `Parado pelo usuário. ${totalProcessados} produtos processados.` } : null);
             }
 
             if (onDataChanged) await onDataChanged();
@@ -401,8 +416,7 @@ export default function TinyERPPage({ user, onDataChanged, products, entries, ex
     };
 
     const stopImageSync = () => {
-        setImageSyncRunning(false);
-        setImageSyncProgress(prev => prev ? { ...prev, status: 'stopped', message: (prev.message || '') + ' (Parado pelo usuário)' } : null);
+        imageSyncStopRef.current = true;
     };
 
     const formatDate = (d) => {
