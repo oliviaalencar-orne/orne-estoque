@@ -1,7 +1,8 @@
 /**
- * StockView.jsx — Stock table view with sortable columns, detail modal, search
+ * StockView.jsx — Stock view with accordion categories and list rows
  *
- * Rewritten from card-based to table-based layout.
+ * Products grouped by category in collapsible sections.
+ * Each section contains a sortable table of product rows.
  */
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Icon, CategoryIcon } from '@/utils/icons';
@@ -36,6 +37,23 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
     const [editForm, setEditForm] = useState({});
     const [successMsg, setSuccessMsg] = useState('');
     const [hideZeroStock, setHideZeroStock] = useState(true);
+
+    // Accordion state — all collapsed by default
+    const [expandedCategories, setExpandedCategories] = useState(new Set());
+    const [categoryVisibleCount, setCategoryVisibleCount] = useState({});
+
+    const toggleCategory = (catId) => {
+        setExpandedCategories(prev => {
+            const next = new Set(prev);
+            if (next.has(catId)) next.delete(catId); else next.add(catId);
+            return next;
+        });
+    };
+
+    const getVisibleCount = (catId) => categoryVisibleCount[catId] || 50;
+    const showMoreInCategory = (catId) => {
+        setCategoryVisibleCount(prev => ({ ...prev, [catId]: (prev[catId] || 50) + 50 }));
+    };
 
     // Search with debounce
     const [searchInput, setSearchInput] = useState(searchTerm || '');
@@ -100,7 +118,7 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
 
     const hasSearch = debouncedSearch.trim() !== '';
 
-    // Filtered + sorted flat list (no category grouping)
+    // Filtered + sorted flat list
     const filteredProducts = useMemo(() => {
         let filtered = isEquipe ? (equipeProducts || []) : stock;
 
@@ -127,6 +145,29 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
 
         return sortProducts(filtered, sortBy, sortOrder);
     }, [stock, equipeProducts, isEquipe, categories, debouncedSearch, hideZeroStock, sortBy, sortOrder, filter]);
+
+    // Group filtered products by category
+    const groupedProducts = useMemo(() => {
+        const groups = new Map();
+        for (const p of filteredProducts) {
+            const catId = p.category || '__none__';
+            if (!groups.has(catId)) groups.set(catId, []);
+            groups.get(catId).push(p);
+        }
+        // Sort categories alphabetically, "Sem categoria" last
+        const sorted = [...groups.entries()].sort((a, b) => {
+            if (a[0] === '__none__') return 1;
+            if (b[0] === '__none__') return -1;
+            return getCategoryName(a[0]).localeCompare(getCategoryName(b[0]));
+        });
+        return sorted.map(([catId, prods]) => ({
+            categoryId: catId,
+            categoryName: getCategoryName(catId === '__none__' ? null : catId),
+            categoryColor: getCategoryColor(catId === '__none__' ? null : catId),
+            categoryIcon: categories.find(c => c.id === catId)?.icon || null,
+            products: prods,
+        }));
+    }, [filteredProducts, categories]);
 
     // Status counts
     const statusCounts = useMemo(() => {
@@ -232,6 +273,61 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
         });
         return Object.entries(saldoPorNF).filter(([, dados]) => dados.entradas - dados.saidas > 0);
     };
+
+    // Render a product row
+    const renderProductRow = (p) => (
+        <tr
+            key={p.id}
+            onClick={() => setDetailProduct(p)}
+            style={{cursor: 'pointer'}}
+            className="stock-row"
+        >
+            <td style={{width: '48px', padding: '6px 8px'}}>
+                {p.imagemUrl ? (
+                    <img
+                        src={p.imagemUrl}
+                        alt=""
+                        loading="lazy"
+                        width={48}
+                        height={48}
+                        style={{width: '48px', height: '48px', objectFit: 'contain', borderRadius: '8px', border: '1px solid var(--border-default)', background: '#fff'}}
+                        onError={(e) => { e.target.style.display = 'none'; }}
+                    />
+                ) : (
+                    <div style={{width: '48px', height: '48px', borderRadius: '8px', background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                        <Icon name="boxOpen" size={18} style={{opacity: 0.3}} />
+                    </div>
+                )}
+            </td>
+            <td>
+                <div className="product-name">{p.name}</div>
+                {p.local && <div className="product-local">{'\uD83D\uDCCD'} {p.local}</div>}
+            </td>
+            <td className="hide-mobile product-sku">{p.sku}</td>
+            <td>
+                <span style={{
+                    fontWeight: 600, fontSize: '14px',
+                    color: p.currentQuantity > 0 ? '#059669' : '#d1d5db',
+                }}>
+                    {p.currentQuantity}
+                </span>
+            </td>
+            <td className="hide-mobile" style={{fontSize: '12px', color: 'var(--text-secondary)'}}>
+                {p.unitPrice > 0 ? `R$ ${formatBRL(p.unitPrice)}` : '\u2014'}
+            </td>
+            <td style={{width: '32px', padding: '6px'}}>
+                {p.observations && p.observations.trim() && (
+                    <span
+                        title={p.observations}
+                        style={{color: '#d97706', cursor: 'help'}}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {'\u26A0\uFE0F'}
+                    </span>
+                )}
+            </td>
+        </tr>
+    );
 
     return (
         <div>
@@ -422,7 +518,7 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                         {editingProduct.unitPrice > 0 && (
                             <div className="form-row">
                                 <div className="form-group">
-                                    <label className="form-label">Preco Unitario</label>
+                                    <label className="form-label">Preço Unitário</label>
                                     <div style={{padding: '8px 0', fontSize: '14px', color: 'var(--text-primary)'}}>R$ {formatBRL(editingProduct.unitPrice)}</div>
                                     <span style={{color: 'var(--text-tertiary)', fontSize: '11px'}}>Sincronizado via Tiny ERP</span>
                                 </div>
@@ -514,88 +610,61 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                 </label>
             </div>
 
-            {/* Product table */}
-            {filteredProducts.length === 0 ? (
+            {/* Accordion categories with product list rows */}
+            {groupedProducts.length === 0 ? (
                 <div className="empty-state">
                     <div className="empty-state-icon"><Icon name="boxOpen" size={48} /></div>
                     <h3>Nenhum produto encontrado</h3>
                     <p>Tente ajustar os filtros ou a busca</p>
                 </div>
             ) : (
-                <div className="card">
-                    <div className="table-container">
-                        <table className="table">
-                            <thead>
-                                <tr>
-                                    <th style={{width: '48px'}}></th>
-                                    <SortHeader field="name">Produto</SortHeader>
-                                    <SortHeader field="sku" className="hide-mobile">SKU</SortHeader>
-                                    <SortHeader field="category">Categoria</SortHeader>
-                                    <SortHeader field="quantity">Estoque</SortHeader>
-                                    <SortHeader field="price" className="hide-mobile">Preco</SortHeader>
-                                    <th style={{width: '32px'}}></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filteredProducts.map(p => (
-                                    <tr
-                                        key={p.id}
-                                        onClick={() => setDetailProduct(p)}
-                                        style={{cursor: 'pointer'}}
-                                        className="stock-row"
-                                    >
-                                        <td style={{width: '48px', padding: '6px 8px'}}>
-                                            {p.imagemUrl ? (
-                                                <img
-                                                    src={p.imagemUrl}
-                                                    alt=""
-                                                    style={{width: '40px', height: '40px', objectFit: 'contain', borderRadius: '6px', border: '1px solid var(--border-color)', background: '#fff'}}
-                                                    onError={(e) => { e.target.style.display = 'none'; }}
-                                                />
-                                            ) : (
-                                                <div style={{width: '40px', height: '40px', borderRadius: '6px', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-                                                    <Icon name="boxOpen" size={16} style={{opacity: 0.3}} />
-                                                </div>
-                                            )}
-                                        </td>
-                                        <td>
-                                            <div style={{fontWeight: 500, fontSize: '13px', lineHeight: '1.3'}}>{p.name}</div>
-                                            {p.local && <div style={{fontSize: '11px', color: 'var(--text-muted)'}}>{'\uD83D\uDCCD'} {p.local}</div>}
-                                        </td>
-                                        <td className="hide-mobile" style={{fontSize: '12px', fontFamily: 'monospace', color: 'var(--text-secondary)'}}>{p.sku}</td>
-                                        <td>
-                                            <span style={{
-                                                background: getCategoryColor(p.category) + '15',
-                                                color: getCategoryColor(p.category),
-                                                border: '1px solid ' + getCategoryColor(p.category) + '30',
-                                                padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 500, whiteSpace: 'nowrap',
-                                            }}>
-                                                {getCategoryName(p.category)}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <span style={{
-                                                fontWeight: 600, fontSize: '14px',
-                                                color: p.currentQuantity > 0 ? 'var(--accent-success)' : 'var(--accent-error)',
-                                            }}>
-                                                {p.currentQuantity}
-                                            </span>
-                                        </td>
-                                        <td className="hide-mobile" style={{fontSize: '12px', color: 'var(--text-secondary)'}}>
-                                            {p.unitPrice > 0 ? `R$ ${formatBRL(p.unitPrice)}` : '-'}
-                                        </td>
-                                        <td style={{width: '32px', padding: '6px'}}>
-                                            {p.observations && p.observations.trim() && (
-                                                <span title={p.observations} style={{color: 'var(--accent-primary)', cursor: 'help'}}>
-                                                    <Icon name="info" size={14} />
-                                                </span>
-                                            )}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                <div className="stock-accordion">
+                    {groupedProducts.map(group => (
+                        <div key={group.categoryId} className="stock-category-section">
+                            {/* Category header */}
+                            <div className="stock-category-header" onClick={() => toggleCategory(group.categoryId)}>
+                                <span className="stock-category-arrow">
+                                    {expandedCategories.has(group.categoryId) ? '\u25BC' : '\u25B6'}
+                                </span>
+                                <CategoryIcon icon={group.categoryIcon} size={18} color={group.categoryColor} />
+                                <span style={{fontWeight: 600, color: group.categoryColor}}>
+                                    {group.categoryName}
+                                </span>
+                                <span className="stock-category-count">
+                                    {group.products.length} produto{group.products.length !== 1 ? 's' : ''}
+                                </span>
+                            </div>
+
+                            {/* Product rows — only rendered when expanded */}
+                            {expandedCategories.has(group.categoryId) && (
+                                <div className="stock-category-body">
+                                    <table className="table">
+                                        <thead>
+                                            <tr>
+                                                <th style={{width: '48px'}}></th>
+                                                <SortHeader field="name">Produto</SortHeader>
+                                                <SortHeader field="sku" className="hide-mobile">SKU</SortHeader>
+                                                <SortHeader field="quantity">Estoque</SortHeader>
+                                                <SortHeader field="price" className="hide-mobile">Preço</SortHeader>
+                                                <th style={{width: '32px'}}></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {group.products.slice(0, getVisibleCount(group.categoryId)).map(renderProductRow)}
+                                        </tbody>
+                                    </table>
+                                    {/* Show more within category */}
+                                    {group.products.length > getVisibleCount(group.categoryId) && (
+                                        <div style={{textAlign: 'center', padding: '12px', borderTop: '1px solid var(--border-default)'}}>
+                                            <button className="btn btn-secondary btn-sm" onClick={() => showMoreInCategory(group.categoryId)}>
+                                                Mostrar mais ({group.products.length - getVisibleCount(group.categoryId)} restantes)
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    ))}
                 </div>
             )}
 
@@ -624,6 +693,36 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                     .hide-mobile { display: none !important; }
                 }
                 .stock-row:hover { background: var(--bg-secondary); }
+                .stock-category-section { margin-bottom: 2px; }
+                .stock-category-header {
+                    display: flex; align-items: center; gap: 10px;
+                    padding: 12px 16px;
+                    background: var(--bg-secondary);
+                    border: 1px solid var(--border-default);
+                    border-radius: var(--radius);
+                    cursor: pointer; user-select: none;
+                    font-size: 14px;
+                    transition: background 0.15s;
+                }
+                .stock-category-header:hover { background: var(--bg-hover, #f0f0f0); }
+                .stock-category-arrow {
+                    font-size: 10px; width: 16px; text-align: center;
+                    color: var(--text-tertiary);
+                }
+                .stock-category-count {
+                    margin-left: auto; font-size: 12px; font-weight: 500;
+                    color: var(--text-secondary); background: var(--bg-tertiary);
+                    padding: 2px 8px; border-radius: 10px;
+                }
+                .stock-category-body {
+                    border: 1px solid var(--border-default); border-top: none;
+                    border-radius: 0 0 var(--radius) var(--radius);
+                    overflow: hidden;
+                }
+                .stock-category-body .table { margin-bottom: 0; }
+                .product-name { font-weight: 600; font-size: 14px; color: #1a1a2e; line-height: 1.3; }
+                .product-local { font-size: 12px; color: #9ca3af; margin-top: 2px; }
+                .product-sku { font-family: monospace; font-size: 12px; color: #9ca3af; }
             `}</style>
         </div>
     );

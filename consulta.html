@@ -1691,12 +1691,25 @@
         function StockView({ stock, categories, searchTerm, setSearchTerm, entries, exits }) {
             const [statusFilter, setStatusFilter] = useState('all');
             const [detailProduct, setDetailProduct] = useState(null);
-            const [visibleCount, setVisibleCount] = useState(50);
             const [hideZeroStock, setHideZeroStock] = useState(true);
             const [sortBy, setSortBy] = useState('name');
             const [sortOrder, setSortOrder] = useState('asc');
 
-            useEffect(() => { setVisibleCount(50); }, [searchTerm, statusFilter, hideZeroStock]);
+            // Accordion state — all collapsed by default
+            const [expandedCategories, setExpandedCategories] = useState(new Set());
+            const [categoryVisibleCount, setCategoryVisibleCount] = useState({});
+
+            const toggleCategory = (catId) => {
+                setExpandedCategories(prev => {
+                    const next = new Set(prev);
+                    if (next.has(catId)) next.delete(catId); else next.add(catId);
+                    return next;
+                });
+            };
+            const getVisibleCount = (catId) => categoryVisibleCount[catId] || 50;
+            const showMoreInCategory = (catId) => {
+                setCategoryVisibleCount(prev => ({ ...prev, [catId]: (prev[catId] || 50) + 50 }));
+            };
 
             const getCategoryName = (catId) => {
                 const cat = categories.find(c => c.id === catId);
@@ -1748,6 +1761,27 @@
                            (p.nfOrigem || '').toLowerCase().includes(search);
                 })
             );
+
+            // Group filtered products by category
+            const groupedProducts = useMemo(() => {
+                const groups = new Map();
+                for (const p of filtered) {
+                    const catId = p.category || '__none__';
+                    if (!groups.has(catId)) groups.set(catId, []);
+                    groups.get(catId).push(p);
+                }
+                const sorted = [...groups.entries()].sort((a, b) => {
+                    if (a[0] === '__none__') return 1;
+                    if (b[0] === '__none__') return -1;
+                    return getCategoryName(a[0]).localeCompare(getCategoryName(b[0]));
+                });
+                return sorted.map(([catId, prods]) => ({
+                    categoryId: catId,
+                    categoryName: getCategoryName(catId === '__none__' ? null : catId),
+                    categoryColor: getCategoryColor(catId === '__none__' ? null : catId),
+                    products: prods,
+                }));
+            }, [filtered, categories]);
 
             const getProductHistory = (sku) => {
                 const productEntries = (entries || []).filter(e => e.sku === sku).map(e => ({...e, movimento: 'ENTRADA'}));
@@ -1970,87 +2004,119 @@
                         </label>
                     </div>
 
-                    {/* Product Table */}
-                    {filtered.length === 0 ? (
+                    {/* Accordion categories with product list rows */}
+                    {groupedProducts.length === 0 ? (
                         <div className="empty-state">
                             <div className="empty-state-icon"><Icon name="empty" size={48} /></div>
                             <h3>Nenhum produto encontrado</h3>
                             <p>Tente ajustar os filtros</p>
                         </div>
                     ) : (
-                        <div className="card">
-                            <div className="table-container">
-                                <table className="table">
-                                    <thead>
-                                        <tr>
-                                            <th style={{width: '48px'}}></th>
-                                            <SortHeader field="name">Produto</SortHeader>
-                                            <SortHeader field="sku" className="consulta-hide-mobile">SKU</SortHeader>
-                                            <SortHeader field="category">Categoria</SortHeader>
-                                            <SortHeader field="quantity">Estoque</SortHeader>
-                                            <SortHeader field="price" className="consulta-hide-mobile">Preco</SortHeader>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {filtered.slice(0, visibleCount).map(p => (
-                                            <tr key={p.id} onClick={() => setDetailProduct(p)} style={{cursor: 'pointer'}} onMouseOver={(e) => e.currentTarget.style.background='var(--bg-tertiary)'} onMouseOut={(e) => e.currentTarget.style.background=''}>
-                                                <td style={{width: '48px', padding: '6px 8px'}}>
-                                                    {p.imagemUrl ? (
-                                                        <img src={p.imagemUrl} alt="" style={{width: '40px', height: '40px', objectFit: 'contain', borderRadius: '6px', border: '1px solid var(--border-default)', background: '#fff'}} onError={(e) => { e.target.style.display='none'; }} />
-                                                    ) : (
-                                                        <div style={{width: '40px', height: '40px', borderRadius: '6px', background: 'var(--bg-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-                                                            <Icon name="stock" size={16} style={{opacity: 0.3}} />
-                                                        </div>
-                                                    )}
-                                                </td>
-                                                <td>
-                                                    <div style={{fontWeight: 500, fontSize: '13px', lineHeight: '1.3'}}>{p.name}</div>
-                                                    {p.observations && <div style={{fontSize: '11px', color: 'var(--text-tertiary)', fontStyle: 'italic', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{p.observations}</div>}
-                                                </td>
-                                                <td className="consulta-hide-mobile" style={{fontSize: '12px', fontFamily: 'monospace', color: 'var(--text-secondary)'}}>{p.sku}</td>
-                                                <td>
-                                                    <span style={{
-                                                        background: getCategoryColor(p.category) + '15',
-                                                        color: getCategoryColor(p.category),
-                                                        border: '1px solid ' + getCategoryColor(p.category) + '30',
-                                                        padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 500, whiteSpace: 'nowrap',
-                                                    }}>
-                                                        {getCategoryName(p.category)}
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <span style={{
-                                                        fontWeight: 600, fontSize: '14px',
-                                                        color: p.currentQuantity > 0 ? 'var(--accent-success, #3d8b5f)' : 'var(--accent-error, #d93025)',
-                                                    }}>
-                                                        {p.currentQuantity}
-                                                    </span>
-                                                </td>
-                                                <td className="consulta-hide-mobile" style={{fontSize: '12px', color: 'var(--text-secondary)'}}>
-                                                    {p.unitPrice > 0 ? `R$ ${formatBRL(p.unitPrice)}` : '-'}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    )}
+                        <div className="stock-accordion">
+                            {groupedProducts.map(group => (
+                                <div key={group.categoryId} className="stock-category-section">
+                                    <div className="stock-category-header" onClick={() => toggleCategory(group.categoryId)}>
+                                        <span className="stock-category-arrow">
+                                            {expandedCategories.has(group.categoryId) ? '\u25BC' : '\u25B6'}
+                                        </span>
+                                        <span style={{fontWeight: 600, color: group.categoryColor}}>
+                                            {group.categoryName}
+                                        </span>
+                                        <span className="stock-category-count">
+                                            {group.products.length} produto{group.products.length !== 1 ? 's' : ''}
+                                        </span>
+                                    </div>
 
-                    {filtered.length > visibleCount && (
-                        <button
-                            className="btn btn-secondary"
-                            style={{width: '100%', marginTop: '12px', justifyContent: 'center'}}
-                            onClick={() => setVisibleCount(v => v + 50)}
-                        >
-                            Mostrar mais ({filtered.length - visibleCount} restantes)
-                        </button>
+                                    {expandedCategories.has(group.categoryId) && (
+                                        <div className="stock-category-body">
+                                            <table className="table">
+                                                <thead>
+                                                    <tr>
+                                                        <th style={{width: '48px'}}></th>
+                                                        <SortHeader field="name">Produto</SortHeader>
+                                                        <SortHeader field="sku" className="consulta-hide-mobile">SKU</SortHeader>
+                                                        <SortHeader field="quantity">Estoque</SortHeader>
+                                                        <SortHeader field="price" className="consulta-hide-mobile">Preço</SortHeader>
+                                                        <th style={{width: '32px'}}></th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {group.products.slice(0, getVisibleCount(group.categoryId)).map(p => (
+                                                        <tr key={p.id} onClick={() => setDetailProduct(p)} className="stock-row" style={{cursor: 'pointer'}}>
+                                                            <td style={{width: '48px', padding: '6px 8px'}}>
+                                                                {p.imagemUrl ? (
+                                                                    <img src={p.imagemUrl} alt="" loading="lazy" width={48} height={48} style={{width: '48px', height: '48px', objectFit: 'contain', borderRadius: '8px', border: '1px solid var(--border-default)', background: '#fff'}} onError={(e) => { e.target.style.display='none'; }} />
+                                                                ) : (
+                                                                    <div style={{width: '48px', height: '48px', borderRadius: '8px', background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                                                                        <Icon name="stock" size={18} style={{opacity: 0.3}} />
+                                                                    </div>
+                                                                )}
+                                                            </td>
+                                                            <td>
+                                                                <div style={{fontWeight: 600, fontSize: '14px', color: '#1a1a2e', lineHeight: '1.3'}}>{p.name}</div>
+                                                                {p.local && <div style={{fontSize: '12px', color: '#9ca3af', marginTop: '2px'}}>{'\uD83D\uDCCD'} {p.local}</div>}
+                                                            </td>
+                                                            <td className="consulta-hide-mobile" style={{fontFamily: 'monospace', fontSize: '12px', color: '#9ca3af'}}>{p.sku}</td>
+                                                            <td>
+                                                                <span style={{fontWeight: 600, fontSize: '14px', color: p.currentQuantity > 0 ? '#059669' : '#d1d5db'}}>
+                                                                    {p.currentQuantity}
+                                                                </span>
+                                                            </td>
+                                                            <td className="consulta-hide-mobile" style={{fontSize: '12px', color: 'var(--text-secondary)'}}>
+                                                                {p.unitPrice > 0 ? `R$ ${formatBRL(p.unitPrice)}` : '\u2014'}
+                                                            </td>
+                                                            <td style={{width: '32px', padding: '6px'}}>
+                                                                {p.observations && p.observations.trim() && (
+                                                                    <span title={p.observations} style={{color: '#d97706', cursor: 'help'}} onClick={(e) => e.stopPropagation()}>{'\u26A0\uFE0F'}</span>
+                                                                )}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                            {group.products.length > getVisibleCount(group.categoryId) && (
+                                                <div style={{textAlign: 'center', padding: '12px', borderTop: '1px solid var(--border-default)'}}>
+                                                    <button className="btn btn-secondary btn-sm" onClick={() => showMoreInCategory(group.categoryId)}>
+                                                        Mostrar mais ({group.products.length - getVisibleCount(group.categoryId)} restantes)
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
                     )}
 
                     <style>{`
                         @media (max-width: 768px) {
                             .consulta-hide-mobile { display: none !important; }
                         }
+                        .stock-row:hover { background: var(--bg-secondary, #fafafa); }
+                        .stock-category-section { margin-bottom: 2px; }
+                        .stock-category-header {
+                            display: flex; align-items: center; gap: 10px;
+                            padding: 12px 16px;
+                            background: var(--bg-secondary, #fafafa);
+                            border: 1px solid var(--border-default, #e5e5e5);
+                            border-radius: var(--radius, 8px);
+                            cursor: pointer; user-select: none;
+                            font-size: 14px;
+                            transition: background 0.15s;
+                        }
+                        .stock-category-header:hover { background: var(--bg-hover, #f0f0f0); }
+                        .stock-category-arrow { font-size: 10px; width: 16px; text-align: center; color: var(--text-tertiary, #a3a3a3); }
+                        .stock-category-count {
+                            margin-left: auto; font-size: 12px; font-weight: 500;
+                            color: var(--text-secondary, #525252); background: var(--bg-tertiary, #f5f5f5);
+                            padding: 2px 8px; border-radius: 10px;
+                        }
+                        .stock-category-body {
+                            border: 1px solid var(--border-default, #e5e5e5); border-top: none;
+                            border-radius: 0 0 var(--radius, 8px) var(--radius, 8px);
+                            overflow: hidden;
+                        }
+                        .stock-category-body .table { margin-bottom: 0; }
                     `}</style>
                 </div>
             );
