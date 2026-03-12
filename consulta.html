@@ -1695,6 +1695,8 @@
             const [sortBy, setSortBy] = useState('name');
             const [sortOrder, setSortOrder] = useState('asc');
 
+            const hasSearch = (searchTerm || '').trim() !== '';
+
             // Accordion state — all collapsed by default
             const [expandedCategories, setExpandedCategories] = useState(new Set());
             const [categoryVisibleCount, setCategoryVisibleCount] = useState({});
@@ -2017,7 +2019,7 @@
                                 <div key={group.categoryId} className="stock-category-section">
                                     <div className="stock-category-header" onClick={() => toggleCategory(group.categoryId)}>
                                         <span className="stock-category-arrow">
-                                            {expandedCategories.has(group.categoryId) ? '\u25BC' : '\u25B6'}
+                                            {(hasSearch || expandedCategories.has(group.categoryId)) ? '\u25BC' : '\u25B6'}
                                         </span>
                                         <span style={{fontWeight: 600, color: group.categoryColor}}>
                                             {group.categoryName}
@@ -2027,7 +2029,7 @@
                                         </span>
                                     </div>
 
-                                    {expandedCategories.has(group.categoryId) && (
+                                    {(hasSearch || expandedCategories.has(group.categoryId)) && (
                                         <div className="stock-category-body">
                                             <table className="table">
                                                 <thead>

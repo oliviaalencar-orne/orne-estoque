@@ -623,7 +623,7 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                             {/* Category header */}
                             <div className="stock-category-header" onClick={() => toggleCategory(group.categoryId)}>
                                 <span className="stock-category-arrow">
-                                    {expandedCategories.has(group.categoryId) ? '\u25BC' : '\u25B6'}
+                                    {(hasSearch || expandedCategories.has(group.categoryId)) ? '\u25BC' : '\u25B6'}
                                 </span>
                                 <CategoryIcon icon={group.categoryIcon} size={18} color={group.categoryColor} />
                                 <span style={{fontWeight: 600, color: group.categoryColor}}>
@@ -635,7 +635,7 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                             </div>
 
                             {/* Product rows — only rendered when expanded */}
-                            {expandedCategories.has(group.categoryId) && (
+                            {(hasSearch || expandedCategories.has(group.categoryId)) && (
                                 <div className="stock-category-body">
                                     <table className="table">
                                         <thead>
