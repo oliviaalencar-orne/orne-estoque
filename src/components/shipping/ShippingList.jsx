@@ -4,7 +4,7 @@
  * Extracted from ShippingManager (index-legacy.html L7300-7624)
  * Includes: filteredShippings, tracking updates, edit modal, status management
  */
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Icon } from '@/utils/icons';
 import PeriodFilter, { filterByPeriod } from '@/components/ui/PeriodFilter';
 import { fetchTrackingInfo, buscarRastreioPorNF } from '@/services/trackingService';
@@ -13,6 +13,30 @@ import {
     buildClientShippingMessage,
     copyMessageToClipboard,
 } from '@/utils/shippingMessage';
+
+// Resize image helper
+function resizeImage(file, maxWidth = 1200) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                if (img.width <= maxWidth) { resolve(file); return; }
+                const canvas = document.createElement('canvas');
+                const ratio = maxWidth / img.width;
+                canvas.width = maxWidth;
+                canvas.height = img.height * ratio;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                canvas.toBlob((blob) => {
+                    resolve(new File([blob], file.name, { type: 'image/jpeg' }));
+                }, 'image/jpeg', 0.85);
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+}
 
 export default function ShippingList({
     shippings, onUpdate, onDelete, isStockAdmin, locaisOrigem,
@@ -29,6 +53,11 @@ export default function ShippingList({
     const [openStatusMenu, setOpenStatusMenu] = useState(null);
     const [success, setSuccess] = useState('');
     const [error, setError] = useState('');
+    const [comprovanteModal, setComprovanteModal] = useState(null); // shipping object
+    const [comprovanteForm, setComprovanteForm] = useState({ recebedorNome: '', comprovanteObs: '', comprovanteFotos: [] });
+    const [signedUrls, setSignedUrls] = useState({});
+    const [uploadingFoto, setUploadingFoto] = useState(false);
+    const fotoInputRef = useRef(null);
 
     // WhatsApp copy handler
     const handleCopyClientMessage = async (shipping) => {
@@ -38,6 +67,73 @@ export default function ShippingList({
             setSuccess('Copiado!');
             setTimeout(() => setSuccess(''), 3000);
         }
+    };
+
+    // Open comprovante modal
+    const openComprovante = async (shipping) => {
+        setComprovanteModal(shipping);
+        setComprovanteForm({
+            recebedorNome: shipping.recebedorNome || '',
+            comprovanteObs: shipping.comprovanteObs || '',
+            comprovanteFotos: shipping.comprovanteFotos || [],
+        });
+        // Generate signed URLs for existing photos
+        const urls = {};
+        for (const path of (shipping.comprovanteFotos || [])) {
+            try {
+                const { data } = await supabaseClient.storage
+                    .from('comprovantes').createSignedUrl(path, 3600);
+                if (data?.signedUrl) urls[path] = data.signedUrl;
+            } catch (_) {}
+        }
+        setSignedUrls(urls);
+    };
+
+    const handleComprovanteFotoUpload = async (e) => {
+        const files = Array.from(e.target.files || []);
+        if (!files.length) return;
+        const current = comprovanteForm.comprovanteFotos || [];
+        if (current.length + files.length > 3) { setError('Máximo 3 fotos'); return; }
+        setUploadingFoto(true);
+        const newFotos = [...current];
+        const newUrls = { ...signedUrls };
+        for (const file of files) {
+            try {
+                const resized = await resizeImage(file);
+                const path = `comprovantes/${comprovanteModal.id}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
+                const { data, error: upErr } = await supabaseClient.storage
+                    .from('comprovantes').upload(path, resized, { contentType: resized.type, upsert: false });
+                if (upErr) throw upErr;
+                newFotos.push(data.path);
+                const { data: urlData } = await supabaseClient.storage
+                    .from('comprovantes').createSignedUrl(data.path, 3600);
+                if (urlData?.signedUrl) newUrls[data.path] = urlData.signedUrl;
+            } catch (err) { setError('Erro ao enviar foto: ' + err.message); }
+        }
+        setComprovanteForm({ ...comprovanteForm, comprovanteFotos: newFotos });
+        setSignedUrls(newUrls);
+        setUploadingFoto(false);
+        if (fotoInputRef.current) fotoInputRef.current.value = '';
+    };
+
+    const handleRemoveComprovanteFoto = async (index) => {
+        const fotos = [...comprovanteForm.comprovanteFotos];
+        const path = fotos[index];
+        fotos.splice(index, 1);
+        setComprovanteForm({ ...comprovanteForm, comprovanteFotos: fotos });
+        try { await supabaseClient.storage.from('comprovantes').remove([path]); } catch (_) {}
+    };
+
+    const saveComprovante = async () => {
+        if (!comprovanteModal) return;
+        await onUpdate(comprovanteModal.id, {
+            recebedorNome: comprovanteForm.recebedorNome,
+            comprovanteObs: comprovanteForm.comprovanteObs,
+            comprovanteFotos: comprovanteForm.comprovanteFotos,
+        });
+        setComprovanteModal(null);
+        setSuccess('Comprovante salvo!');
+        setTimeout(() => setSuccess(''), 3000);
     };
 
     const formatDate = (dateStr) => {
@@ -129,6 +225,7 @@ export default function ShippingList({
         const pendentes = shippings.filter(s =>
             s.status !== 'ENTREGUE' &&
             s.status !== 'DEVOLVIDO' &&
+            !s.entregaLocal &&
             (s.melhorEnvioId || s.codigoRastreio)
         );
         if (pendentes.length === 0) {
@@ -331,9 +428,40 @@ export default function ShippingList({
                                         {s.destino && <div style={{fontSize: '10px', color: 'var(--text-muted)'}}>{s.destino.substring(0, 30)}...</div>}
                                     </td>
                                     <td style={{fontSize: '12px'}}>{s.localOrigem}</td>
-                                    <td style={{fontSize: '12px'}}>{s.transportadora || '-'}</td>
+                                    <td style={{fontSize: '12px'}}>
+                                        {s.entregaLocal ? (
+                                            <span style={{color: '#065F46', fontWeight: 500}}>📦 Local</span>
+                                        ) : (s.transportadora || '-')}
+                                    </td>
                                     <td>
-                                        {s.codigoRastreio ? (
+                                        {s.entregaLocal ? (
+                                            <div>
+                                                {s.recebedorNome && (
+                                                    <div style={{fontSize: '12px', fontWeight: 500}}>
+                                                        Recebido: {s.recebedorNome}
+                                                    </div>
+                                                )}
+                                                {(s.comprovanteFotos || []).length > 0 && (
+                                                    <button
+                                                        className="btn btn-secondary btn-sm"
+                                                        onClick={() => openComprovante(s)}
+                                                        style={{fontSize: '10px', padding: '3px 8px', marginTop: '2px'}}
+                                                        title="Ver comprovante"
+                                                    >
+                                                        📷 {s.comprovanteFotos.length} foto{s.comprovanteFotos.length !== 1 ? 's' : ''}
+                                                    </button>
+                                                )}
+                                                {!(s.comprovanteFotos || []).length && !s.recebedorNome && isStockAdmin && (
+                                                    <button
+                                                        className="btn btn-secondary btn-sm"
+                                                        onClick={() => openComprovante(s)}
+                                                        style={{fontSize: '11px', padding: '4px 8px'}}
+                                                    >
+                                                        + Comprovante
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ) : s.codigoRastreio ? (
                                             <div>
                                                 <code style={{fontSize: '11px'}}>{s.codigoRastreio}</code>
                                                 {(() => {
@@ -397,7 +525,7 @@ export default function ShippingList({
                                                 lineHeight: '1.4',
                                                 whiteSpace: 'nowrap',
                                             }}>
-                                                {statusList[s.status]?.label || s.status}
+                                                {s.entregaLocal && s.status === 'ENTREGUE' ? 'Entregue (Local)' : (statusList[s.status]?.label || s.status)}
                                             </span>
                                             {isStockAdmin && (statusTransitions[s.status] || []).length > 0 && (
                                                 <>
@@ -504,8 +632,19 @@ export default function ShippingList({
                                             >
                                                 <Icon name="whatsapp" size={14} style={{color: '#25D366'}} />
                                             </button>
-                                            {/* Tracking — admin only */}
-                                            {isStockAdmin && (s.codigoRastreio || s.melhorEnvioId) && (
+                                            {/* Comprovante — for ENTREGUE shippings (admin only) */}
+                                            {isStockAdmin && s.status === 'ENTREGUE' && (
+                                                <button
+                                                    className="btn btn-secondary btn-sm"
+                                                    onClick={() => openComprovante(s)}
+                                                    title={s.entregaLocal ? 'Ver/editar comprovante' : 'Adicionar comprovante'}
+                                                    style={{fontSize: '10px', padding: '4px 8px'}}
+                                                >
+                                                    📋
+                                                </button>
+                                            )}
+                                            {/* Tracking — admin only, not for local delivery */}
+                                            {isStockAdmin && !s.entregaLocal && (s.codigoRastreio || s.melhorEnvioId) && (
                                                 <button
                                                     className="btn btn-primary btn-sm"
                                                     onClick={() => atualizarRastreioMelhorEnvio(s)}
@@ -516,7 +655,7 @@ export default function ShippingList({
                                                     {atualizandoRastreio ? '...' : '⟳'}
                                                 </button>
                                             )}
-                                            {isStockAdmin && s.nfNumero && (!s.codigoRastreio || !s.melhorEnvioId) && (
+                                            {isStockAdmin && !s.entregaLocal && s.nfNumero && (!s.codigoRastreio || !s.melhorEnvioId) && (
                                                 <button
                                                     className="btn btn-secondary btn-sm"
                                                     onClick={() => buscarRastreioNF(s)}
@@ -661,6 +800,117 @@ export default function ShippingList({
                             </button>
                             <button className="btn btn-secondary" onClick={() => setEditingShipping(null)}>Cancelar</button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Comprovante de Entrega */}
+            {comprovanteModal && (
+                <div className="modal-overlay">
+                    <div className="modal-content" style={{maxWidth: '500px'}}>
+                        <h2 className="modal-title">📋 Comprovante de Entrega</h2>
+                        <p className="modal-subtitle">
+                            NF {comprovanteModal.nfNumero} — {comprovanteModal.cliente}
+                            {comprovanteModal.entregaLocal && <span style={{
+                                marginLeft: '8px', background: '#D1FAE5', color: '#065F46',
+                                padding: '2px 8px', borderRadius: '8px', fontSize: '10px', fontWeight: 600
+                            }}>Entrega Local</span>}
+                        </p>
+
+                        {comprovanteModal.dataEntrega && (
+                            <div style={{fontSize: '12px', color: 'var(--text-muted)', marginBottom: '12px'}}>
+                                Entregue em: {formatDate(comprovanteModal.dataEntrega)}
+                            </div>
+                        )}
+
+                        {isStockAdmin ? (
+                            <>
+                                <div className="form-group">
+                                    <label className="form-label">Recebido por</label>
+                                    <input
+                                        type="text" className="form-input"
+                                        value={comprovanteForm.recebedorNome}
+                                        onChange={(e) => setComprovanteForm({...comprovanteForm, recebedorNome: e.target.value})}
+                                        placeholder="Nome de quem recebeu"
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Observação da entrega</label>
+                                    <textarea
+                                        className="form-textarea"
+                                        value={comprovanteForm.comprovanteObs}
+                                        onChange={(e) => setComprovanteForm({...comprovanteForm, comprovanteObs: e.target.value})}
+                                        placeholder="Ex: Entregue na portaria com o João"
+                                        rows={2}
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Fotos (máx. 3)</label>
+                                    <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px'}}>
+                                        {comprovanteForm.comprovanteFotos.map((path, i) => (
+                                            <div key={i} style={{
+                                                position: 'relative', width: '120px', height: '120px',
+                                                borderRadius: '8px', overflow: 'hidden', border: '1px solid #d1d5db'
+                                            }}>
+                                                {signedUrls[path] ? (
+                                                    <img src={signedUrls[path]} alt="" style={{width: '100%', height: '100%', objectFit: 'cover'}} />
+                                                ) : (
+                                                    <div style={{width: '100%', height: '100%', background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af'}}>📷</div>
+                                                )}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleRemoveComprovanteFoto(i)}
+                                                    style={{
+                                                        position: 'absolute', top: '4px', right: '4px',
+                                                        width: '22px', height: '22px', borderRadius: '50%',
+                                                        background: 'rgba(239,68,68,0.9)', color: '#fff',
+                                                        border: 'none', cursor: 'pointer', fontSize: '14px',
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                                    }}
+                                                >×</button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    {comprovanteForm.comprovanteFotos.length < 3 && (
+                                        <div>
+                                            <input ref={fotoInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/heic" multiple style={{display: 'none'}} onChange={handleComprovanteFotoUpload} />
+                                            <button type="button" className="btn btn-secondary btn-sm" onClick={() => fotoInputRef.current?.click()} disabled={uploadingFoto} style={{fontSize: '12px'}}>
+                                                {uploadingFoto ? 'Enviando...' : '📷 Anexar foto'}
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="btn-group">
+                                    <button className="btn btn-primary" onClick={saveComprovante}>Salvar Comprovante</button>
+                                    <button className="btn btn-secondary" onClick={() => setComprovanteModal(null)}>Cancelar</button>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                {comprovanteForm.recebedorNome && (
+                                    <div style={{marginBottom: '12px'}}>
+                                        <strong>Recebido por:</strong> {comprovanteForm.recebedorNome}
+                                    </div>
+                                )}
+                                {comprovanteForm.comprovanteObs && (
+                                    <div style={{marginBottom: '12px'}}>
+                                        <strong>Observação:</strong> {comprovanteForm.comprovanteObs}
+                                    </div>
+                                )}
+                                <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px'}}>
+                                    {comprovanteForm.comprovanteFotos.map((path, i) => (
+                                        <div key={i} style={{width: '150px', height: '150px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #d1d5db'}}>
+                                            {signedUrls[path] ? (
+                                                <img src={signedUrls[path]} alt="" style={{width: '100%', height: '100%', objectFit: 'cover'}} />
+                                            ) : (
+                                                <div style={{width: '100%', height: '100%', background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af'}}>📷</div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                                <button className="btn btn-secondary" onClick={() => setComprovanteModal(null)}>Fechar</button>
+                            </>
+                        )}
                     </div>
                 </div>
             )}

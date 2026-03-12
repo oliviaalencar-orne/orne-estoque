@@ -74,7 +74,7 @@ export default async function handler(req, res) {
   try {
     // 1. Buscar shippings pendentes de atualização
     const query = new URLSearchParams({
-      select: 'id,nf_numero,cliente,status,codigo_rastreio,melhor_envio_id,transportadora',
+      select: 'id,nf_numero,cliente,status,codigo_rastreio,melhor_envio_id,transportadora,entrega_local',
       or: '(status.eq.DESPACHADO,status.eq.EM_TRANSITO)',
     });
 
@@ -88,7 +88,10 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Failed to fetch shippings' });
     }
 
-    const allShippings = await shippingsRes.json();
+    const allShippingsRaw = await shippingsRes.json();
+    // Filter out local deliveries (entrega_local=true) — they don't need tracking
+    const allShippings = allShippingsRaw.filter(s => !s.entrega_local);
+    console.log(`[CRON] ${allShippingsRaw.length} pendentes total, ${allShippingsRaw.length - allShippings.length} entregas locais ignoradas`);
 
     // ── Step 1.5: NF search — find tracking for shippings without codes ──
     const semRastreio = allShippings.filter(

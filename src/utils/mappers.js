@@ -63,6 +63,11 @@ export const mapShippingFromDB = (row) => ({
   userId: row.user_id || '',
   ultimaAtualizacaoRastreio: row.ultima_atualizacao_rastreio || '',
   rastreioInfo: row.rastreio_info || null,
+  entregaLocal: row.entrega_local || false,
+  recebedorNome: row.recebedor_nome || '',
+  comprovanteObs: row.comprovante_obs || '',
+  comprovanteFotos: row.comprovante_fotos || [],
+  dataEntrega: row.data_entrega || null,
 });
 
 export const mapSeparationFromDB = (row) => ({

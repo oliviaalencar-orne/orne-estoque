@@ -39,6 +39,7 @@ export default function SeparationList({
   const [shareMenuId, setShareMenuId] = useState(null);
   const [shareMenuPos, setShareMenuPos] = useState({ top: 0, right: 0 });
   const [copiedId, setCopiedId] = useState(null);
+  const [batchEntregaLocal, setBatchEntregaLocal] = useState(false);
   const shareMenuSepRef = useRef(null);
 
   // Use equipe labels when not admin
@@ -446,12 +447,28 @@ export default function SeparationList({
             }}
             onClick={() => {
               if (onBatchDispatch) {
-                onBatchDispatch(selectedSeparations, clearSelection);
+                onBatchDispatch(selectedSeparations, clearSelection, { entregaLocal: batchEntregaLocal });
               }
+              setBatchEntregaLocal(false);
             }}
           >
-            <Icon name="shipping" size={14} /> Enviar para Despacho
+            <Icon name="shipping" size={14} /> {batchEntregaLocal ? 'Enviar como Entrega Local' : 'Enviar para Despacho'}
           </button>
+          <label style={{
+            display: 'flex', alignItems: 'center', gap: '6px',
+            color: '#fff', fontSize: '11px', cursor: 'pointer',
+            background: batchEntregaLocal ? 'rgba(16,185,129,0.3)' : 'rgba(255,255,255,0.1)',
+            padding: '4px 10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.3)',
+            whiteSpace: 'nowrap',
+          }}>
+            <input
+              type="checkbox"
+              checked={batchEntregaLocal}
+              onChange={(e) => setBatchEntregaLocal(e.target.checked)}
+              style={{width: '14px', height: '14px', accentColor: '#10b981'}}
+            />
+            📦 Entrega Local (já entregue)
+          </label>
           <button
             style={{
               background: 'transparent',

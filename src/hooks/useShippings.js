@@ -44,6 +44,11 @@ export function useShippings(user, isStockAdmin) {
         status: shipping.status || 'DESPACHADO',
         date: new Date().toISOString(),
         user_id: user.email,
+        entrega_local: shipping.entregaLocal || false,
+        recebedor_nome: shipping.recebedorNome || '',
+        comprovante_obs: shipping.comprovanteObs || '',
+        comprovante_fotos: shipping.comprovanteFotos || [],
+        data_entrega: shipping.dataEntrega || null,
       };
       const { error } = await supabaseClient.from('shippings').upsert(newShipping);
       if (error) {
@@ -85,6 +90,11 @@ export function useShippings(user, isStockAdmin) {
       if (data.rastreioInfo !== undefined) mapped.rastreio_info = data.rastreioInfo;
       if (data.hubTelefone !== undefined) mapped.hub_telefone = data.hubTelefone;
       if (data.telefoneCliente !== undefined) mapped.telefone_cliente = data.telefoneCliente;
+      if (data.entregaLocal !== undefined) mapped.entrega_local = data.entregaLocal;
+      if (data.recebedorNome !== undefined) mapped.recebedor_nome = data.recebedorNome;
+      if (data.comprovanteObs !== undefined) mapped.comprovante_obs = data.comprovanteObs;
+      if (data.comprovanteFotos !== undefined) mapped.comprovante_fotos = data.comprovanteFotos;
+      if (data.dataEntrega !== undefined) mapped.data_entrega = data.dataEntrega;
       const { error } = await supabaseClient
         .from('shippings')
         .update(mapped)

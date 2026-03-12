@@ -5,10 +5,38 @@
  * Renders the form, product table with linking, NF origin selection.
  * Does NOT handle submit — that stays in ShippingManager.
  */
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Icon } from '@/utils/icons';
 import { getEstoquePorNF } from '@/utils/fifo';
+import { supabaseClient } from '@/config/supabase';
 import CategorySelectInline from '@/components/ui/CategorySelectInline';
+
+// Resize image to max 1200px width before upload
+function resizeImage(file, maxWidth = 1200) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                if (img.width <= maxWidth) {
+                    resolve(file);
+                    return;
+                }
+                const canvas = document.createElement('canvas');
+                const ratio = maxWidth / img.width;
+                canvas.width = maxWidth;
+                canvas.height = img.height * ratio;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                canvas.toBlob((blob) => {
+                    resolve(new File([blob], file.name, { type: 'image/jpeg' }));
+                }, 'image/jpeg', 0.85);
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+}
 
 export default function ShippingForm({
     form, setForm, nfData, setNfData, nfFile, setNfFile,
@@ -24,6 +52,49 @@ export default function ShippingForm({
         name: '', sku: '', ean: '', category: '', minStock: 1, observations: ''
     });
     const [error, setError] = useState('');
+    const [uploadingFoto, setUploadingFoto] = useState(false);
+    const fotoInputRef = useRef(null);
+
+    const isEntregaLocal = form.transportadora === 'Entrega Local';
+
+    // Upload comprovante foto
+    const handleFotoUpload = async (e) => {
+        const files = Array.from(e.target.files || []);
+        if (!files.length) return;
+        const currentFotos = form.comprovanteFotos || [];
+        if (currentFotos.length + files.length > 3) {
+            setError('Máximo 3 fotos por comprovante');
+            return;
+        }
+        setUploadingFoto(true);
+        setError('');
+        const newFotos = [...currentFotos];
+        for (const file of files) {
+            try {
+                const resized = await resizeImage(file);
+                const path = `comprovantes/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
+                const { data, error: upErr } = await supabaseClient.storage
+                    .from('comprovantes')
+                    .upload(path, resized, { contentType: resized.type, upsert: false });
+                if (upErr) throw upErr;
+                newFotos.push(data.path);
+            } catch (err) {
+                setError('Erro ao enviar foto: ' + err.message);
+            }
+        }
+        setForm({ ...form, comprovanteFotos: newFotos });
+        setUploadingFoto(false);
+        if (fotoInputRef.current) fotoInputRef.current.value = '';
+    };
+
+    const handleRemoveFoto = async (index) => {
+        const fotos = [...(form.comprovanteFotos || [])];
+        const path = fotos[index];
+        fotos.splice(index, 1);
+        setForm({ ...form, comprovanteFotos: fotos });
+        // Try to delete from storage (best effort)
+        try { await supabaseClient.storage.from('comprovantes').remove([path]); } catch (_) {}
+    };
 
     // Vincular produto da NF com estoque
     const handleVincularProduto = (index, skuEstoque) => {
@@ -145,15 +216,46 @@ export default function ShippingForm({
                         <select
                             className="form-select"
                             value={form.transportadora}
-                            onChange={(e) => setForm({...form, transportadora: e.target.value})}
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                const updates = { transportadora: val };
+                                if (val === 'Entrega Local') {
+                                    updates.codigoRastreio = '';
+                                    updates.linkRastreio = '';
+                                    updates.melhorEnvioId = '';
+                                }
+                                setForm({...form, ...updates});
+                            }}
+                            style={form.transportadora === 'Entrega Local' ? {
+                                borderColor: '#10b981', background: '#D1FAE5', fontWeight: 600
+                            } : {}}
                         >
                             <option value="">Selecione...</option>
+                            <option value="Entrega Local" style={{fontWeight: 600, color: '#065F46'}}>📦 Entrega Local</option>
+                            <option disabled>────────────</option>
                             {transportadoras.map(t => <option key={t} value={t}>{t}</option>)}
                         </select>
                     </div>
                 </div>
 
-                <div className="form-row">
+                {/* Entrega Local info banner */}
+                {isEntregaLocal && (
+                    <div style={{
+                        background: '#D1FAE5', border: '1px solid #6EE7B7',
+                        padding: '12px 16px', borderRadius: 'var(--radius)', marginBottom: '16px',
+                        display: 'flex', alignItems: 'center', gap: '10px'
+                    }}>
+                        <span style={{fontSize: '20px'}}>📦</span>
+                        <div>
+                            <div style={{fontWeight: 600, color: '#065F46', fontSize: '13px'}}>Entrega Local selecionada</div>
+                            <div style={{fontSize: '11px', color: '#047857'}}>
+                                O despacho será criado com status ENTREGUE automaticamente. Campos de rastreio ocultos.
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {!isEntregaLocal && (<div className="form-row">
                     <div className="form-group">
                         <label className="form-label">Código de Rastreio</label>
                         <input
@@ -178,10 +280,10 @@ export default function ShippingForm({
                             placeholder="https://..."
                         />
                     </div>
-                </div>
+                </div>)}
 
                 {/* Campo ID Melhor Envio */}
-                {form.transportadora === 'Melhor Envio' && (
+                {!isEntregaLocal && form.transportadora === 'Melhor Envio' && (
                     <div className="form-group" style={{
                         background: 'var(--info-light)',
                         padding: '16px',
@@ -601,6 +703,93 @@ export default function ShippingForm({
                     </div>
                 )}
 
+                {/* Comprovação de Entrega — only for Entrega Local on creation */}
+                {isEntregaLocal && (
+                    <div style={{
+                        background: '#f0fdf4', border: '1px solid #bbf7d0',
+                        borderRadius: 'var(--radius)', padding: '16px', marginBottom: '16px'
+                    }}>
+                        <h3 style={{fontSize: '14px', fontWeight: 600, marginBottom: '12px', color: '#065F46'}}>
+                            📋 Comprovação de Entrega
+                        </h3>
+                        <div className="form-group">
+                            <label className="form-label">Recebido por</label>
+                            <input
+                                type="text"
+                                className="form-input"
+                                value={form.recebedorNome || ''}
+                                onChange={(e) => setForm({...form, recebedorNome: e.target.value})}
+                                placeholder="Nome de quem recebeu"
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Observação da entrega</label>
+                            <textarea
+                                className="form-textarea"
+                                value={form.comprovanteObs || ''}
+                                onChange={(e) => setForm({...form, comprovanteObs: e.target.value})}
+                                placeholder="Ex: Entregue na portaria com o João"
+                                rows={2}
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Fotos do comprovante (máx. 3)</label>
+                            <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px'}}>
+                                {(form.comprovanteFotos || []).map((path, i) => (
+                                    <div key={i} style={{
+                                        position: 'relative', width: '80px', height: '80px',
+                                        borderRadius: '8px', overflow: 'hidden', border: '1px solid #d1d5db'
+                                    }}>
+                                        <img
+                                            src={`${import.meta.env.VITE_SUPABASE_URL || 'https://ppslljqxsdsdmwfiayok.supabase.co'}/storage/v1/object/sign/comprovantes/${path}?token=preview`}
+                                            alt=""
+                                            style={{width: '100%', height: '100%', objectFit: 'cover'}}
+                                            onError={(e) => { e.target.style.display = 'none'; }}
+                                        />
+                                        <div style={{
+                                            position: 'absolute', inset: 0,
+                                            background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            fontSize: '10px', color: '#6b7280', zIndex: -1
+                                        }}>📷</div>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleRemoveFoto(i)}
+                                            style={{
+                                                position: 'absolute', top: '2px', right: '2px',
+                                                width: '20px', height: '20px', borderRadius: '50%',
+                                                background: 'rgba(239,68,68,0.9)', color: '#fff',
+                                                border: 'none', cursor: 'pointer', fontSize: '12px',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                            }}
+                                        >×</button>
+                                    </div>
+                                ))}
+                            </div>
+                            {(form.comprovanteFotos || []).length < 3 && (
+                                <div>
+                                    <input
+                                        ref={fotoInputRef}
+                                        type="file"
+                                        accept="image/jpeg,image/png,image/webp,image/heic"
+                                        multiple
+                                        style={{display: 'none'}}
+                                        onChange={handleFotoUpload}
+                                    />
+                                    <button
+                                        type="button"
+                                        className="btn btn-secondary btn-sm"
+                                        onClick={() => fotoInputRef.current?.click()}
+                                        disabled={uploadingFoto}
+                                        style={{fontSize: '12px'}}
+                                    >
+                                        {uploadingFoto ? 'Enviando...' : '📷 Anexar foto'}
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
                 <div className="form-group">
                     <label className="form-label">Observações</label>
                     <textarea
@@ -612,7 +801,9 @@ export default function ShippingForm({
                 </div>
 
                 <div className="btn-group">
-                    <button type="submit" className="btn btn-primary">Registrar Despacho</button>
+                    <button type="submit" className="btn btn-primary">
+                        {isEntregaLocal ? 'Registrar como Entregue' : 'Registrar Despacho'}
+                    </button>
                     <button type="button" className="btn btn-secondary" onClick={onCancel}>Cancelar</button>
                 </div>
             </form>

@@ -222,7 +222,8 @@ export default function SeparationManager({
   };
 
   // ── Batch dispatch — create shippings + exits ──────────────────────
-  const handleBatchDispatch = async (selectedSeparations, clearSelection) => {
+  const handleBatchDispatch = async (selectedSeparations, clearSelection, options = {}) => {
+    const isLocal = options.entregaLocal === true;
     if (!selectedSeparations.length) return;
     if (!onAddShipping) {
       alert('Função de criar despacho não disponível');
@@ -249,13 +250,15 @@ export default function SeparationManager({
           cliente: sep.cliente || '',
           destino: sep.destino || '',
           localOrigem,
-          transportadora: '',
+          transportadora: isLocal ? 'Entrega Local' : '',
           codigoRastreio: '',
           linkRastreio: '',
           melhorEnvioId: '',
           produtos: sep.produtos || [],
           observacoes: sep.observacoes || '',
-          status: 'DESPACHADO',
+          status: isLocal ? 'ENTREGUE' : 'DESPACHADO',
+          entregaLocal: isLocal,
+          dataEntrega: isLocal ? new Date().toISOString() : null,
         });
 
         const shippingId = shippingResult?.id;

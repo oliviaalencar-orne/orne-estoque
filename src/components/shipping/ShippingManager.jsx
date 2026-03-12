@@ -67,7 +67,10 @@ export default function ShippingManager({
         hubTelefone: '',
         baixarEstoque: true,
         produtos: [],
-        observacoes: ''
+        observacoes: '',
+        recebedorNome: '',
+        comprovanteObs: '',
+        comprovanteFotos: [],
     });
 
     // Auto-search ME for tracking data in background (fire-and-forget)
@@ -209,19 +212,25 @@ export default function ShippingManager({
         }
 
         try {
+            const isLocal = form.transportadora === 'Entrega Local';
             const shippingData = {
                 nfNumero: form.nfNumero,
                 cliente: form.cliente,
                 destino: form.destino,
                 localOrigem: form.localOrigem,
                 transportadora: form.transportadora,
-                codigoRastreio: form.codigoRastreio,
-                linkRastreio: form.linkRastreio,
-                melhorEnvioId: form.melhorEnvioId || '',
+                codigoRastreio: isLocal ? '' : form.codigoRastreio,
+                linkRastreio: isLocal ? '' : form.linkRastreio,
+                melhorEnvioId: isLocal ? '' : (form.melhorEnvioId || ''),
                 hubTelefone: form.hubTelefone || '',
                 produtos: form.produtos,
                 observacoes: form.observacoes,
-                status: 'DESPACHADO'
+                status: isLocal ? 'ENTREGUE' : 'DESPACHADO',
+                entregaLocal: isLocal,
+                recebedorNome: isLocal ? (form.recebedorNome || '') : '',
+                comprovanteObs: isLocal ? (form.comprovanteObs || '') : '',
+                comprovanteFotos: isLocal ? (form.comprovanteFotos || []) : [],
+                dataEntrega: isLocal ? new Date().toISOString() : null,
             };
 
             const savedShipping = await onAdd(shippingData);
@@ -279,16 +288,17 @@ export default function ShippingManager({
                 }
             }
 
-            // Auto-search ME for tracking if no tracking code was provided
-            if (!form.codigoRastreio && !form.melhorEnvioId && form.nfNumero && shippingId) {
+            // Auto-search ME for tracking if no tracking code was provided (skip for local delivery)
+            if (!isLocal && !form.codigoRastreio && !form.melhorEnvioId && form.nfNumero && shippingId) {
                 tentarBuscarRastreioME(shippingId, form.nfNumero, form.cliente);
             }
 
-            setSuccess('Despacho registrado com sucesso!');
+            setSuccess(isLocal ? 'Entrega local registrada como ENTREGUE!' : 'Despacho registrado com sucesso!');
             setForm({
                 nfNumero: '', cliente: '', destino: '', localOrigem: locaisOrigem[0] || 'Loja Principal',
                 transportadora: '', codigoRastreio: '', linkRastreio: '', melhorEnvioId: '',
-                hubTelefone: '', baixarEstoque: true, produtos: [], observacoes: ''
+                hubTelefone: '', baixarEstoque: true, produtos: [], observacoes: '',
+                recebedorNome: '', comprovanteObs: '', comprovanteFotos: [],
             });
             setNfFile(null);
             setNfData(null);
