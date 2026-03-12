@@ -719,13 +719,42 @@ export default function ShippingList({
                             </div>
                             <div className="form-group">
                                 <label className="form-label">Transportadora</label>
-                                <select className="form-select" value={editingShipping.transportadora || ''} onChange={(e) => setEditingShipping({...editingShipping, transportadora: e.target.value})}>
+                                <select className="form-select" value={editingShipping.transportadora || ''} onChange={(e) => {
+                                    const val = e.target.value;
+                                    const isLocal = val === 'Entrega Local';
+                                    setEditingShipping({
+                                        ...editingShipping,
+                                        transportadora: val,
+                                        ...(isLocal ? {
+                                            codigoRastreio: '', linkRastreio: '', melhorEnvioId: '',
+                                            entregaLocal: true, status: 'ENTREGUE',
+                                            dataEntrega: editingShipping.dataEntrega || new Date().toISOString(),
+                                        } : {
+                                            entregaLocal: false,
+                                        }),
+                                    });
+                                }}>
                                     <option value="">Selecione...</option>
+                                    <option value="Entrega Local" style={{fontWeight: 600}}>📦 Entrega Local</option>
+                                    <option disabled>───────────</option>
                                     {transportadoras.map(t => <option key={t} value={t}>{t}</option>)}
                                 </select>
                             </div>
                         </div>
 
+                        {/* Info banner for Entrega Local */}
+                        {editingShipping.transportadora === 'Entrega Local' && (
+                            <div style={{
+                                background: '#D1FAE5', border: '1px solid #6EE7B7', borderRadius: '8px',
+                                padding: '10px 14px', marginBottom: '12px', fontSize: '13px', color: '#065F46',
+                                display: 'flex', alignItems: 'center', gap: '8px'
+                            }}>
+                                📦 Entrega local — será marcado como <strong>ENTREGUE</strong> automaticamente.
+                            </div>
+                        )}
+
+                        {/* Tracking fields — hidden for Entrega Local */}
+                        {editingShipping.transportadora !== 'Entrega Local' && (<>
                         <div className="form-row">
                             <div className="form-group">
                                 <label className="form-label">Código de Rastreio</label>
@@ -755,6 +784,22 @@ export default function ShippingList({
                                 </select>
                             </div>
                         </div>
+                        </>)}
+
+                        {/* Comprovação fields — shown for Entrega Local */}
+                        {editingShipping.transportadora === 'Entrega Local' && (
+                            <div style={{border: '1px solid var(--border-default)', borderRadius: '8px', padding: '14px', marginBottom: '12px'}}>
+                                <h4 style={{margin: '0 0 10px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)'}}>Comprovação de Entrega</h4>
+                                <div className="form-group">
+                                    <label className="form-label">Nome do Recebedor</label>
+                                    <input type="text" className="form-input" value={editingShipping.recebedorNome || ''} onChange={(e) => setEditingShipping({...editingShipping, recebedorNome: e.target.value})} placeholder="Quem recebeu a entrega" />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Observações da Entrega</label>
+                                    <textarea className="form-textarea" value={editingShipping.comprovanteObs || ''} onChange={(e) => setEditingShipping({...editingShipping, comprovanteObs: e.target.value})} placeholder="Detalhes sobre a entrega..." rows={2} />
+                                </div>
+                            </div>
+                        )}
 
                         <div className="form-row">
                             <div className="form-group">
@@ -776,19 +821,24 @@ export default function ShippingList({
                             <button
                                 className="btn btn-primary"
                                 onClick={async () => {
+                                    const isLocal = editingShipping.transportadora === 'Entrega Local';
                                     await onUpdate(editingShipping.id, {
                                         nfNumero: editingShipping.nfNumero,
                                         cliente: editingShipping.cliente,
                                         destino: editingShipping.destino,
                                         localOrigem: editingShipping.localOrigem,
                                         transportadora: editingShipping.transportadora,
-                                        codigoRastreio: editingShipping.codigoRastreio,
-                                        linkRastreio: editingShipping.linkRastreio,
-                                        melhorEnvioId: editingShipping.melhorEnvioId,
-                                        status: editingShipping.status,
+                                        codigoRastreio: isLocal ? '' : editingShipping.codigoRastreio,
+                                        linkRastreio: isLocal ? '' : editingShipping.linkRastreio,
+                                        melhorEnvioId: isLocal ? '' : editingShipping.melhorEnvioId,
+                                        status: isLocal ? 'ENTREGUE' : editingShipping.status,
                                         observacoes: editingShipping.observacoes,
                                         hubTelefone: editingShipping.hubTelefone,
                                         telefoneCliente: editingShipping.telefoneCliente,
+                                        entregaLocal: isLocal,
+                                        recebedorNome: isLocal ? (editingShipping.recebedorNome || '') : editingShipping.recebedorNome,
+                                        comprovanteObs: isLocal ? (editingShipping.comprovanteObs || '') : editingShipping.comprovanteObs,
+                                        dataEntrega: isLocal ? (editingShipping.dataEntrega || new Date().toISOString()) : editingShipping.dataEntrega,
                                         updatedAt: new Date().toISOString()
                                     });
                                     setEditingShipping(null);
