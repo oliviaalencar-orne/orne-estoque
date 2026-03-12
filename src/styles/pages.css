@@ -173,7 +173,7 @@
 
 /* ===================== PERFORMANCE ===================== */
 .card, .stat-card, .product-card, .category-card {
-    contain: layout style;
+    contain: style;
 }
 .stat-value, .product-quantity, .category-count {
     font-variant-numeric: tabular-nums;

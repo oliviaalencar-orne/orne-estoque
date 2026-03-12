@@ -49,8 +49,7 @@
     box-shadow: none;
     transition: var(--transition);
     position: relative;
-    container-type: inline-size;
-    container-name: card;
+    /* container-type removed — breaks position:fixed modals inside stat-cards */
 }
 
 .stat-card:hover {

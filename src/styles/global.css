@@ -199,10 +199,6 @@ body {
     padding-right: env(safe-area-inset-right);
 }
 
-/* ===== CONTAINER QUERIES ===== */
-.container-component { container-type: inline-size; }
-.container-card { container-type: inline-size; container-name: card; }
-
 /* ===== FOCUS & ACCESSIBILITY ===== */
 :focus-visible {
     outline: 2px solid var(--accent-primary);
