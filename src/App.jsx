@@ -364,41 +364,6 @@ export default function App() {
           </button>
         </div>
 
-        {isStockAdmin && (
-          <div style={{ padding: '0 14px', marginBottom: '16px' }}>
-            <button
-              onClick={() => {
-                const url = window.location.origin + '/consulta.html';
-                navigator.clipboard.writeText(url);
-                alert(
-                  'Link copiado!\n\n' +
-                    url +
-                    '\n\nCompartilhe com sua equipe para visualização (somente leitura).'
-                );
-              }}
-              style={{
-                width: '100%',
-                padding: '9px',
-                background: 'rgba(255,255,255,0.12)',
-                border: '1px solid rgba(255,255,255,0.18)',
-                borderRadius: '10px',
-                color: 'rgba(255,255,255,0.85)',
-                cursor: 'pointer',
-                fontSize: '13px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                fontFamily: 'inherit',
-                fontWeight: '400',
-                letterSpacing: '0.2px',
-                transition: 'all 0.2s',
-              }}
-            >
-              <Icon name="share" size={14} /> Compartilhar Consulta
-            </button>
-          </div>
-        )}
 
         {isEquipe && (
           <div style={{ padding: '0 14px', marginBottom: '16px' }}>
