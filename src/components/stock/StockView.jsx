@@ -625,7 +625,7 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                                 <span className="stock-category-arrow">
                                     {(hasSearch || expandedCategories.has(group.categoryId)) ? '\u25BC' : '\u25B6'}
                                 </span>
-                                <span style={{fontWeight: 600, color: group.categoryColor}}>
+                                <span style={{fontWeight: 600, color: '#374151'}}>
                                     {group.categoryName}
                                 </span>
                                 <span className="stock-category-count">
@@ -703,14 +703,14 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                     font-size: 14px;
                     transition: background 0.15s;
                 }
-                .stock-category-header:hover { background: var(--bg-hover, #f0f0f0); }
+                .stock-category-header:hover { background: #F9FAFB; }
                 .stock-category-arrow {
                     font-size: 10px; width: 16px; text-align: center;
-                    color: var(--text-tertiary);
+                    color: #9CA3AF;
                 }
                 .stock-category-count {
                     margin-left: auto; font-size: 12px; font-weight: 500;
-                    color: var(--text-secondary); background: var(--bg-tertiary);
+                    color: #6B7280; background: #F3F4F6;
                     padding: 2px 8px; border-radius: 10px;
                 }
                 .stock-category-body {
