@@ -625,7 +625,6 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                                 <span className="stock-category-arrow">
                                     {(hasSearch || expandedCategories.has(group.categoryId)) ? '\u25BC' : '\u25B6'}
                                 </span>
-                                <CategoryIcon icon={group.categoryIcon} size={18} color={group.categoryColor} />
                                 <span style={{fontWeight: 600, color: group.categoryColor}}>
                                     {group.categoryName}
                                 </span>
