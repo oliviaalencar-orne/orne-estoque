@@ -206,8 +206,8 @@ export default function ShippingList({
     }, [shippings, searchTerm, statusFilter, shipPeriodFilter, shipCustomMonth, shipCustomYear]);
 
     // Status progression — only advances, never regresses
-    const STATUS_RANK = { DESPACHADO: 0, EM_TRANSITO: 1, ENTREGUE: 2, DEVOLVIDO: 2 };
-    const VALID_STATUSES = ['DESPACHADO', 'EM_TRANSITO', 'ENTREGUE', 'DEVOLVIDO'];
+    const STATUS_RANK = { DESPACHADO: 0, EM_TRANSITO: 1, SAIU_ENTREGA: 2, ENTREGUE: 3, DEVOLVIDO: 3 };
+    const VALID_STATUSES = ['DESPACHADO', 'EM_TRANSITO', 'SAIU_ENTREGA', 'ENTREGUE', 'DEVOLVIDO'];
 
     const shouldUpdateStatus = (currentStatus, newStatus) => {
         if (!VALID_STATUSES.includes(newStatus)) return false;

@@ -15,14 +15,15 @@
  *   MELHOR_ENVIO_TOKEN       — Token do Melhor Envio (configurar em Supabase → Edge Function Secrets)
  */
 
-const VALID_STATUSES = ['DESPACHADO', 'EM_TRANSITO', 'ENTREGUE', 'DEVOLVIDO'];
+const VALID_STATUSES = ['DESPACHADO', 'EM_TRANSITO', 'SAIU_ENTREGA', 'ENTREGUE', 'DEVOLVIDO'];
 
 // Progressão válida — só avança, nunca retrocede
 const STATUS_RANK = {
   DESPACHADO: 0,
   EM_TRANSITO: 1,
-  ENTREGUE: 2,
-  DEVOLVIDO: 2, // mesmo nível que ENTREGUE (final)
+  SAIU_ENTREGA: 2,
+  ENTREGUE: 3,
+  DEVOLVIDO: 3, // mesmo nível que ENTREGUE (final)
 };
 
 function shouldUpdateStatus(currentStatus, newStatus) {
@@ -91,6 +92,7 @@ export default async function handler(req, res) {
     const allShippingsRaw = await shippingsRes.json();
     // Filter out local deliveries (entrega_local=true) — they don't need tracking
     const allShippings = allShippingsRaw.filter(s => !s.entrega_local);
+    const now = new Date().toISOString();
     console.log(`[CRON] ${allShippingsRaw.length} pendentes total, ${allShippingsRaw.length - allShippings.length} entregas locais ignoradas`);
 
     // ── Step 1.5: NF search — find tracking for shippings without codes ──
@@ -172,7 +174,6 @@ export default async function handler(req, res) {
     let updated = 0;
     let checked = 0;
     let errors = 0;
-    const now = new Date().toISOString();
 
     // 3a. Rastrear via Melhor Envio (em batch — a API aceita array)
     if (porMelhorEnvio.length > 0) {
@@ -213,11 +214,13 @@ export default async function handler(req, res) {
 
             if (info.status && shouldUpdateStatus(shipping.status, info.status)) {
               updatePayload.status = info.status;
-              updatePayload.codigo_rastreio = info.codigoRastreio || shipping.codigo_rastreio;
               console.log(`[CRON] ${shipping.nf_numero}: ${shipping.status} → ${info.status}`);
             } else {
               console.log(`[CRON] ${shipping.nf_numero}: sem mudança (${shipping.status} → ${info.status || 'N/A'})`);
             }
+            // Always save tracking code and link if available
+            if (info.codigoRastreio) updatePayload.codigo_rastreio = info.codigoRastreio;
+            if (info.linkRastreio) updatePayload.link_rastreio = info.linkRastreio;
 
             const ok = await patchShipping(REST_URL, supabaseHeaders, shipping.id, updatePayload);
             if (ok) {
@@ -284,6 +287,9 @@ export default async function handler(req, res) {
               } else {
                 console.log(`[CRON] ${shipping.nf_numero}: sem mudança (${shipping.status} → ${info.status || 'N/A'})`);
               }
+              // Always save tracking code and link if available
+              if (info.codigoRastreio) updatePayload.codigo_rastreio = info.codigoRastreio;
+              if (info.linkRastreio) updatePayload.link_rastreio = info.linkRastreio;
 
               const ok = await patchShipping(REST_URL, supabaseHeaders, shipping.id, updatePayload);
               if (ok) {
