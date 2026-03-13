@@ -8,7 +8,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Icon } from '@/utils/icons';
 import PeriodFilter, { filterByPeriod } from '@/components/ui/PeriodFilter';
 import { fetchTrackingInfo, buscarRastreioPorNF } from '@/services/trackingService';
-import { supabaseClient } from '@/config/supabase';
+import { supabaseClient, SUPABASE_URL } from '@/config/supabase';
 import {
     buildClientShippingMessage,
     copyMessageToClipboard,
@@ -40,7 +40,7 @@ function resizeImage(file, maxWidth = 1200) {
 
 export default function ShippingList({
     shippings, onUpdate, onDelete, isStockAdmin, locaisOrigem,
-    statusList, statusTransitions, transportadoras
+    statusList, statusTransitions, transportadoras, onRefresh
 }) {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
@@ -199,15 +199,15 @@ export default function ShippingList({
             const matchesSearch = (s.nfNumero || '').toLowerCase().includes(search) ||
                                  (s.cliente || '').toLowerCase().includes(search) ||
                                  (s.codigoRastreio || '').toLowerCase().includes(search);
-            const matchesStatus = statusFilter === 'all' || s.status === statusFilter;
+            const matchesStatus = statusFilter === 'all' || s.status === statusFilter || (statusFilter === 'EM_TRANSITO' && s.status === 'TENTATIVA_ENTREGA');
             return matchesSearch && matchesStatus;
         });
         return items.sort((a, b) => new Date(b.date) - new Date(a.date));
     }, [shippings, searchTerm, statusFilter, shipPeriodFilter, shipCustomMonth, shipCustomYear]);
 
     // Status progression — only advances, never regresses
-    const STATUS_RANK = { DESPACHADO: 0, EM_TRANSITO: 1, SAIU_ENTREGA: 2, ENTREGUE: 3, DEVOLVIDO: 3 };
-    const VALID_STATUSES = ['DESPACHADO', 'EM_TRANSITO', 'SAIU_ENTREGA', 'ENTREGUE', 'DEVOLVIDO'];
+    const STATUS_RANK = { DESPACHADO: 0, EM_TRANSITO: 1, SAIU_ENTREGA: 2, TENTATIVA_ENTREGA: 2, ENTREGUE: 3, DEVOLVIDO: 3 };
+    const VALID_STATUSES = ['DESPACHADO', 'EM_TRANSITO', 'SAIU_ENTREGA', 'TENTATIVA_ENTREGA', 'ENTREGUE', 'DEVOLVIDO'];
 
     const shouldUpdateStatus = (currentStatus, newStatus) => {
         if (!VALID_STATUSES.includes(newStatus)) return false;
@@ -215,7 +215,7 @@ export default function ShippingList({
         return (STATUS_RANK[newStatus] ?? -1) > (STATUS_RANK[currentStatus] ?? -1);
     };
 
-    // Atualizar rastreio (individual)
+    // Atualizar rastreio (individual) — EF persists, just refetch after
     const atualizarRastreioMelhorEnvio = async (shipping) => {
         if (!shipping.melhorEnvioId && !shipping.codigoRastreio) {
             setError('Informe o ID da etiqueta ou código de rastreio');
@@ -225,29 +225,27 @@ export default function ShippingList({
         try {
             const info = await fetchTrackingInfo(shipping);
             if (info) {
-                const updateData = {
-                    ultimaAtualizacaoRastreio: new Date().toISOString(),
-                    rastreioInfo: info,
-                };
-                // Only update status if it's a valid progression
-                if (info.status && shouldUpdateStatus(shipping.status, info.status)) {
-                    updateData.status = info.status;
+                // EF v15 persists status directly — just refetch
+                if (info.persisted) {
+                    await onRefresh?.();
+                } else {
+                    // Fallback: update via frontend if EF didn't persist
+                    const updateData = {
+                        ultimaAtualizacaoRastreio: new Date().toISOString(),
+                        rastreioInfo: info,
+                    };
+                    if (info.status && shouldUpdateStatus(shipping.status, info.status)) {
+                        updateData.status = info.status;
+                    }
+                    if (info.codigoRastreio) updateData.codigoRastreio = info.codigoRastreio;
+                    if (info.linkRastreio) updateData.linkRastreio = info.linkRastreio;
+                    await onUpdate(shipping.id, updateData);
                 }
-                if (info.codigoRastreio) {
-                    updateData.codigoRastreio = info.codigoRastreio;
-                }
-                // Save tracking link from Edge Function (carrier detection)
-                if (info.linkRastreio) {
-                    updateData.linkRastreio = info.linkRastreio;
-                }
-                await onUpdate(shipping.id, updateData);
 
-                const statusMsg = updateData.status
-                    ? `${shipping.status} → ${updateData.status}`
-                    : shipping.status;
-                const eventoMsg = info.ultimoEvento
-                    ? ` | ${info.ultimoEvento}`
-                    : '';
+                const statusMsg = info.persisted && info.status && info.status !== shipping.status
+                    ? `${shipping.status} → ${info.status}`
+                    : (info.status && shouldUpdateStatus(shipping.status, info.status) ? `${shipping.status} → ${info.status}` : shipping.status);
+                const eventoMsg = info.ultimoEvento ? ` | ${info.ultimoEvento}` : '';
                 setSuccess(`Rastreio atualizado: ${statusMsg}${eventoMsg}`);
                 setTimeout(() => setSuccess(''), 5000);
             } else {
@@ -255,7 +253,6 @@ export default function ShippingList({
                 setTimeout(() => setSuccess(''), 3000);
             }
         } catch (err) {
-            // Save the error to rastreioInfo so it persists in the UI
             try {
                 await onUpdate(shipping.id, {
                     ultimaAtualizacaoRastreio: new Date().toISOString(),
@@ -269,11 +266,11 @@ export default function ShippingList({
         }
     };
 
-    // Atualizar todos os rastreios pendentes
+    // Atualizar todos os rastreios pendentes — EF v15 persists directly
     const atualizarTodosRastreios = async () => {
+        const activeStatuses = ['DESPACHADO', 'EM_TRANSITO', 'SAIU_ENTREGA', 'TENTATIVA_ENTREGA'];
         const pendentes = shippings.filter(s =>
-            s.status !== 'ENTREGUE' &&
-            s.status !== 'DEVOLVIDO' &&
+            activeStatuses.includes(s.status) &&
             !s.entregaLocal &&
             (s.melhorEnvioId || s.codigoRastreio)
         );
@@ -282,47 +279,78 @@ export default function ShippingList({
             return;
         }
         setAtualizandoRastreio(true);
-        let atualizados = 0;
-        let erros = 0;
-        for (const shipping of pendentes) {
-            try {
-                const info = await fetchTrackingInfo(shipping);
-                if (info) {
-                    const updateData = {
-                        ultimaAtualizacaoRastreio: new Date().toISOString(),
-                        rastreioInfo: info,
-                    };
-                    if (info.status && shouldUpdateStatus(shipping.status, info.status)) {
-                        updateData.status = info.status;
-                    }
-                    if (info.codigoRastreio) {
-                        updateData.codigoRastreio = info.codigoRastreio;
-                    }
-                    // Save tracking link from Edge Function (carrier detection)
-                    if (info.linkRastreio) {
-                        updateData.linkRastreio = info.linkRastreio;
-                    }
-                    await onUpdate(shipping.id, updateData);
-                    atualizados++;
-                }
-            } catch (err) {
-                console.error('Erro ao atualizar rastreio:', shipping.nfNumero, err.message);
-                // Save error info to DB so it shows in the rastreio column
+
+        // Separate by tracking type
+        const porME = pendentes.filter(s => s.melhorEnvioId && !s.melhorEnvioId.startsWith('ORD-'));
+        const porCodigo = pendentes.filter(s => !s.melhorEnvioId?.trim() || s.melhorEnvioId?.startsWith('ORD-')).filter(s => s.codigoRastreio?.trim());
+
+        let alterados = 0, semMudanca = 0, erros = 0;
+
+        try {
+            // Batch call for Melhor Envio UUIDs
+            if (porME.length > 0) {
+                const uuids = porME.map(s => s.melhorEnvioId);
                 try {
-                    await onUpdate(shipping.id, {
-                        ultimaAtualizacaoRastreio: new Date().toISOString(),
-                        rastreioInfo: { erro: err.message },
+                    const { data: { session } } = await supabaseClient.auth.getSession();
+                    const token = session?.access_token;
+                    const response = await fetch(`${SUPABASE_URL}/functions/v1/rastrear-envio`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                        body: JSON.stringify({ orderIds: uuids }),
                     });
-                } catch (_) { /* ignore save error */ }
-                erros++;
+                    const result = await response.json();
+                    if (result.success && result.data) {
+                        for (const [id, info] of Object.entries(result.data)) {
+                            if (info?.erro) erros++;
+                            else if (info?.persisted) alterados++;
+                            else semMudanca++;
+                        }
+                    }
+                } catch (err) {
+                    console.error('Erro ao rastrear via ME:', err.message);
+                    erros += porME.length;
+                }
             }
+
+            // Batch call for tracking codes
+            if (porCodigo.length > 0) {
+                const codigos = porCodigo.map(s => s.codigoRastreio.trim());
+                try {
+                    const { data: { session } } = await supabaseClient.auth.getSession();
+                    const token = session?.access_token;
+                    const response = await fetch(`${SUPABASE_URL}/functions/v1/rastrear-envio`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                        body: JSON.stringify({ codigosRastreio: codigos }),
+                    });
+                    const result = await response.json();
+                    if (result.success && result.data) {
+                        for (const [id, info] of Object.entries(result.data)) {
+                            if (info?.erro) erros++;
+                            else if (info?.persisted) alterados++;
+                            else semMudanca++;
+                        }
+                    }
+                } catch (err) {
+                    console.error('Erro ao rastrear via código:', err.message);
+                    erros += porCodigo.length;
+                }
+            }
+
+            // Refetch shippings from DB (EF already persisted)
+            await onRefresh?.();
+        } catch (err) {
+            console.error('Erro geral ao atualizar rastreios:', err.message);
         }
+
         setAtualizandoRastreio(false);
-        const msg = erros > 0
-            ? `${atualizados} atualizado(s), ${erros} com erro`
-            : `${atualizados} rastreio(s) atualizado(s)`;
+        const parts = [];
+        if (alterados > 0) parts.push(`${alterados} alterado${alterados !== 1 ? 's' : ''}`);
+        if (semMudanca > 0) parts.push(`${semMudanca} sem mudança`);
+        if (erros > 0) parts.push(`${erros} erro${erros !== 1 ? 's' : ''}`);
+        const msg = `Rastreios atualizados: ${parts.join(', ')}`;
         setSuccess(msg);
-        setTimeout(() => setSuccess(''), 5000);
+        setTimeout(() => setSuccess(''), 8000);
     };
 
     // Atualizar status
@@ -428,13 +456,13 @@ export default function ShippingList({
                 <button className={`filter-tab ${statusFilter === 'all' ? 'active' : ''}`} onClick={() => setStatusFilter('all')}>
                     Todos ({shippings.length})
                 </button>
-                {Object.entries(statusList).map(([key, val]) => (
+                {Object.entries(statusList).filter(([key]) => key !== 'TENTATIVA_ENTREGA').map(([key, val]) => (
                     <button
                         key={key}
                         className={`filter-tab ${statusFilter === key ? 'active' : ''}`}
                         onClick={() => setStatusFilter(key)}
                     >
-                        {val.label} ({shippings.filter(s => s.status === key).length})
+                        {val.label} ({shippings.filter(s => key === 'EM_TRANSITO' ? (s.status === 'EM_TRANSITO' || s.status === 'TENTATIVA_ENTREGA') : s.status === key).length})
                     </button>
                 ))}
             </div>

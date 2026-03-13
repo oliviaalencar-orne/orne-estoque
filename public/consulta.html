@@ -2140,13 +2140,15 @@
             const [copiedId, setCopiedId] = useState(null);
 
             const statusList = {
-                'PENDENTE':       { label: 'Pendente',       color: '#C4873B', bg: 'rgba(196,135,59,0.08)' },
-                'EM_TRANSITO':    { label: 'Em transito',    color: '#5B8DB8', bg: 'rgba(91,141,184,0.08)' },
-                'ENTREGUE':       { label: 'Entregue',       color: '#3D8B5F', bg: 'rgba(61,139,95,0.08)' },
-                'PROBLEMA':       { label: 'Problema',       color: '#C45151', bg: 'rgba(196,81,81,0.08)' },
-                'DEVOLVIDO':      { label: 'Devolvido',      color: '#8B5CF6', bg: 'rgba(139,92,246,0.08)' },
-                'CANCELADO':      { label: 'Cancelado',      color: '#737373', bg: 'rgba(115,115,115,0.08)' },
-                'SAIU_ENTREGA':   { label: 'Saiu p/ Entrega',color: '#0EA5E9', bg: 'rgba(14,165,233,0.08)' },
+                'DESPACHADO':          { label: 'Despachado',             color: '#d97706', bg: 'rgba(217,119,6,0.08)' },
+                'EM_TRANSITO':         { label: 'Em Trânsito',            color: '#3b82f6', bg: 'rgba(59,130,246,0.08)' },
+                'SAIU_ENTREGA':        { label: 'Saiu p/ Entrega',        color: '#7c3aed', bg: 'rgba(124,58,237,0.08)' },
+                'TENTATIVA_ENTREGA':   { label: 'Tentativa de Entrega',   color: '#ea580c', bg: 'rgba(234,88,12,0.08)' },
+                'ENTREGUE':            { label: 'Entregue',               color: '#10b981', bg: 'rgba(16,185,129,0.08)' },
+                'DEVOLVIDO':           { label: 'Devolvido',              color: '#ef4444', bg: 'rgba(239,68,68,0.08)' },
+                'PENDENTE':            { label: 'Pendente',               color: '#C4873B', bg: 'rgba(196,135,59,0.08)' },
+                'PROBLEMA':            { label: 'Problema',               color: '#C45151', bg: 'rgba(196,81,81,0.08)' },
+                'CANCELADO':           { label: 'Cancelado',              color: '#737373', bg: 'rgba(115,115,115,0.08)' },
             };
 
             // WhatsApp message builder (inline — equipe version)
@@ -2214,8 +2216,8 @@
                 .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
 
             const totalShippings = shippings.length;
-            const pendingCount = shippings.filter(s => s.status === 'PENDENTE').length;
-            const transitCount = shippings.filter(s => s.status === 'EM_TRANSITO' || s.status === 'SAIU_ENTREGA').length;
+            const pendingCount = shippings.filter(s => s.status === 'DESPACHADO' || s.status === 'PENDENTE').length;
+            const transitCount = shippings.filter(s => s.status === 'EM_TRANSITO' || s.status === 'SAIU_ENTREGA' || s.status === 'TENTATIVA_ENTREGA').length;
             const deliveredCount = shippings.filter(s => s.status === 'ENTREGUE').length;
 
             return (

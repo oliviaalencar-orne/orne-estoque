@@ -137,7 +137,7 @@ export default function App() {
   const { exits, setExits, addExit, updateExit, deleteExit } =
     useExits(user, isStockAdmin);
 
-  const { shippings, setShippings, addShipping, updateShipping, deleteShipping } =
+  const { shippings, setShippings, addShipping, updateShipping, deleteShipping, refreshShippings } =
     useShippings(user, isStockAdmin);
 
   const { separations, setSeparations, addSeparation, updateSeparation, deleteSeparation } =
@@ -663,6 +663,7 @@ export default function App() {
               onDeleteCategory={deleteCategory}
               pendingDispatchData={pendingDispatchData}
               onClearPendingDispatch={() => setPendingDispatchData(null)}
+              onRefreshShippings={refreshShippings}
             />
           </div>
           <div style={{ display: activeTab === 'history' ? 'block' : 'none' }}>

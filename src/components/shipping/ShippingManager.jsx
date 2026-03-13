@@ -20,17 +20,21 @@ import { buscarRastreioPorNF } from '@/services/trackingService';
 const transportadoras = ['Melhor Envio', 'Correios', 'Jadlog', 'Total Express', 'Braspress', 'TNT', 'Azul Cargo', 'Loggi', 'Outro'];
 
 export const statusList = {
-    'DESPACHADO':  { label: 'Despachado',  color: '#3b82f6', textColor: '#1E40AF', bg: '#DBEAFE' },
-    'EM_TRANSITO': { label: 'Em Trânsito', color: '#d97706', textColor: '#92400E', bg: '#FEF3C7' },
-    'ENTREGUE':    { label: 'Entregue',    color: '#10b981', textColor: '#065F46', bg: '#D1FAE5' },
-    'DEVOLVIDO':   { label: 'Devolvido',   color: '#ef4444', textColor: '#991B1B', bg: '#FEE2E2' },
+    'DESPACHADO':          { label: 'Despachado',             color: '#d97706', textColor: '#92400E', bg: '#FEF3C7' },
+    'EM_TRANSITO':         { label: 'Em Trânsito',            color: '#3b82f6', textColor: '#1E40AF', bg: '#DBEAFE' },
+    'SAIU_ENTREGA':        { label: 'Saiu p/ Entrega',        color: '#7c3aed', textColor: '#5B21B6', bg: '#EDE9FE' },
+    'TENTATIVA_ENTREGA':   { label: 'Tentativa de Entrega',   color: '#ea580c', textColor: '#9A3412', bg: '#FFF7ED' },
+    'ENTREGUE':            { label: 'Entregue',               color: '#10b981', textColor: '#065F46', bg: '#D1FAE5' },
+    'DEVOLVIDO':           { label: 'Devolvido',              color: '#ef4444', textColor: '#991B1B', bg: '#FEE2E2' },
 };
 
 export const STATUS_TRANSITIONS = {
-    'DESPACHADO':  ['EM_TRANSITO', 'DEVOLVIDO'],
-    'EM_TRANSITO': ['ENTREGUE', 'DEVOLVIDO'],
-    'ENTREGUE':    [],
-    'DEVOLVIDO':   [],
+    'DESPACHADO':          ['EM_TRANSITO', 'ENTREGUE', 'DEVOLVIDO'],
+    'EM_TRANSITO':         ['SAIU_ENTREGA', 'ENTREGUE', 'DEVOLVIDO'],
+    'SAIU_ENTREGA':        ['TENTATIVA_ENTREGA', 'ENTREGUE', 'DEVOLVIDO'],
+    'TENTATIVA_ENTREGA':   ['SAIU_ENTREGA', 'ENTREGUE', 'DEVOLVIDO'],
+    'ENTREGUE':            [],
+    'DEVOLVIDO':           [],
 };
 
 export default function ShippingManager({
@@ -38,7 +42,7 @@ export default function ShippingManager({
     onAddExit, onAddEntry, locaisOrigem, onUpdateLocais, onAddProduct,
     categories, entries, exits, isStockAdmin,
     onAddCategory, onUpdateCategory, onDeleteCategory,
-    pendingDispatchData, onClearPendingDispatch
+    pendingDispatchData, onClearPendingDispatch, onRefreshShippings
 }) {
     const [activeView, setActiveView] = useState('list');
     const [nfFile, setNfFile] = useState(null);
@@ -473,6 +477,7 @@ export default function ShippingManager({
                     statusList={statusList}
                     statusTransitions={STATUS_TRANSITIONS}
                     transportadoras={transportadoras}
+                    onRefresh={onRefreshShippings}
                 />
             )}
 

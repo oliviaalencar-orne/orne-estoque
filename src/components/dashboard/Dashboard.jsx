@@ -55,6 +55,8 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
         return {
             DESPACHADO: recent.filter(s => s.status === 'DESPACHADO').length,
             EM_TRANSITO: recent.filter(s => s.status === 'EM_TRANSITO').length,
+            SAIU_ENTREGA: recent.filter(s => s.status === 'SAIU_ENTREGA').length,
+            TENTATIVA_ENTREGA: recent.filter(s => s.status === 'TENTATIVA_ENTREGA').length,
             ENTREGUE: recent.filter(s => s.status === 'ENTREGUE').length,
             DEVOLVIDO: recent.filter(s => s.status === 'DEVOLVIDO').length,
             total: recent.length,
@@ -395,8 +397,8 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
                         <Icon name="shipping" size={16} className="card-title-icon" />
                         Resumo Logístico <span style={{fontWeight: 400, fontSize: '12px', color: 'var(--text-muted)'}}>(30 dias)</span>
                     </h2>
-                    <div style={{display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px'}}>
-                        {Object.entries(statusList).map(([key, val]) => (
+                    <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '12px'}}>
+                        {Object.entries(statusList).filter(([key]) => (shippingStats[key] || 0) > 0 || ['DESPACHADO', 'EM_TRANSITO', 'ENTREGUE', 'DEVOLVIDO'].includes(key)).map(([key, val]) => (
                             <div key={key} style={{
                                 textAlign: 'center',
                                 padding: '12px 8px',

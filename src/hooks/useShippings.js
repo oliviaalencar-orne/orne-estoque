@@ -10,6 +10,7 @@
 import { useState, useCallback } from 'react';
 import { supabaseClient } from '@/config/supabase';
 import { generateId } from '@/utils/helpers';
+import { mapShippingFromDB } from '@/utils/mappers';
 
 /**
  * Hook for shippings state and CRUD.
@@ -122,11 +123,21 @@ export function useShippings(user, isStockAdmin) {
     [isStockAdmin]
   );
 
+  const refreshShippings = useCallback(async () => {
+    const { data, error } = await supabaseClient.from('shippings').select('*');
+    if (error) {
+      console.error('Erro ao recarregar shippings:', error);
+      return;
+    }
+    setShippings(data.map(mapShippingFromDB));
+  }, []);
+
   return {
     shippings,
     setShippings,
     addShipping,
     updateShipping,
     deleteShipping,
+    refreshShippings,
   };
 }
