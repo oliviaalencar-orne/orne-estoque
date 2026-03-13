@@ -51,7 +51,7 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
     const shippingStats = useMemo(() => {
         const cutoff = new Date();
         cutoff.setDate(cutoff.getDate() - 30);
-        const recent = (shippings || []).filter(s => new Date(s.date) >= cutoff);
+        const recent = (shippings || []).filter(s => new Date(s.date) >= cutoff && (!s.tipo || s.tipo === 'despacho'));
         return {
             DESPACHADO: recent.filter(s => s.status === 'DESPACHADO').length,
             EM_TRANSITO: recent.filter(s => s.status === 'EM_TRANSITO').length,
@@ -60,6 +60,16 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
             ENTREGUE: recent.filter(s => s.status === 'ENTREGUE').length,
             DEVOLVIDO: recent.filter(s => s.status === 'DEVOLVIDO').length,
             total: recent.length,
+        };
+    }, [shippings]);
+
+    const devolucaoStats = useMemo(() => {
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - 30);
+        const recent = (shippings || []).filter(s => new Date(s.date) >= cutoff && s.tipo === 'devolucao');
+        return {
+            total: recent.length,
+            recebidas: recent.filter(s => s.status === 'ENTREGUE').length,
         };
     }, [shippings]);
 
@@ -413,6 +423,32 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
                                 </div>
                             </div>
                         ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Devoluções */}
+            {devolucaoStats.total > 0 && (
+                <div className="card" style={{marginBottom: '24px'}}>
+                    <h2 className="card-title" style={{marginBottom: '12px'}}>
+                        <Icon name="shipping" size={16} className="card-title-icon" />
+                        Devoluções <span style={{fontWeight: 400, fontSize: '12px', color: 'var(--text-muted)'}}>(30 dias)</span>
+                    </h2>
+                    <div style={{display: 'flex', gap: '16px', flexWrap: 'wrap'}}>
+                        <div style={{
+                            textAlign: 'center', padding: '12px 20px',
+                            borderRadius: 'var(--radius)', background: '#FEF3C7',
+                        }}>
+                            <div style={{fontSize: '24px', fontWeight: '700', color: '#d97706'}}>{devolucaoStats.total}</div>
+                            <div style={{fontSize: '11px', fontWeight: '600', color: '#d97706', marginTop: '2px'}}>Total</div>
+                        </div>
+                        <div style={{
+                            textAlign: 'center', padding: '12px 20px',
+                            borderRadius: 'var(--radius)', background: '#D1FAE5',
+                        }}>
+                            <div style={{fontSize: '24px', fontWeight: '700', color: '#10b981'}}>{devolucaoStats.recebidas}</div>
+                            <div style={{fontSize: '11px', fontWeight: '600', color: '#10b981', marginTop: '2px'}}>Recebidas no HUB</div>
+                        </div>
                     </div>
                 </div>
             )}

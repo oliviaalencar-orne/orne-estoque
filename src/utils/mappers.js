@@ -68,6 +68,10 @@ export const mapShippingFromDB = (row) => ({
   comprovanteObs: row.comprovante_obs || '',
   comprovanteFotos: row.comprovante_fotos || [],
   dataEntrega: row.data_entrega || null,
+  tipo: row.tipo || 'despacho',
+  entradaCriada: row.entrada_criada || false,
+  motivoDevolucao: row.motivo_devolucao || '',
+  hubDestino: row.hub_destino || '',
 });
 
 export const mapSeparationFromDB = (row) => ({

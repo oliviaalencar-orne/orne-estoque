@@ -64,6 +64,46 @@ export function buildClientShippingMessage(shipping, statusLabels) {
 }
 
 /**
+ * Build a client notification message for a devolução (return).
+ * @param {Object} shipping - The shipping object (camelCase) with tipo='devolucao'
+ * @param {Object} statusLabels - Status label map { STATUS_KEY: { label } }
+ * @returns {string} Formatted message
+ */
+export function buildClientDevolucaoMessage(shipping, statusLabels) {
+  const DEVOLUCAO_LABELS = {
+    DESPACHADO: 'Devolvendo',
+    EM_TRANSITO: 'Em Trânsito',
+    SAIU_ENTREGA: 'Em Rota de Entrega',
+    TENTATIVA_ENTREGA: 'Tentativa de Entrega',
+    ENTREGUE: 'Recebido no HUB',
+  };
+  const statusLabel = DEVOLUCAO_LABELS[shipping.status] || statusLabels[shipping.status]?.label || shipping.status;
+  const lines = [];
+
+  lines.push(`Olá ${shipping.cliente || 'Cliente'}! 👋`);
+  lines.push('');
+  lines.push(`Informamos que sua devolução para a *ORNE — decor studio* está com status: *${statusLabel}*.`);
+
+  if (shipping.transportadora) {
+    lines.push('');
+    lines.push(`Transportadora: ${shipping.transportadora}`);
+  }
+  if (shipping.linkRastreio) {
+    if (!shipping.transportadora) lines.push('');
+    lines.push(`Link de rastreio: ${shipping.linkRastreio}`);
+  }
+  if (shipping.nfNumero) {
+    lines.push(`NF: ${shipping.nfNumero}`);
+  }
+
+  lines.push('');
+  lines.push('Caso tenha dúvidas, estamos à disposição!');
+  lines.push('ornedecor.com');
+
+  return lines.join('\n');
+}
+
+/**
  * Copy text to clipboard.
  * @param {string} text
  * @returns {Promise<boolean>}

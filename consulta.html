@@ -1108,6 +1108,10 @@
             comprovanteObs: row.comprovante_obs || '',
             comprovanteFotos: row.comprovante_fotos || [],
             dataEntrega: row.data_entrega || null,
+            tipo: row.tipo || 'despacho',
+            entradaCriada: row.entrada_criada || false,
+            motivoDevolucao: row.motivo_devolucao || '',
+            hubDestino: row.hub_destino || '',
         });
 
         // ==========================================
@@ -2130,7 +2134,7 @@
         }
 
         // ==========================================
-        // DESPACHOS (SOMENTE LEITURA)
+        // EXPEDIÇÃO (SOMENTE LEITURA)
         // ==========================================
         function ShippingView({ shippings }) {
             const [searchTerm, setSearchTerm] = useState('');
@@ -2138,6 +2142,7 @@
             const [comprovanteModal, setComprovanteModal] = useState(null);
             const [comprovanteUrls, setComprovanteUrls] = useState({});
             const [copiedId, setCopiedId] = useState(null);
+            const [tipoView, setTipoView] = useState('despacho');
 
             const statusList = {
                 'DESPACHADO':          { label: 'Despachado',             color: '#d97706', bg: 'rgba(217,119,6,0.08)' },
@@ -2151,8 +2156,24 @@
                 'CANCELADO':           { label: 'Cancelado',              color: '#737373', bg: 'rgba(115,115,115,0.08)' },
             };
 
+            const statusListDevolucao = {
+                'DESPACHADO':          { label: 'Devolvendo',             color: '#d97706', bg: 'rgba(217,119,6,0.08)' },
+                'EM_TRANSITO':         { label: 'Em Trânsito',            color: '#3b82f6', bg: 'rgba(59,130,246,0.08)' },
+                'SAIU_ENTREGA':        { label: 'Em Rota de Entrega',     color: '#7c3aed', bg: 'rgba(124,58,237,0.08)' },
+                'TENTATIVA_ENTREGA':   { label: 'Tentativa de Entrega',   color: '#ea580c', bg: 'rgba(234,88,12,0.08)' },
+                'ENTREGUE':            { label: 'Recebido no HUB',        color: '#10b981', bg: 'rgba(16,185,129,0.08)' },
+                'DEVOLVIDO':           { label: 'Devolvido',              color: '#ef4444', bg: 'rgba(239,68,68,0.08)' },
+                'PENDENTE':            { label: 'Pendente',               color: '#C4873B', bg: 'rgba(196,135,59,0.08)' },
+                'PROBLEMA':            { label: 'Problema',               color: '#C45151', bg: 'rgba(196,81,81,0.08)' },
+                'CANCELADO':           { label: 'Cancelado',              color: '#737373', bg: 'rgba(115,115,115,0.08)' },
+            };
+
+            const isDevolucao = tipoView === 'devolucao';
+            const activeStatusList = isDevolucao ? statusListDevolucao : statusList;
+
             // WhatsApp message builder (inline — equipe version)
             const buildMessage = (s) => {
+                if (isDevolucao) return buildMessageDevolucao(s);
                 const lines = [];
                 const isEntregue = s.status === 'ENTREGUE';
                 lines.push(`Olá ${s.cliente || 'Cliente'}! 👋`);
@@ -2180,6 +2201,18 @@
                 return lines.join('\n');
             };
 
+            const buildMessageDevolucao = (s) => {
+                const lines = [];
+                const stLabel = statusListDevolucao[s.status]?.label || s.status;
+                lines.push(`Devolução — NF ${s.nfNumero || '-'}`);
+                lines.push(`Status: *${stLabel}*`);
+                if (s.hubDestino) lines.push(`HUB Destino: ${s.hubDestino}`);
+                if (s.motivoDevolucao) lines.push(`Motivo: ${s.motivoDevolucao}`);
+                if (s.transportadora) lines.push(`Transportadora: ${s.transportadora}`);
+                if (s.codigoRastreio) lines.push(`Rastreio: ${s.codigoRastreio}`);
+                return lines.join('\n');
+            };
+
             const handleCopy = async (s) => {
                 const text = buildMessage(s);
                 try { await navigator.clipboard.writeText(text); } catch(_) {
@@ -2202,7 +2235,9 @@
                 setComprovanteUrls(urls);
             };
 
-            const filtered = shippings
+            const tipoFiltered = shippings.filter(s => (s.tipo || 'despacho') === tipoView);
+
+            const filtered = tipoFiltered
                 .filter(s => statusFilter === 'all' || s.status === statusFilter)
                 .filter(s => {
                     if (!searchTerm) return true;
@@ -2211,20 +2246,49 @@
                            (s.cliente || '').toLowerCase().includes(search) ||
                            (s.codigoRastreio || '').toLowerCase().includes(search) ||
                            (s.transportadora || '').toLowerCase().includes(search) ||
-                           (s.localOrigem || '').toLowerCase().includes(search);
+                           (s.localOrigem || '').toLowerCase().includes(search) ||
+                           (isDevolucao && (s.hubDestino || '').toLowerCase().includes(search)) ||
+                           (isDevolucao && (s.motivoDevolucao || '').toLowerCase().includes(search));
                 })
                 .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
 
-            const totalShippings = shippings.length;
-            const pendingCount = shippings.filter(s => s.status === 'DESPACHADO' || s.status === 'PENDENTE').length;
-            const transitCount = shippings.filter(s => s.status === 'EM_TRANSITO' || s.status === 'SAIU_ENTREGA' || s.status === 'TENTATIVA_ENTREGA').length;
-            const deliveredCount = shippings.filter(s => s.status === 'ENTREGUE').length;
+            const totalShippings = tipoFiltered.length;
+            const pendingCount = tipoFiltered.filter(s => s.status === 'DESPACHADO' || s.status === 'PENDENTE').length;
+            const transitCount = tipoFiltered.filter(s => s.status === 'EM_TRANSITO' || s.status === 'SAIU_ENTREGA' || s.status === 'TENTATIVA_ENTREGA').length;
+            const deliveredCount = tipoFiltered.filter(s => s.status === 'ENTREGUE').length;
+
+            const despachoCount = shippings.filter(s => (s.tipo || 'despacho') === 'despacho').length;
+            const devolucaoCount = shippings.filter(s => (s.tipo || 'despacho') === 'devolucao').length;
 
             return (
                 <div>
                     <div className="page-header">
-                        <h1 className="page-title">Despachos</h1>
+                        <h1 className="page-title">Expedição</h1>
                         <p className="page-subtitle">Acompanhe os envios e rastreamentos</p>
+                    </div>
+
+                    {/* Sub-tabs: Despachos / Devoluções */}
+                    <div style={{display: 'flex', gap: '8px', marginBottom: '20px'}}>
+                        <button
+                            onClick={() => { setTipoView('despacho'); setStatusFilter('all'); }}
+                            style={{
+                                padding: '8px 20px', borderRadius: '999px', fontSize: '13px', fontWeight: 600,
+                                border: tipoView === 'despacho' ? '2px solid var(--accent-primary, #C4873B)' : '1px solid #d1d5db',
+                                background: tipoView === 'despacho' ? 'rgba(196,135,59,0.08)' : '#fff',
+                                color: tipoView === 'despacho' ? 'var(--accent-primary, #C4873B)' : 'var(--text-secondary, #6b7280)',
+                                cursor: 'pointer', transition: 'all 0.15s',
+                            }}
+                        >Despachos ({despachoCount})</button>
+                        <button
+                            onClick={() => { setTipoView('devolucao'); setStatusFilter('all'); }}
+                            style={{
+                                padding: '8px 20px', borderRadius: '999px', fontSize: '13px', fontWeight: 600,
+                                border: tipoView === 'devolucao' ? '2px solid var(--accent-primary, #C4873B)' : '1px solid #d1d5db',
+                                background: tipoView === 'devolucao' ? 'rgba(196,135,59,0.08)' : '#fff',
+                                color: tipoView === 'devolucao' ? 'var(--accent-primary, #C4873B)' : 'var(--text-secondary, #6b7280)',
+                                cursor: 'pointer', transition: 'all 0.15s',
+                            }}
+                        >Devoluções ({devolucaoCount})</button>
                     </div>
 
                     {/* Stats */}
@@ -2235,7 +2299,7 @@
                             </div>
                             <div className="stat-content">
                                 <div className="stat-value">{totalShippings}</div>
-                                <div className="stat-label">Total de Despachos</div>
+                                <div className="stat-label">Total de Expedições</div>
                             </div>
                         </div>
                         <div className="stat-card warning">
@@ -2289,10 +2353,10 @@
 
                         <div className="filter-tabs" style={{marginBottom: '16px'}}>
                             <button className={`filter-tab ${statusFilter === 'all' ? 'active' : ''}`} onClick={() => setStatusFilter('all')}>
-                                Todos ({shippings.length})
+                                Todos ({tipoFiltered.length})
                             </button>
-                            {Object.entries(statusList).map(([key, val]) => {
-                                const count = shippings.filter(s => s.status === key).length;
+                            {Object.entries(activeStatusList).map(([key, val]) => {
+                                const count = tipoFiltered.filter(s => s.status === key).length;
                                 if (count === 0) return null;
                                 return (
                                     <button
@@ -2309,7 +2373,7 @@
                         {filtered.length === 0 ? (
                             <div className="empty-state">
                                 <div className="empty-state-icon"><Icon name="shipping" size={48} /></div>
-                                <h3>Nenhum despacho encontrado</h3>
+                                <h3>{isDevolucao ? 'Nenhuma devolução encontrada' : 'Nenhum despacho encontrado'}</h3>
                             </div>
                         ) : (
                             <div className="table-container">
@@ -2318,16 +2382,17 @@
                                         <tr>
                                             <th>NF</th>
                                             <th>Cliente</th>
-                                            <th>Origem</th>
+                                            <th>{isDevolucao ? 'HUB Destino' : 'Origem'}</th>
                                             <th>Transportadora</th>
                                             <th>Rastreio</th>
+                                            {isDevolucao && <th>Motivo</th>}
                                             <th>Status</th>
                                             <th>Ações</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {filtered.map(s => {
-                                            const st = statusList[s.status] || statusList['PENDENTE'];
+                                            const st = activeStatusList[s.status] || activeStatusList['PENDENTE'];
                                             return (
                                                 <tr key={s.id}>
                                                     <td>
@@ -2340,7 +2405,7 @@
                                                         <div style={{fontWeight: '500'}}>{s.cliente || '-'}</div>
                                                         {s.destino && <div style={{fontSize: '11px', color: 'var(--text-tertiary)', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{s.destino}</div>}
                                                     </td>
-                                                    <td style={{fontSize: '12px'}}>{s.localOrigem || '-'}</td>
+                                                    <td style={{fontSize: '12px'}}>{isDevolucao ? (s.hubDestino || '-') : (s.localOrigem || '-')}</td>
                                                     <td style={{fontSize: '12px'}}>
                                                         {s.entregaLocal ? (
                                                             <span style={{color: '#065F46', fontWeight: 500}}>📦 Local</span>
@@ -2373,6 +2438,11 @@
                                                             <span style={{color: 'var(--text-tertiary)'}}>-</span>
                                                         )}
                                                     </td>
+                                                    {isDevolucao && (
+                                                        <td style={{fontSize: '12px', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}} title={s.motivoDevolucao || ''}>
+                                                            {s.motivoDevolucao || '-'}
+                                                        </td>
+                                                    )}
                                                     <td>
                                                         <span style={{
                                                             display: 'inline-block',
@@ -2651,7 +2721,7 @@
             const [searchTerm, setSearchTerm] = useState('');
             const [sidebarOpen, setSidebarOpen] = useState(false);
 
-            const tabTitles = { dashboard: 'Dashboard', stock: 'Estoque', shipping: 'Despachos', history: 'Historico' };
+            const tabTitles = { dashboard: 'Dashboard', stock: 'Estoque', shipping: 'Expedição', history: 'Historico' };
 
             const handleTabChange = (tab) => {
                 if (tab === activeTab) return;
@@ -2827,7 +2897,7 @@
                             </li>
                             <li className="nav-item">
                                 <a className={`nav-link ${activeTab === 'shipping' ? 'active' : ''}`} onClick={() => handleTabChange('shipping')}>
-                                    <span className="nav-icon" dangerouslySetInnerHTML={{__html: ICONS.shipping}}></span>Despachos
+                                    <span className="nav-icon" dangerouslySetInnerHTML={{__html: ICONS.shipping}}></span>Expedição
                                 </a>
                             </li>
                             <li className="nav-item">
@@ -2920,10 +2990,10 @@
                             className={`nav-tab ${activeTab === 'shipping' ? 'active' : ''}`}
                             onClick={() => handleTabChange('shipping')}
                             aria-current={activeTab === 'shipping' ? 'page' : undefined}
-                            aria-label="Despachos"
+                            aria-label="Expedição"
                         >
                             <Icon name="shipping" size={22} />
-                            <span>Despachos</span>
+                            <span>Expedição</span>
                         </button>
                         <button
                             className={`nav-tab ${activeTab === 'history' ? 'active' : ''}`}

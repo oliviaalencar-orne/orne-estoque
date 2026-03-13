@@ -26,6 +26,8 @@ export function useAuth() {
     isApproved && (userProfile?.role === 'admin');
   const isEquipe =
     isApproved && (userProfile?.role === 'equipe');
+  const isOperador =
+    isApproved && (userProfile?.role === 'operador');
   const isSuperAdmin =
     isApproved && (userProfile?.email === 'oliviaalencar@hotmail.com');
 
@@ -106,6 +108,7 @@ export function useAuth() {
     userProfile,
     isStockAdmin,
     isEquipe,
+    isOperador,
     isSuperAdmin,
     loading,
     profileLoading,

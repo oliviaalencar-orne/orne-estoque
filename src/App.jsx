@@ -53,7 +53,7 @@ const tabTitles = {
   entry: 'Entrada',
   exit: 'Saída',
   separation: 'Separação',
-  shipping: 'Despachos',
+  shipping: 'Expedição',
   history: 'Histórico',
   tiny: 'Tiny ERP',
   admin: 'Usuários',
@@ -94,6 +94,7 @@ export default function App() {
     userProfile,
     isStockAdmin,
     isEquipe,
+    isOperador,
     isSuperAdmin,
     loading,
     profileLoading,
@@ -102,7 +103,7 @@ export default function App() {
 
   // Equipe has read access to separation and shipping (but no admin actions)
   const canViewSeparation = isStockAdmin || isEquipe;
-  const canViewShipping = isStockAdmin || isEquipe;
+  const canViewShipping = isStockAdmin || isEquipe || isOperador;
 
   // ── Tab navigation (persisted in sessionStorage) ─────────────────────
   const [activeTab, setActiveTabRaw] = useState(() => {
@@ -138,7 +139,7 @@ export default function App() {
     useExits(user, isStockAdmin);
 
   const { shippings, setShippings, addShipping, updateShipping, deleteShipping, refreshShippings } =
-    useShippings(user, isStockAdmin);
+    useShippings(user, isStockAdmin, isOperador);
 
   const { separations, setSeparations, addSeparation, updateSeparation, deleteSeparation } =
     useSeparations(user, isStockAdmin);
@@ -410,7 +411,7 @@ export default function App() {
             </a>
           </li>
 
-          {(isStockAdmin || isEquipe) && (
+          {(isStockAdmin || isEquipe || isOperador) && (
             <>
               <div className="nav-section">Movimentações</div>
               {isStockAdmin && (
@@ -462,7 +463,7 @@ export default function App() {
                     className="nav-icon"
                     dangerouslySetInnerHTML={{ __html: ICONS.shipping }}
                   ></span>
-                  Despachos
+                  Expedição
                 </a>
               </li>
             </>
@@ -658,6 +659,8 @@ export default function App() {
               entries={entries}
               exits={exits}
               isStockAdmin={isStockAdmin}
+              isOperador={isOperador}
+              isEquipe={isEquipe}
               onAddCategory={addCategory}
               onUpdateCategory={updateCategory}
               onDeleteCategory={deleteCategory}
@@ -778,7 +781,7 @@ export default function App() {
             <span>Novo</span>
           </button>
         )}
-        {(isStockAdmin || isEquipe) && (
+        {(isStockAdmin || isEquipe || isOperador) && (
           <button
             className={`nav-tab ${['entry', 'exit', 'separation', 'shipping', 'history'].includes(activeTab) ? 'active' : ''}`}
             onClick={() =>
@@ -843,7 +846,7 @@ export default function App() {
           onClick={() => handleTabChange('shipping')}
         >
           <span dangerouslySetInnerHTML={{ __html: ICONS.shipping }}></span>
-          Despachos
+          Expedição
         </button>
         {isStockAdmin && (
           <button

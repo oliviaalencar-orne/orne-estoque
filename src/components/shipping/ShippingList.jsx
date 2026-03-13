@@ -11,8 +11,10 @@ import { fetchTrackingInfo, buscarRastreioPorNF } from '@/services/trackingServi
 import { supabaseClient, SUPABASE_URL } from '@/config/supabase';
 import {
     buildClientShippingMessage,
+    buildClientDevolucaoMessage,
     copyMessageToClipboard,
 } from '@/utils/shippingMessage';
+import { getStatusLabel, getStatusColor } from '@/utils/statusLabels';
 
 // Resize image helper
 function resizeImage(file, maxWidth = 1200) {
@@ -40,8 +42,12 @@ function resizeImage(file, maxWidth = 1200) {
 
 export default function ShippingList({
     shippings, onUpdate, onDelete, isStockAdmin, locaisOrigem,
-    statusList, statusTransitions, transportadoras, onRefresh
+    statusList, statusTransitions, transportadoras, onRefresh,
+    tipo = 'despacho', isOperador = false, isEquipe = false, onAddEntry
 }) {
+    const isDevolucao = tipo === 'devolucao';
+    const canEdit = isStockAdmin || isOperador;
+    const canDelete = isStockAdmin;
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
     const [shipPeriodFilter, setShipPeriodFilter] = useState('30');
@@ -110,7 +116,9 @@ export default function ShippingList({
 
     // WhatsApp copy handler
     const handleCopyClientMessage = async (shipping) => {
-        const message = buildClientShippingMessage(shipping, statusList);
+        const message = isDevolucao
+            ? buildClientDevolucaoMessage(shipping, statusList)
+            : buildClientShippingMessage(shipping, statusList);
         const ok = await copyMessageToClipboard(message);
         if (ok) {
             setSuccess('Copiado!');
@@ -440,7 +448,7 @@ export default function ShippingList({
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
-                {isStockAdmin && (
+                {canEdit && (
                     <button
                         className="btn btn-primary"
                         onClick={atualizarTodosRastreios}
@@ -456,15 +464,20 @@ export default function ShippingList({
                 <button className={`filter-tab ${statusFilter === 'all' ? 'active' : ''}`} onClick={() => setStatusFilter('all')}>
                     Todos ({shippings.length})
                 </button>
-                {Object.entries(statusList).filter(([key]) => key !== 'TENTATIVA_ENTREGA').map(([key, val]) => (
-                    <button
-                        key={key}
-                        className={`filter-tab ${statusFilter === key ? 'active' : ''}`}
-                        onClick={() => setStatusFilter(key)}
-                    >
-                        {val.label} ({shippings.filter(s => key === 'EM_TRANSITO' ? (s.status === 'EM_TRANSITO' || s.status === 'TENTATIVA_ENTREGA') : s.status === key).length})
-                    </button>
-                ))}
+                {Object.entries(statusList)
+                    .filter(([key]) => key !== 'TENTATIVA_ENTREGA' && !(isDevolucao && key === 'DEVOLVIDO'))
+                    .map(([key, val]) => {
+                        const label = isDevolucao ? (getStatusLabel(key, 'devolucao') || val.label) : val.label;
+                        return (
+                            <button
+                                key={key}
+                                className={`filter-tab ${statusFilter === key ? 'active' : ''}`}
+                                onClick={() => setStatusFilter(key)}
+                            >
+                                {label} ({shippings.filter(s => key === 'EM_TRANSITO' ? (s.status === 'EM_TRANSITO' || s.status === 'TENTATIVA_ENTREGA') : s.status === key).length})
+                            </button>
+                        );
+                    })}
             </div>
 
             <PeriodFilter
@@ -476,8 +489,8 @@ export default function ShippingList({
             {filteredShippings.length === 0 ? (
                 <div className="empty-state">
                     <div className="empty-state-icon"><Icon name="shipping" size={48} /></div>
-                    <h3>Nenhum despacho encontrado</h3>
-                    <p>Importe uma NF ou cadastre manualmente</p>
+                    <h3>{isDevolucao ? 'Nenhuma devolução encontrada' : 'Nenhum despacho encontrado'}</h3>
+                    <p>{isDevolucao ? 'Registre uma devolução para começar' : 'Importe uma NF ou cadastre manualmente'}</p>
                 </div>
             ) : (
                 <div className="table-container">
@@ -486,10 +499,11 @@ export default function ShippingList({
                             <tr>
                                 <th>NF</th>
                                 <th>Cliente</th>
-                                <th>Origem</th>
+                                <th>{isDevolucao ? 'HUB Destino' : 'Origem'}</th>
                                 <th>Transportadora</th>
                                 <th>Rastreio</th>
                                 <th>Status</th>
+                                {isDevolucao && <th>Motivo</th>}
                                 <th>Ações</th>
                             </tr>
                         </thead>
@@ -504,7 +518,7 @@ export default function ShippingList({
                                         {s.cliente}
                                         {s.destino && <div style={{fontSize: '10px', color: 'var(--text-muted)'}}>{s.destino.substring(0, 30)}...</div>}
                                     </td>
-                                    <td style={{fontSize: '12px'}}>{s.localOrigem}</td>
+                                    <td style={{fontSize: '12px'}}>{isDevolucao ? (s.hubDestino || '-') : s.localOrigem}</td>
                                     <td style={{fontSize: '12px'}}>
                                         {s.entregaLocal ? (
                                             <span style={{color: '#065F46', fontWeight: 500}}>📦 Local</span>
@@ -602,9 +616,9 @@ export default function ShippingList({
                                                 lineHeight: '1.4',
                                                 whiteSpace: 'nowrap',
                                             }}>
-                                                {s.entregaLocal && s.status === 'ENTREGUE' ? 'Entregue (Local)' : (statusList[s.status]?.label || s.status)}
+                                                {s.entregaLocal && s.status === 'ENTREGUE' ? 'Entregue (Local)' : (isDevolucao ? (getStatusLabel(s.status, 'devolucao') || statusList[s.status]?.label || s.status) : (statusList[s.status]?.label || s.status))}
                                             </span>
-                                            {isStockAdmin && (statusTransitions[s.status] || []).length > 0 && (
+                                            {canEdit && (statusTransitions[s.status] || []).length > 0 && (
                                                 <>
                                                     <button
                                                         onClick={() => setOpenStatusMenu(openStatusMenu === s.id ? null : s.id)}
@@ -683,7 +697,7 @@ export default function ShippingList({
                                                                             background: statusList[nextStatus]?.color || '#999',
                                                                             flexShrink: 0,
                                                                         }} />
-                                                                        {statusList[nextStatus]?.label}
+                                                                        {isDevolucao ? (getStatusLabel(nextStatus, 'devolucao') || statusList[nextStatus]?.label) : statusList[nextStatus]?.label}
                                                                     </button>
                                                                 ))}
                                                             </div>
@@ -698,6 +712,11 @@ export default function ShippingList({
                                             </div>
                                         )}
                                     </td>
+                                    {isDevolucao && (
+                                        <td style={{fontSize: '12px', color: 'var(--text-secondary)'}}>
+                                            {s.motivoDevolucao || '-'}
+                                        </td>
+                                    )}
                                     <td>
                                         <div style={{display: 'flex', gap: '4px', flexWrap: 'wrap'}}>
                                             {/* WhatsApp copy — visible to all */}
@@ -709,8 +728,8 @@ export default function ShippingList({
                                             >
                                                 <Icon name="whatsapp" size={14} style={{color: '#25D366'}} />
                                             </button>
-                                            {/* Comprovante — for ENTREGUE shippings (admin only) */}
-                                            {isStockAdmin && s.status === 'ENTREGUE' && (
+                                            {/* Comprovante — for ENTREGUE shippings (canEdit) */}
+                                            {canEdit && s.status === 'ENTREGUE' && (
                                                 <button
                                                     className="btn btn-secondary btn-sm"
                                                     onClick={() => openComprovante(s)}
@@ -720,8 +739,8 @@ export default function ShippingList({
                                                     📋
                                                 </button>
                                             )}
-                                            {/* Tracking — admin only, not for local delivery */}
-                                            {isStockAdmin && !s.entregaLocal && (s.codigoRastreio || s.melhorEnvioId) && (
+                                            {/* Tracking — canEdit, not for local delivery */}
+                                            {canEdit && !s.entregaLocal && (s.codigoRastreio || s.melhorEnvioId) && (
                                                 <button
                                                     className="btn btn-primary btn-sm"
                                                     onClick={() => atualizarRastreioMelhorEnvio(s)}
@@ -732,7 +751,7 @@ export default function ShippingList({
                                                     {atualizandoRastreio ? '...' : '⟳'}
                                                 </button>
                                             )}
-                                            {isStockAdmin && !s.entregaLocal && s.nfNumero && (!s.codigoRastreio || !s.melhorEnvioId) && (
+                                            {canEdit && !s.entregaLocal && s.nfNumero && (!s.codigoRastreio || !s.melhorEnvioId) && (
                                                 <button
                                                     className="btn btn-secondary btn-sm"
                                                     onClick={() => buscarRastreioNF(s)}
@@ -743,15 +762,15 @@ export default function ShippingList({
                                                     {buscandoNF === s.id ? '...' : '🔍 ME'}
                                                 </button>
                                             )}
-                                            {isStockAdmin && (<button
+                                            {canEdit && (<button
                                                 className="btn btn-icon btn-secondary btn-sm"
                                                 onClick={() => setEditingShipping({...s})}
-                                                title="Editar despacho"
+                                                title={isDevolucao ? 'Editar devolução' : 'Editar despacho'}
                                             ><Icon name="edit" size={14} /></button>)}
-                                            {isStockAdmin && (<button
+                                            {canDelete && (<button
                                                 className="btn btn-icon btn-secondary btn-sm"
                                                 onClick={() => {
-                                                    if(confirm('Excluir este despacho?')) onDelete(s.id);
+                                                    if(confirm(isDevolucao ? 'Excluir esta devolução?' : 'Excluir este despacho?')) onDelete(s.id);
                                                 }}
                                                 title="Excluir"
                                             ><Icon name="delete" size={14} /></button>)}
@@ -768,8 +787,8 @@ export default function ShippingList({
             {editingShipping && (
                 <div className="modal-overlay">
                     <div className="modal-content" style={{maxWidth: '600px'}}>
-                        <h2 className="modal-title">Editar Despacho</h2>
-                        <p className="modal-subtitle">Atualize as informações do despacho</p>
+                        <h2 className="modal-title">{isDevolucao ? 'Editar Devolução' : 'Editar Despacho'}</h2>
+                        <p className="modal-subtitle">{isDevolucao ? 'Atualize as informações da devolução' : 'Atualize as informações do despacho'}</p>
 
                         <div className="form-row">
                             <div className="form-group">
@@ -926,6 +945,30 @@ export default function ShippingList({
                             </div>
                         </div>
 
+                        {/* Devolução-specific fields */}
+                        {isDevolucao && (
+                            <div className="form-row">
+                                <div className="form-group">
+                                    <label className="form-label">Motivo da Devolução</label>
+                                    <select className="form-select" value={editingShipping.motivoDevolucao || ''} onChange={(e) => setEditingShipping({...editingShipping, motivoDevolucao: e.target.value})}>
+                                        <option value="">Selecione...</option>
+                                        <option value="Defeito">Defeito</option>
+                                        <option value="Arrependimento">Arrependimento</option>
+                                        <option value="Produto errado">Produto errado</option>
+                                        <option value="Avaria no transporte">Avaria no transporte</option>
+                                        <option value="Outro">Outro</option>
+                                    </select>
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">HUB Destino</label>
+                                    <select className="form-select" value={editingShipping.hubDestino || ''} onChange={(e) => setEditingShipping({...editingShipping, hubDestino: e.target.value})}>
+                                        <option value="">Selecione...</option>
+                                        {locaisOrigem.map(l => <option key={l} value={l}>{l}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+                        )}
+
                         <div className="form-group">
                             <label className="form-label">Observações</label>
                             <textarea className="form-textarea" value={editingShipping.observacoes || ''} onChange={(e) => setEditingShipping({...editingShipping, observacoes: e.target.value})} placeholder="Informações adicionais..." />
@@ -937,7 +980,7 @@ export default function ShippingList({
                                 onClick={async () => {
                                     const isLocal = editingShipping.transportadora === 'Entrega Local';
                                     const isEntregue = isLocal || editingShipping.status === 'ENTREGUE';
-                                    await onUpdate(editingShipping.id, {
+                                    const updateData = {
                                         nfNumero: editingShipping.nfNumero,
                                         cliente: editingShipping.cliente,
                                         destino: editingShipping.destino,
@@ -956,9 +999,14 @@ export default function ShippingList({
                                         comprovanteFotos: editingShipping.comprovanteFotos || [],
                                         dataEntrega: isLocal ? (editingShipping.dataEntrega || new Date().toISOString()) : editingShipping.dataEntrega,
                                         updatedAt: new Date().toISOString()
-                                    });
+                                    };
+                                    if (isDevolucao) {
+                                        updateData.motivoDevolucao = editingShipping.motivoDevolucao || '';
+                                        updateData.hubDestino = editingShipping.hubDestino || '';
+                                    }
+                                    await onUpdate(editingShipping.id, updateData);
                                     setEditingShipping(null);
-                                    setSuccess('Despacho atualizado com sucesso!');
+                                    setSuccess(isDevolucao ? 'Devolução atualizada com sucesso!' : 'Despacho atualizado com sucesso!');
                                     setTimeout(() => setSuccess(''), 3000);
                                 }}
                             >

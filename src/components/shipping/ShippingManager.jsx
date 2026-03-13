@@ -14,6 +14,7 @@ import ShippingList from './ShippingList';
 import ShippingForm from './ShippingForm';
 import ShippingXMLImport from './ShippingXMLImport';
 import ShippingBatchImport from './ShippingBatchImport';
+import DevolucaoForm from './DevolucaoForm';
 import { buscarRastreioPorNF } from '@/services/trackingService';
 
 // Constantes
@@ -42,9 +43,11 @@ export default function ShippingManager({
     onAddExit, onAddEntry, locaisOrigem, onUpdateLocais, onAddProduct,
     categories, entries, exits, isStockAdmin,
     onAddCategory, onUpdateCategory, onDeleteCategory,
-    pendingDispatchData, onClearPendingDispatch, onRefreshShippings
+    pendingDispatchData, onClearPendingDispatch, onRefreshShippings,
+    isOperador, isEquipe
 }) {
     const [activeView, setActiveView] = useState('list');
+    const [tipoView, setTipoView] = useState('despacho');
     const [nfFile, setNfFile] = useState(null);
     const [nfData, setNfData] = useState(null);
     const [success, setSuccess] = useState('');
@@ -403,9 +406,31 @@ export default function ShippingManager({
     return (
         <div>
             <div className="page-header">
-                <h1 className="page-title">Despachos</h1>
-                <p className="page-subtitle">Gerencie o envio de notas fiscais</p>
+                <h1 className="page-title">Expedição</h1>
+                <p className="page-subtitle">Gerencie despachos e devoluções</p>
             </div>
+
+            {/* Sub-abas Despachos / Devoluções */}
+            {(() => {
+                const despachos = shippings.filter(s => !s.tipo || s.tipo === 'despacho');
+                const devolucoes = shippings.filter(s => s.tipo === 'devolucao');
+                return (
+                    <div className="filter-tabs" style={{marginBottom: '16px'}}>
+                        <button
+                            className={`filter-tab ${tipoView === 'despacho' ? 'active' : ''}`}
+                            onClick={() => { setTipoView('despacho'); setActiveView('list'); }}
+                        >
+                            Despachos ({despachos.length})
+                        </button>
+                        <button
+                            className={`filter-tab ${tipoView === 'devolucao' ? 'active' : ''}`}
+                            onClick={() => { setTipoView('devolucao'); setActiveView('list'); }}
+                        >
+                            Devoluções ({devolucoes.length})
+                        </button>
+                    </div>
+                );
+            })()}
 
             {success && <div className="alert alert-success">{success}</div>}
             {error && <div className="alert alert-danger">{error}</div>}
@@ -419,7 +444,7 @@ export default function ShippingManager({
                 />
             )}
 
-            {/* Tabs */}
+            {/* Tabs — contextuais por tipoView */}
             <div className="card" style={{marginBottom: '16px'}}>
                 <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px'}}>
                     <div className="filter-tabs">
@@ -427,32 +452,45 @@ export default function ShippingManager({
                             className={`filter-tab ${activeView === 'list' ? 'active' : ''}`}
                             onClick={() => setActiveView('list')}
                         >
-                            Lista ({shippings.length})
+                            Lista
                         </button>
-                        {isStockAdmin && (<button
-                            className={`filter-tab ${activeView === 'register' ? 'active' : ''}`}
-                            onClick={() => setActiveView('register')}
-                        >
-                            Novo
-                        </button>)}
-                        {isStockAdmin && (<button
-                            className={`filter-tab ${activeView === 'import' ? 'active' : ''}`}
-                            onClick={() => setActiveView('import')}
-                        >
-                            Importar NF
-                        </button>)}
-                        {isStockAdmin && (<button
-                            className={`filter-tab ${activeView === 'import-tiny' ? 'active' : ''}`}
-                            onClick={() => setActiveView('import-tiny')}
-                        >
-                            Importar Tiny
-                        </button>)}
-                        {isStockAdmin && (<button
-                            className={`filter-tab ${activeView === 'csv' ? 'active' : ''}`}
-                            onClick={() => setActiveView('csv')}
-                        >
-                            Importar CSV
-                        </button>)}
+                        {tipoView === 'despacho' ? (
+                            <>
+                                {isStockAdmin && (<button
+                                    className={`filter-tab ${activeView === 'register' ? 'active' : ''}`}
+                                    onClick={() => setActiveView('register')}
+                                >
+                                    Novo
+                                </button>)}
+                                {isStockAdmin && (<button
+                                    className={`filter-tab ${activeView === 'import' ? 'active' : ''}`}
+                                    onClick={() => setActiveView('import')}
+                                >
+                                    Importar NF
+                                </button>)}
+                                {isStockAdmin && (<button
+                                    className={`filter-tab ${activeView === 'import-tiny' ? 'active' : ''}`}
+                                    onClick={() => setActiveView('import-tiny')}
+                                >
+                                    Importar Tiny
+                                </button>)}
+                                {isStockAdmin && (<button
+                                    className={`filter-tab ${activeView === 'csv' ? 'active' : ''}`}
+                                    onClick={() => setActiveView('csv')}
+                                >
+                                    Importar CSV
+                                </button>)}
+                            </>
+                        ) : (
+                            <>
+                                {isStockAdmin && (<button
+                                    className={`filter-tab ${activeView === 'register-devolucao' ? 'active' : ''}`}
+                                    onClick={() => setActiveView('register-devolucao')}
+                                >
+                                    Nova Devolução
+                                </button>)}
+                            </>
+                        )}
                     </div>
                     <button
                         className="btn btn-secondary"
@@ -466,13 +504,20 @@ export default function ShippingManager({
                 </div>
             </div>
 
-            {/* Lista de Despachos */}
+            {/* Lista */}
             {activeView === 'list' && (
                 <ShippingList
-                    shippings={shippings}
+                    shippings={tipoView === 'devolucao'
+                        ? shippings.filter(s => s.tipo === 'devolucao')
+                        : shippings.filter(s => !s.tipo || s.tipo === 'despacho')
+                    }
+                    tipo={tipoView}
                     onUpdate={onUpdate}
                     onDelete={onDelete}
                     isStockAdmin={isStockAdmin}
+                    isOperador={isOperador}
+                    isEquipe={isEquipe}
+                    onAddEntry={onAddEntry}
                     locaisOrigem={locaisOrigem}
                     statusList={statusList}
                     statusTransitions={STATUS_TRANSITIONS}
@@ -571,6 +616,24 @@ export default function ShippingManager({
                     onImportShipping={onAdd}
                     locaisOrigem={locaisOrigem}
                     onUpdateLocais={onUpdateLocais}
+                />
+            )}
+
+            {/* Registrar Devolução */}
+            {activeView === 'register-devolucao' && (
+                <DevolucaoForm
+                    locaisOrigem={locaisOrigem}
+                    transportadoras={transportadoras}
+                    products={products}
+                    stock={stock}
+                    onAdd={onAdd}
+                    onCancel={() => setActiveView('list')}
+                    onSuccess={(msg) => {
+                        setSuccess(msg);
+                        setActiveView('list');
+                        setTimeout(() => setSuccess(''), 3000);
+                    }}
+                    onError={setError}
                 />
             )}
 

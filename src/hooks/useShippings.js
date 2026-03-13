@@ -19,7 +19,7 @@ import { mapShippingFromDB } from '@/utils/mappers';
  * @param {boolean} isStockAdmin - Permission flag
  * @returns {Object}
  */
-export function useShippings(user, isStockAdmin) {
+export function useShippings(user, isStockAdmin, isOperador) {
   const [shippings, setShippings] = useState([]);
 
   const addShipping = useCallback(
@@ -50,6 +50,10 @@ export function useShippings(user, isStockAdmin) {
         comprovante_obs: shipping.comprovanteObs || '',
         comprovante_fotos: shipping.comprovanteFotos || [],
         data_entrega: shipping.dataEntrega || null,
+        tipo: shipping.tipo || 'despacho',
+        entrada_criada: shipping.entradaCriada || false,
+        motivo_devolucao: shipping.motivoDevolucao || '',
+        hub_destino: shipping.hubDestino || '',
       };
       const { error } = await supabaseClient.from('shippings').upsert(newShipping);
       if (error) {
@@ -70,7 +74,7 @@ export function useShippings(user, isStockAdmin) {
 
   const updateShipping = useCallback(
     async (shippingId, data) => {
-      if (!isStockAdmin) {
+      if (!isStockAdmin && !isOperador) {
         alert('Sem permissão para esta ação');
         return;
       }
@@ -96,6 +100,9 @@ export function useShippings(user, isStockAdmin) {
       if (data.comprovanteObs !== undefined) mapped.comprovante_obs = data.comprovanteObs;
       if (data.comprovanteFotos !== undefined) mapped.comprovante_fotos = data.comprovanteFotos;
       if (data.dataEntrega !== undefined) mapped.data_entrega = data.dataEntrega;
+      if (data.motivoDevolucao !== undefined) mapped.motivo_devolucao = data.motivoDevolucao;
+      if (data.hubDestino !== undefined) mapped.hub_destino = data.hubDestino;
+      if (data.entradaCriada !== undefined) mapped.entrada_criada = data.entradaCriada;
       const { error } = await supabaseClient
         .from('shippings')
         .update(mapped)
@@ -105,7 +112,7 @@ export function useShippings(user, isStockAdmin) {
         alert('Erro ao atualizar despacho: ' + error.message);
       }
     },
-    [isStockAdmin]
+    [isStockAdmin, isOperador]
   );
 
   const deleteShipping = useCallback(
