@@ -41,6 +41,10 @@ export default function TinyERPPage({ user, onDataChanged, products, entries, ex
     const [imageSyncRunning, setImageSyncRunning] = useState(false);
     const [imageSyncProgress, setImageSyncProgress] = useState(null);
     const imageSyncStopRef = useRef(false);
+    // Shopify image sync state
+    const [shopifySyncRunning, setShopifySyncRunning] = useState(false);
+    const [shopifySyncProgress, setShopifySyncProgress] = useState(null);
+    const shopifySyncStopRef = useRef(false);
     const [nfeNumber, setNfeNumber] = useState('');
 
     const FUNC_BASE = `${SUPABASE_URL}/functions/v1`;
@@ -419,6 +423,63 @@ export default function TinyERPPage({ user, onDataChanged, products, entries, ex
         imageSyncStopRef.current = true;
     };
 
+    // --- Shopify image sync ---
+    const handleShopifyImageSync = async () => {
+        if (syncLock) return;
+        setSyncLock(true);
+        setShopifySyncRunning(true);
+        shopifySyncStopRef.current = false;
+        setShopifySyncProgress({ status: 'running', message: 'Conectando ao Shopify...' });
+
+        let totalAtualizados = 0;
+        let totalProcessados = 0;
+        let pageInfo = null;
+
+        try {
+            while (true) {
+                if (shopifySyncStopRef.current) {
+                    setShopifySyncProgress({ status: 'stopped', message: `Parado. ${totalAtualizados} imagens importadas de ${totalProcessados} produtos analisados.` });
+                    break;
+                }
+
+                const body = pageInfo ? { page_info: pageInfo } : {};
+                const result = await callFunction('shopify-sync-images', body);
+
+                if (!result.success) {
+                    throw new Error(result.message || 'Erro ao processar');
+                }
+
+                totalProcessados += result.processados || 0;
+                totalAtualizados += result.atualizados || 0;
+
+                if (result.hasMore) {
+                    const restantes = result.restantes || '?';
+                    setShopifySyncProgress({
+                        status: 'running',
+                        message: `Analisando produtos do Shopify... ${totalAtualizados} imagens atualizadas (${restantes} restantes)`,
+                    });
+                    pageInfo = result.nextPageInfo;
+                    await new Promise(r => setTimeout(r, 2000));
+                } else {
+                    setShopifySyncProgress({
+                        status: 'success',
+                        message: `Concluído! ${totalAtualizados} imagens importadas do Shopify (${totalProcessados} produtos analisados).`,
+                    });
+                    break;
+                }
+            }
+        } catch (err) {
+            setShopifySyncProgress({ status: 'error', message: `Erro: ${err.message}` });
+        } finally {
+            setShopifySyncRunning(false);
+            setSyncLock(false);
+        }
+    };
+
+    const stopShopifySync = () => {
+        shopifySyncStopRef.current = true;
+    };
+
     const formatDate = (d) => {
         if (!d) return '-';
         return new Date(d).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -740,6 +801,50 @@ export default function TinyERPPage({ user, onDataChanged, products, entries, ex
                                         fontWeight: '500',
                                     }}>
                                         {imageSyncProgress.message}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Shopify image sync card */}
+                            <div style={cardStyle}>
+                                <div style={{display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px'}}>
+                                    <div style={{width: '36px', height: '36px', borderRadius: 'var(--radius-sm)', background: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                                        <span style={{fontSize: '18px'}}>🛍️</span>
+                                    </div>
+                                    <div>
+                                        <div style={{fontWeight: '600', fontSize: '14px'}}>Imagens Shopify</div>
+                                        <div style={{fontSize: '12px', color: 'var(--text-muted)'}}>Importar fotos do Shopify</div>
+                                    </div>
+                                </div>
+                                <p style={{fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '16px'}}>
+                                    Busca imagens dos produtos no Shopify por SKU e preenche o campo imagem_url dos produtos correspondentes.
+                                </p>
+                                <button
+                                    className="btn btn-primary"
+                                    style={{width: '100%', background: shopifySyncRunning ? undefined : '#16a34a', borderColor: shopifySyncRunning ? undefined : '#16a34a'}}
+                                    onClick={shopifySyncRunning ? stopShopifySync : handleShopifyImageSync}
+                                    disabled={syncLock && !shopifySyncRunning}
+                                >
+                                    {shopifySyncRunning
+                                        ? <><Icon name="spinner" size={14} style={{animation: 'spin 1s linear infinite'}} /> <span style={{marginLeft: '6px'}}>Parar</span></>
+                                        : <><Icon name="sync" size={14} /> <span style={{marginLeft: '6px'}}>Importar Imagens do Shopify</span></>
+                                    }
+                                </button>
+                                {shopifySyncProgress && (
+                                    <div style={{
+                                        marginTop: '12px',
+                                        padding: '8px 12px',
+                                        borderRadius: 'var(--radius-xs)',
+                                        background: shopifySyncProgress.status === 'success' ? 'var(--success-light)'
+                                            : shopifySyncProgress.status === 'error' || shopifySyncProgress.status === 'stopped' ? 'var(--danger-light)'
+                                            : 'var(--accent-bg)',
+                                        fontSize: '12px',
+                                        color: shopifySyncProgress.status === 'success' ? 'var(--success-dark)'
+                                            : shopifySyncProgress.status === 'error' || shopifySyncProgress.status === 'stopped' ? 'var(--danger-dark)'
+                                            : 'var(--accent)',
+                                        fontWeight: '500',
+                                    }}>
+                                        {shopifySyncProgress.message}
                                     </div>
                                 )}
                             </div>
