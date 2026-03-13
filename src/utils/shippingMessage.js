@@ -13,23 +13,47 @@
 export function buildClientShippingMessage(shipping, statusLabels) {
   const statusLabel = statusLabels[shipping.status]?.label || shipping.status;
   const lines = [];
+  const isEntregue = shipping.status === 'ENTREGUE';
 
   lines.push(`Olá ${shipping.cliente || 'Cliente'}! 👋`);
   lines.push('');
-  lines.push(`Informamos que seu pedido da *ORNE — decor studio* está com status: *${statusLabel}*.`);
 
-  if (shipping.transportadora) {
-    lines.push('');
-    lines.push(`Transportadora: ${shipping.transportadora}`);
-  }
-  if (shipping.linkRastreio) {
-    if (!shipping.transportadora) lines.push('');
-    lines.push(`Link de rastreio: ${shipping.linkRastreio}`);
+  if (isEntregue) {
+    lines.push('Informamos que seu pedido da *ORNE — decor studio* foi *Entregue*!');
+  } else {
+    lines.push(`Informamos que seu pedido da *ORNE — decor studio* está com status: *${statusLabel}*.`);
   }
 
   if (shipping.nfNumero) {
     lines.push('');
     lines.push(`NF: ${shipping.nfNumero}`);
+  }
+
+  if (isEntregue) {
+    // Delivery info lines — only if fields are filled
+    if (shipping.recebedorNome) {
+      lines.push(`Recebido por: ${shipping.recebedorNome}`);
+    }
+    if (shipping.dataEntrega) {
+      try {
+        const d = new Date(shipping.dataEntrega);
+        const formatted = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+          + ' às ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        lines.push(`Data da entrega: ${formatted}`);
+      } catch (_) {}
+    }
+    if (shipping.comprovanteObs) {
+      lines.push(`Observação: ${shipping.comprovanteObs}`);
+    }
+  } else {
+    if (shipping.transportadora) {
+      lines.push('');
+      lines.push(`Transportadora: ${shipping.transportadora}`);
+    }
+    if (shipping.linkRastreio) {
+      if (!shipping.transportadora) lines.push('');
+      lines.push(`Link de rastreio: ${shipping.linkRastreio}`);
+    }
   }
 
   lines.push('');

@@ -1102,7 +1102,12 @@
             transportadora: row.transportadora || '', codigoRastreio: row.codigo_rastreio || '',
             linkRastreio: row.link_rastreio || '', melhorEnvioId: row.melhor_envio_id || '',
             produtos: row.produtos || [], observacoes: row.observacoes || '',
-            status: row.status || 'PENDENTE', date: row.date, userId: row.user_id || ''
+            status: row.status || 'PENDENTE', date: row.date, userId: row.user_id || '',
+            entregaLocal: row.entrega_local || false,
+            recebedorNome: row.recebedor_nome || '',
+            comprovanteObs: row.comprovante_obs || '',
+            comprovanteFotos: row.comprovante_fotos || [],
+            dataEntrega: row.data_entrega || null,
         });
 
         // ==========================================
@@ -2130,6 +2135,9 @@
         function ShippingView({ shippings }) {
             const [searchTerm, setSearchTerm] = useState('');
             const [statusFilter, setStatusFilter] = useState('all');
+            const [comprovanteModal, setComprovanteModal] = useState(null);
+            const [comprovanteUrls, setComprovanteUrls] = useState({});
+            const [copiedId, setCopiedId] = useState(null);
 
             const statusList = {
                 'PENDENTE':       { label: 'Pendente',       color: '#C4873B', bg: 'rgba(196,135,59,0.08)' },
@@ -2139,6 +2147,57 @@
                 'DEVOLVIDO':      { label: 'Devolvido',      color: '#8B5CF6', bg: 'rgba(139,92,246,0.08)' },
                 'CANCELADO':      { label: 'Cancelado',      color: '#737373', bg: 'rgba(115,115,115,0.08)' },
                 'SAIU_ENTREGA':   { label: 'Saiu p/ Entrega',color: '#0EA5E9', bg: 'rgba(14,165,233,0.08)' },
+            };
+
+            // WhatsApp message builder (inline — equipe version)
+            const buildMessage = (s) => {
+                const lines = [];
+                const isEntregue = s.status === 'ENTREGUE';
+                lines.push(`Olá ${s.cliente || 'Cliente'}! 👋`);
+                lines.push('');
+                if (isEntregue) {
+                    lines.push('Informamos que seu pedido da *ORNE — decor studio* foi *Entregue*!');
+                } else {
+                    lines.push(`Informamos que seu pedido da *ORNE — decor studio* está com status: *${statusList[s.status]?.label || s.status}*.`);
+                }
+                if (s.nfNumero) { lines.push(''); lines.push(`NF: ${s.nfNumero}`); }
+                if (isEntregue) {
+                    if (s.recebedorNome) lines.push(`Recebido por: ${s.recebedorNome}`);
+                    if (s.dataEntrega) {
+                        try {
+                            const d = new Date(s.dataEntrega);
+                            lines.push(`Data da entrega: ${d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'})} às ${d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`);
+                        } catch(_){}
+                    }
+                    if (s.comprovanteObs) lines.push(`Observação: ${s.comprovanteObs}`);
+                } else {
+                    if (s.transportadora) { lines.push(''); lines.push(`Transportadora: ${s.transportadora}`); }
+                    if (s.linkRastreio) { if (!s.transportadora) lines.push(''); lines.push(`Link de rastreio: ${s.linkRastreio}`); }
+                }
+                lines.push(''); lines.push('Caso tenha dúvidas, estamos à disposição!'); lines.push('ornedecor.com');
+                return lines.join('\n');
+            };
+
+            const handleCopy = async (s) => {
+                const text = buildMessage(s);
+                try { await navigator.clipboard.writeText(text); } catch(_) {
+                    const ta = document.createElement('textarea'); ta.value = text; ta.style.cssText = 'position:fixed;opacity:0';
+                    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+                }
+                setCopiedId(s.id);
+                setTimeout(() => setCopiedId(null), 2000);
+            };
+
+            const openComprovante = async (s) => {
+                setComprovanteModal(s);
+                const urls = {};
+                for (const path of (s.comprovanteFotos || [])) {
+                    try {
+                        const { data } = await supabaseClient.storage.from('comprovantes').createSignedUrl(path, 3600);
+                        if (data?.signedUrl) urls[path] = data.signedUrl;
+                    } catch(_){}
+                }
+                setComprovanteUrls(urls);
             };
 
             const filtered = shippings
@@ -2261,6 +2320,7 @@
                                             <th>Transportadora</th>
                                             <th>Rastreio</th>
                                             <th>Status</th>
+                                            <th>Ações</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -2279,16 +2339,29 @@
                                                         {s.destino && <div style={{fontSize: '11px', color: 'var(--text-tertiary)', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{s.destino}</div>}
                                                     </td>
                                                     <td style={{fontSize: '12px'}}>{s.localOrigem || '-'}</td>
-                                                    <td style={{fontSize: '12px'}}>{s.transportadora || '-'}</td>
+                                                    <td style={{fontSize: '12px'}}>
+                                                        {s.entregaLocal ? (
+                                                            <span style={{color: '#065F46', fontWeight: 500}}>📦 Local</span>
+                                                        ) : (s.transportadora || '-')}
+                                                    </td>
                                                     <td>
-                                                        {s.codigoRastreio ? (
+                                                        {s.entregaLocal ? (
+                                                            <div>
+                                                                {s.recebedorNome && <div style={{fontSize: '12px', fontWeight: 500}}>Recebido: {s.recebedorNome}</div>}
+                                                                {(s.comprovanteFotos || []).length > 0 && (
+                                                                    <button onClick={() => openComprovante(s)} style={{
+                                                                        fontSize: '10px', padding: '2px 6px', marginTop: '2px',
+                                                                        background: 'none', border: '1px solid #d1d5db', borderRadius: '6px',
+                                                                        cursor: 'pointer', color: '#374151'
+                                                                    }}>
+                                                                        📷 {s.comprovanteFotos.length} foto{s.comprovanteFotos.length !== 1 ? 's' : ''}
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        ) : s.codigoRastreio ? (
                                                             s.linkRastreio ? (
-                                                                <a
-                                                                    href={s.linkRastreio}
-                                                                    target="_blank"
-                                                                    rel="noopener noreferrer"
-                                                                    style={{color: 'var(--accent-primary)', fontFamily: 'monospace', fontSize: '12px', textDecoration: 'none'}}
-                                                                >
+                                                                <a href={s.linkRastreio} target="_blank" rel="noopener noreferrer"
+                                                                    style={{color: 'var(--accent-primary)', fontFamily: 'monospace', fontSize: '12px', textDecoration: 'none'}}>
                                                                     {s.codigoRastreio} <Icon name="link" size={10} />
                                                                 </a>
                                                             ) : (
@@ -2309,8 +2382,36 @@
                                                             background: st.bg,
                                                             border: `1px solid ${st.color}22`
                                                         }}>
-                                                            {st.label}
+                                                            {s.entregaLocal && s.status === 'ENTREGUE' ? 'Entregue (Local)' : st.label}
                                                         </span>
+                                                    </td>
+                                                    <td>
+                                                        <div style={{display: 'flex', gap: '4px', alignItems: 'center'}}>
+                                                            <button onClick={() => handleCopy(s)} title="Copiar mensagem WhatsApp" style={{
+                                                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                                                width: '28px', height: '28px', borderRadius: '6px',
+                                                                border: '1px solid #25D366', background: 'none', cursor: 'pointer',
+                                                                color: '#25D366', fontSize: '14px', transition: 'background 0.15s',
+                                                            }}
+                                                            onMouseEnter={e => e.currentTarget.style.background='rgba(37,211,102,0.08)'}
+                                                            onMouseLeave={e => e.currentTarget.style.background='none'}
+                                                            >
+                                                                {copiedId === s.id ? '✓' : (
+                                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492a.5.5 0 00.612.638l4.682-1.22A11.94 11.94 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-2.143 0-4.144-.654-5.798-1.774l-.405-.27-3.1.807.846-3.035-.296-.432A9.94 9.94 0 012 12C2 6.486 6.486 2 12 2s10 4.486 10 10-4.486 10-10 10z"/></svg>
+                                                                )}
+                                                            </button>
+                                                            {s.status === 'ENTREGUE' && (s.comprovanteFotos || []).length > 0 && (
+                                                                <button onClick={() => openComprovante(s)} title="Ver comprovante" style={{
+                                                                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                                                    width: '28px', height: '28px', borderRadius: '6px',
+                                                                    border: '1px solid #d1d5db', background: 'none', cursor: 'pointer',
+                                                                    fontSize: '14px', transition: 'background 0.15s',
+                                                                }}
+                                                                onMouseEnter={e => e.currentTarget.style.background='#f3f4f6'}
+                                                                onMouseLeave={e => e.currentTarget.style.background='none'}
+                                                                >📋</button>
+                                                            )}
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             );
@@ -2320,6 +2421,60 @@
                             </div>
                         )}
                     </div>
+
+                    {/* Modal Comprovante (somente leitura) */}
+                    {comprovanteModal && (
+                        <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setComprovanteModal(null); }}>
+                            <div className="modal-content" style={{maxWidth: '500px'}}>
+                                <h2 style={{margin: '0 0 4px', fontSize: '16px', fontWeight: 700}}>📋 Comprovante de Entrega</h2>
+                                <p style={{margin: '0 0 16px', fontSize: '13px', color: 'var(--text-secondary, #6b7280)'}}>
+                                    NF {comprovanteModal.nfNumero} — {comprovanteModal.cliente}
+                                    {comprovanteModal.entregaLocal && <span style={{
+                                        marginLeft: '8px', background: '#D1FAE5', color: '#065F46',
+                                        padding: '2px 8px', borderRadius: '8px', fontSize: '10px', fontWeight: 600
+                                    }}>Entrega Local</span>}
+                                </p>
+
+                                {comprovanteModal.dataEntrega && (
+                                    <div style={{fontSize: '12px', color: 'var(--text-tertiary, #9ca3af)', marginBottom: '12px'}}>
+                                        Entregue em: {new Date(comprovanteModal.dataEntrega).toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit',year:'numeric'})} às {new Date(comprovanteModal.dataEntrega).toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'})}
+                                    </div>
+                                )}
+
+                                {comprovanteModal.recebedorNome && (
+                                    <div style={{marginBottom: '12px'}}>
+                                        <strong>Recebido por:</strong> {comprovanteModal.recebedorNome}
+                                    </div>
+                                )}
+                                {comprovanteModal.comprovanteObs && (
+                                    <div style={{marginBottom: '12px'}}>
+                                        <strong>Observação:</strong> {comprovanteModal.comprovanteObs}
+                                    </div>
+                                )}
+
+                                {(comprovanteModal.comprovanteFotos || []).length > 0 && (
+                                    <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px'}}>
+                                        {comprovanteModal.comprovanteFotos.map((path, i) => (
+                                            <div key={i} style={{width: '150px', height: '150px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #d1d5db'}}>
+                                                {comprovanteUrls[path] ? (
+                                                    <a href={comprovanteUrls[path]} target="_blank" rel="noopener noreferrer">
+                                                        <img src={comprovanteUrls[path]} alt="" style={{width: '100%', height: '100%', objectFit: 'cover'}} />
+                                                    </a>
+                                                ) : (
+                                                    <div style={{width: '100%', height: '100%', background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af'}}>📷</div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                <button onClick={() => setComprovanteModal(null)} style={{
+                                    padding: '8px 20px', borderRadius: '8px', border: '1px solid #d1d5db',
+                                    background: '#fff', cursor: 'pointer', fontSize: '13px', fontWeight: 500
+                                }}>Fechar</button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             );
         }

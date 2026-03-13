@@ -58,6 +58,55 @@ export default function ShippingList({
     const [signedUrls, setSignedUrls] = useState({});
     const [uploadingFoto, setUploadingFoto] = useState(false);
     const fotoInputRef = useRef(null);
+    // Edit modal photo state
+    const [editSignedUrls, setEditSignedUrls] = useState({});
+    const [uploadingEditFoto, setUploadingEditFoto] = useState(false);
+    const editFotoInputRef = useRef(null);
+
+    // Load signed URLs when editing shipping has photos
+    useEffect(() => {
+        if (!editingShipping) { setEditSignedUrls({}); return; }
+        const fotos = editingShipping.comprovanteFotos || [];
+        if (!fotos.length) return;
+        (async () => {
+            const urls = {};
+            for (const path of fotos) {
+                if (editSignedUrls[path]) { urls[path] = editSignedUrls[path]; continue; }
+                try {
+                    const { data } = await supabaseClient.storage.from('comprovantes').createSignedUrl(path, 3600);
+                    if (data?.signedUrl) urls[path] = data.signedUrl;
+                } catch (_) {}
+            }
+            setEditSignedUrls(urls);
+        })();
+    }, [editingShipping?.id, editingShipping?.comprovanteFotos?.length]);
+
+    // Handle photo upload in edit modal
+    const handleEditFotoUpload = async (e) => {
+        const files = Array.from(e.target.files || []);
+        if (!files.length || !editingShipping) return;
+        const current = editingShipping.comprovanteFotos || [];
+        if (current.length + files.length > 3) { setError('Máximo 3 fotos'); return; }
+        setUploadingEditFoto(true);
+        const newFotos = [...current];
+        const newUrls = { ...editSignedUrls };
+        for (const file of files) {
+            try {
+                const resized = await resizeImage(file);
+                const path = `comprovantes/${editingShipping.id}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
+                const { data, error: upErr } = await supabaseClient.storage
+                    .from('comprovantes').upload(path, resized, { contentType: resized.type, upsert: false });
+                if (upErr) throw upErr;
+                newFotos.push(data.path);
+                const { data: urlData } = await supabaseClient.storage.from('comprovantes').createSignedUrl(data.path, 3600);
+                if (urlData?.signedUrl) newUrls[data.path] = urlData.signedUrl;
+            } catch (err) { setError('Erro ao enviar foto: ' + err.message); }
+        }
+        setEditingShipping({ ...editingShipping, comprovanteFotos: newFotos });
+        setEditSignedUrls(newUrls);
+        setUploadingEditFoto(false);
+        if (editFotoInputRef.current) editFotoInputRef.current.value = '';
+    };
 
     // WhatsApp copy handler
     const handleCopyClientMessage = async (shipping) => {
@@ -786,8 +835,8 @@ export default function ShippingList({
                         </div>
                         </>)}
 
-                        {/* Comprovação fields — shown for Entrega Local */}
-                        {editingShipping.transportadora === 'Entrega Local' && (
+                        {/* Comprovação fields — shown for ENTREGUE status or Entrega Local */}
+                        {(editingShipping.transportadora === 'Entrega Local' || editingShipping.status === 'ENTREGUE') && (
                             <div style={{border: '1px solid var(--border-default)', borderRadius: '8px', padding: '14px', marginBottom: '12px'}}>
                                 <h4 style={{margin: '0 0 10px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)'}}>Comprovação de Entrega</h4>
                                 <div className="form-group">
@@ -797,6 +846,43 @@ export default function ShippingList({
                                 <div className="form-group">
                                     <label className="form-label">Observações da Entrega</label>
                                     <textarea className="form-textarea" value={editingShipping.comprovanteObs || ''} onChange={(e) => setEditingShipping({...editingShipping, comprovanteObs: e.target.value})} placeholder="Detalhes sobre a entrega..." rows={2} />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Fotos do Comprovante (máx. 3)</label>
+                                    <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px'}}>
+                                        {(editingShipping.comprovanteFotos || []).map((path, i) => (
+                                            <div key={i} style={{
+                                                position: 'relative', width: '100px', height: '100px',
+                                                borderRadius: '8px', overflow: 'hidden', border: '1px solid #d1d5db'
+                                            }}>
+                                                {editSignedUrls[path] ? (
+                                                    <img src={editSignedUrls[path]} alt="" style={{width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer'}} onClick={() => window.open(editSignedUrls[path], '_blank')} />
+                                                ) : (
+                                                    <div style={{width: '100%', height: '100%', background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: '11px'}}>📷</div>
+                                                )}
+                                                <button type="button" onClick={async () => {
+                                                    const fotos = [...(editingShipping.comprovanteFotos || [])];
+                                                    const removed = fotos.splice(i, 1)[0];
+                                                    setEditingShipping({...editingShipping, comprovanteFotos: fotos});
+                                                    try { await supabaseClient.storage.from('comprovantes').remove([removed]); } catch (_) {}
+                                                }} style={{
+                                                    position: 'absolute', top: '3px', right: '3px',
+                                                    width: '20px', height: '20px', borderRadius: '50%',
+                                                    background: 'rgba(239,68,68,0.9)', color: '#fff',
+                                                    border: 'none', cursor: 'pointer', fontSize: '13px',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                                }}>×</button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    {(editingShipping.comprovanteFotos || []).length < 3 && (
+                                        <div>
+                                            <input ref={editFotoInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/heic" multiple style={{display: 'none'}} onChange={handleEditFotoUpload} />
+                                            <button type="button" className="btn btn-secondary btn-sm" onClick={() => editFotoInputRef.current?.click()} disabled={uploadingEditFoto} style={{fontSize: '12px'}}>
+                                                {uploadingEditFoto ? 'Enviando...' : '📷 Anexar foto'}
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )}
@@ -822,6 +908,7 @@ export default function ShippingList({
                                 className="btn btn-primary"
                                 onClick={async () => {
                                     const isLocal = editingShipping.transportadora === 'Entrega Local';
+                                    const isEntregue = isLocal || editingShipping.status === 'ENTREGUE';
                                     await onUpdate(editingShipping.id, {
                                         nfNumero: editingShipping.nfNumero,
                                         cliente: editingShipping.cliente,
@@ -836,8 +923,9 @@ export default function ShippingList({
                                         hubTelefone: editingShipping.hubTelefone,
                                         telefoneCliente: editingShipping.telefoneCliente,
                                         entregaLocal: isLocal,
-                                        recebedorNome: isLocal ? (editingShipping.recebedorNome || '') : editingShipping.recebedorNome,
-                                        comprovanteObs: isLocal ? (editingShipping.comprovanteObs || '') : editingShipping.comprovanteObs,
+                                        recebedorNome: isEntregue ? (editingShipping.recebedorNome || '') : editingShipping.recebedorNome,
+                                        comprovanteObs: isEntregue ? (editingShipping.comprovanteObs || '') : editingShipping.comprovanteObs,
+                                        comprovanteFotos: editingShipping.comprovanteFotos || [],
                                         dataEntrega: isLocal ? (editingShipping.dataEntrega || new Date().toISOString()) : editingShipping.dataEntrega,
                                         updatedAt: new Date().toISOString()
                                     });
