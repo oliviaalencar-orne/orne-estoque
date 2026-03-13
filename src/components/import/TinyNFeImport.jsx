@@ -16,7 +16,7 @@ import { getEstoquePorNF } from '@/utils/fifo';
 import CategorySelectInline from '@/components/ui/CategorySelectInline';
 import { useBatchImport, BATCH_MAX_NFS, BATCH_FETCH_TIMEOUT_MS } from '@/hooks/useBatchImport';
 
-export default function TinyNFeImport({ products, onSubmitEntry, onSubmitExit, onAddProduct, categories, locaisOrigem, onUpdateLocais, entries, exits, stock, mode, onAddCategory, onUpdateCategory, onDeleteCategory, onPrepareShipping, checkNfDuplicate }) {
+export default function TinyNFeImport({ products, onSubmitEntry, onSubmitExit, onAddProduct, categories, locaisOrigem, onUpdateLocais, entries, exits, stock, mode, onAddCategory, onUpdateCategory, onDeleteCategory, onPrepareShipping, checkNfDuplicate, isDevolucao = false }) {
     const [nfNumber, setNfNumber] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -31,6 +31,10 @@ export default function TinyNFeImport({ products, onSubmitEntry, onSubmitExit, o
     const [showInlineCatForm, setShowInlineCatForm] = useState(false);
     const [newCatName, setNewCatName] = useState('');
     const [newCatColor, setNewCatColor] = useState('#7A7585');
+
+    // Devolução-specific state
+    const [devMotivo, setDevMotivo] = useState('');
+    const [devHubDestino, setDevHubDestino] = useState(locaisOrigem?.[0] || '');
 
     // Batch mode state
     const [importMode, setImportMode] = useState('single');
@@ -63,11 +67,11 @@ export default function TinyNFeImport({ products, onSubmitEntry, onSubmitExit, o
                 observations: '',
                 category: matched?.category || '',
                 alreadyRegistered,
-                baixarEstoque: !!matched && isExitNfe,
+                baixarEstoque: !isDevolucao && !!matched && isExitNfe,
                 nfOrigem: '',
             };
         });
-    }, [products, entries, exits, mode, locaisOrigem]);
+    }, [products, entries, exits, mode, locaisOrigem, isDevolucao]);
 
     // ─── Single mode: fetch NF ───────────────────────────────────────────
     const fetchNFe = async () => {
@@ -188,7 +192,7 @@ export default function TinyNFeImport({ products, onSubmitEntry, onSubmitExit, o
         updateItemState(idx, {
             linkedSku: sku,
             linkedProduct: prod || null,
-            baixarEstoque: !!prod && isExit,
+            baixarEstoque: !isDevolucao && !!prod && isExit,
             nfOrigem: '',
         });
         setShowVincularModal(null);
@@ -214,7 +218,7 @@ export default function TinyNFeImport({ products, onSubmitEntry, onSubmitExit, o
             updateItemState(idx, {
                 linkedSku: newProductData.sku.trim(),
                 linkedProduct: { name: newProductData.name.trim(), sku: newProductData.sku.trim() },
-                baixarEstoque: isExit,
+                baixarEstoque: !isDevolucao && isExit,
                 nfOrigem: '',
             });
             setShowNewProductModal(null);
@@ -244,8 +248,14 @@ export default function TinyNFeImport({ products, onSubmitEntry, onSubmitExit, o
             return;
         }
 
+        // Validar campos obrigatórios de devolução
+        if (isDevolucao && !devMotivo) {
+            setError('Selecione o motivo da devolução.');
+            return;
+        }
+
         // Validar quantidades vs estoque disponivel por NF de origem
-        if (isExit) {
+        if (isExit && !isDevolucao) {
             for (const s of selectedItems) {
                 if (s.baixarEstoque && s.nfOrigem) {
                     const nfsDisponiveis = getEstoquePorNF(s.linkedSku, entries, exits);
@@ -277,12 +287,17 @@ export default function TinyNFeImport({ products, onSubmitEntry, onSubmitExit, o
             setError('');
 
             try {
-                const result = await onPrepareShipping({
+                const shippingPayload = {
                     nfNumero: String(nfeData.numero || ''),
                     cliente: nfeData.cliente?.nome || '',
                     destino: nfeData.cliente?.endereco || '',
                     produtos: produtos,
-                }, prepareOptions);
+                };
+                if (isDevolucao) {
+                    shippingPayload.motivoDevolucao = devMotivo;
+                    shippingPayload.hubDestino = devHubDestino;
+                }
+                const result = await onPrepareShipping(shippingPayload, prepareOptions);
 
                 // Cancelled by user (single mode duplicate check)
                 if (result === false) return;
@@ -298,7 +313,7 @@ export default function TinyNFeImport({ products, onSubmitEntry, onSubmitExit, o
                 setNfeData(null);
                 setItemStates([]);
                 setNfNumber('');
-                setSuccess('NF importada! Preencha os dados do despacho.');
+                setSuccess(isDevolucao ? 'Devolução registrada com sucesso!' : 'NF importada! Preencha os dados do despacho.');
                 setTimeout(() => setSuccess(''), 5000);
             } catch (err) {
                 setError('Erro ao salvar: ' + err.message);
@@ -717,8 +732,8 @@ export default function TinyNFeImport({ products, onSubmitEntry, onSubmitExit, o
                                     {nfeData.cliente?.nome || 'Sem nome'} | {nfeData.dataEmissao || '-'}
                                 </div>
                             </div>
-                            <span className={`badge ${nfeData.tipo === 'E' ? 'badge-success' : 'badge-danger'}`} style={{fontSize: '12px'}}>
-                                {nfeData.tipo === 'E' ? 'Entrada' : 'Saida'}
+                            <span className={`badge ${isDevolucao ? 'badge-info' : (nfeData.tipo === 'E' ? 'badge-success' : 'badge-danger')}`} style={{fontSize: '12px'}}>
+                                {isDevolucao ? 'Devolução' : (nfeData.tipo === 'E' ? 'Entrada' : 'Saida')}
                             </span>
                         </div>
                     </div>
@@ -732,7 +747,7 @@ export default function TinyNFeImport({ products, onSubmitEntry, onSubmitExit, o
                                     <th>Produto NF</th>
                                     <th>Produto Estoque</th>
                                     <th style={{width: '80px'}}>Qtd</th>
-                                    {isExit && <th style={{minWidth: '140px'}}>Estoque</th>}
+                                    {isExit && !isDevolucao && <th style={{minWidth: '140px'}}>Estoque</th>}
                                     {(isEntry || (mode === 'both' && nfeData.tipo === 'E')) && <th>Local</th>}
                                     {(isEntry || (mode === 'both' && nfeData.tipo === 'E')) && <th>Categoria</th>}
                                     <th>Obs.</th>
@@ -793,7 +808,7 @@ export default function TinyNFeImport({ products, onSubmitEntry, onSubmitExit, o
                                                     onChange={e => updateItemState(idx, { quantity: parseInt(e.target.value) || 0 })}
                                                     style={{width: '70px', padding: '4px 8px', fontSize: '13px'}} />
                                             </td>
-                                            {isExit && (
+                                            {isExit && !isDevolucao && (
                                                 <td>
                                                     {st.linkedProduct ? (
                                                         <div>
@@ -909,6 +924,44 @@ export default function TinyNFeImport({ products, onSubmitEntry, onSubmitExit, o
                         </table>
                     </div>
 
+                    {/* Devolução fields */}
+                    {isDevolucao && (
+                        <div style={{padding: '12px 16px', borderTop: '1px solid var(--border)', background: 'var(--bg-secondary)'}}>
+                            <div className="form-row" style={{gap: '12px'}}>
+                                <div className="form-group" style={{flex: 1, marginBottom: 0}}>
+                                    <label className="form-label" style={{fontSize: '12px'}}>Motivo da Devolução *</label>
+                                    <select
+                                        className="form-select"
+                                        value={devMotivo}
+                                        onChange={e => setDevMotivo(e.target.value)}
+                                        style={{fontSize: '13px'}}
+                                    >
+                                        <option value="">Selecione...</option>
+                                        <option value="Defeito">Defeito</option>
+                                        <option value="Arrependimento">Arrependimento</option>
+                                        <option value="Produto errado">Produto errado</option>
+                                        <option value="Avaria no transporte">Avaria no transporte</option>
+                                        <option value="Outro">Outro</option>
+                                    </select>
+                                </div>
+                                <div className="form-group" style={{flex: 1, marginBottom: 0}}>
+                                    <label className="form-label" style={{fontSize: '12px'}}>HUB Destino</label>
+                                    <select
+                                        className="form-select"
+                                        value={devHubDestino}
+                                        onChange={e => setDevHubDestino(e.target.value)}
+                                        style={{fontSize: '13px'}}
+                                    >
+                                        <option value="">Selecione...</option>
+                                        {(locaisOrigem || []).map(l => (
+                                            <option key={l} value={l}>{l}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Action bar */}
                     <div style={{padding: '16px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px'}}>
                         <div style={{fontSize: '13px', color: 'var(--text-secondary)'}}>
@@ -942,9 +995,11 @@ export default function TinyNFeImport({ products, onSubmitEntry, onSubmitExit, o
                                     </button>
                                     <button className="btn btn-primary" onClick={handleConfirm} disabled={saving}>
                                         {saving ? 'Registrando...' : (
-                                            (isEntry || (mode === 'both' && nfeData.tipo === 'E'))
-                                                ? 'Registrar Entrada'
-                                                : 'Registrar Saida'
+                                            isDevolucao
+                                                ? 'Registrar Devolução'
+                                                : (isEntry || (mode === 'both' && nfeData.tipo === 'E'))
+                                                    ? 'Registrar Entrada'
+                                                    : 'Registrar Saida'
                                         )}
                                     </button>
                                 </>

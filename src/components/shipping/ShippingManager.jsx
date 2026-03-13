@@ -200,6 +200,49 @@ export default function ShippingManager({
         return true;
     };
 
+    // Callback para quando TinyNFeImport prepara dados para devolução
+    const handlePrepareDevFromTiny = async (data, options = {}) => {
+        const isBatch = options.batchMode === true;
+
+        const shippingData = {
+            nfNumero: data.nfNumero || '',
+            cliente: data.cliente || '',
+            destino: '',
+            localOrigem: '',
+            transportadora: '',
+            codigoRastreio: '',
+            linkRastreio: '',
+            produtos: (data.produtos || []).map(p => ({
+                ...p,
+                baixarEstoque: false,
+                baixouEstoque: false,
+            })),
+            observacoes: '',
+            status: 'DESPACHADO',
+            tipo: 'devolucao',
+            motivoDevolucao: data.motivoDevolucao || '',
+            hubDestino: data.hubDestino || locaisOrigem[0] || '',
+            entradaCriada: false,
+        };
+
+        if (isBatch) {
+            await onAdd(shippingData);
+            return true;
+        }
+
+        // Single mode: save directly (no form step — devolução is simpler)
+        try {
+            await onAdd(shippingData);
+            setSuccess('Devolução importada do Tiny com sucesso!');
+            setActiveView('list');
+            setTimeout(() => setSuccess(''), 3000);
+            return true;
+        } catch (err) {
+            setError('Erro ao importar devolução: ' + err.message);
+            return false;
+        }
+    };
+
     // Process pending dispatch data from SeparationManager
     useEffect(() => {
         if (pendingDispatchData) {
@@ -489,6 +532,12 @@ export default function ShippingManager({
                                 >
                                     Nova Devolução
                                 </button>)}
+                                {isStockAdmin && (<button
+                                    className={`filter-tab ${activeView === 'import-tiny-dev' ? 'active' : ''}`}
+                                    onClick={() => setActiveView('import-tiny-dev')}
+                                >
+                                    Importar Tiny
+                                </button>)}
                             </>
                         )}
                     </div>
@@ -605,6 +654,28 @@ export default function ShippingManager({
                     onUpdateCategory={onUpdateCategory}
                     onDeleteCategory={onDeleteCategory}
                     onPrepareShipping={handlePrepareShippingFromTiny}
+                />
+            )}
+
+            {/* Importar do Tiny — Devoluções */}
+            {activeView === 'import-tiny-dev' && (
+                <TinyNFeImport
+                    products={products || []}
+                    onSubmitEntry={onAddEntry}
+                    onSubmitExit={onAddExit}
+                    onAddProduct={onAddProduct}
+                    categories={categories}
+                    locaisOrigem={locaisOrigem}
+                    onUpdateLocais={onUpdateLocais}
+                    entries={entries || []}
+                    exits={exits || []}
+                    stock={stock || []}
+                    mode="exit"
+                    onAddCategory={onAddCategory}
+                    onUpdateCategory={onUpdateCategory}
+                    onDeleteCategory={onDeleteCategory}
+                    onPrepareShipping={handlePrepareDevFromTiny}
+                    isDevolucao
                 />
             )}
 
