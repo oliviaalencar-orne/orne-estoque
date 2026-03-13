@@ -19,9 +19,9 @@ export function buildClientShippingMessage(shipping, statusLabels) {
   lines.push('');
 
   if (isEntregue) {
-    lines.push('Informamos que seu pedido da *ORNE — decor studio* foi *Entregue*!');
+    lines.push('Informamos que seu pedido da *ORNE™* foi *Entregue*!');
   } else {
-    lines.push(`Informamos que seu pedido da *ORNE — decor studio* está com status: *${statusLabel}*.`);
+    lines.push(`Informamos que seu pedido da *ORNE™* está com status: *${statusLabel}*.`);
   }
 
   if (shipping.nfNumero) {
@@ -82,7 +82,7 @@ export function buildClientDevolucaoMessage(shipping, statusLabels) {
 
   lines.push(`Olá ${shipping.cliente || 'Cliente'}! 👋`);
   lines.push('');
-  lines.push(`Informamos que sua devolução para a *ORNE — decor studio* está com status: *${statusLabel}*.`);
+  lines.push(`Informamos que sua devolução para a *ORNE™* está com status: *${statusLabel}*.`);
 
   if (shipping.transportadora) {
     lines.push('');

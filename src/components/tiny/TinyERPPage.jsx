@@ -669,11 +669,11 @@ export default function TinyERPPage({ user, onDataChanged, products, entries, ex
                     )}
 
                     {status?.connected && (
-                        <div style={{display: 'grid', gap: '16px', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))'}}>
+                        <div style={{display: 'grid', gap: '16px', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', alignItems: 'stretch'}}>
                             {/* Products sync card */}
-                            <div style={cardStyle}>
+                            <div style={{...cardStyle, display: 'flex', flexDirection: 'column', marginBottom: 0}}>
                                 <div style={{display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px'}}>
-                                    <div style={{width: '36px', height: '36px', borderRadius: 'var(--radius-sm)', background: 'var(--accent-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                                    <div style={{width: '36px', height: '36px', borderRadius: 'var(--radius-sm)', background: 'var(--accent-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0}}>
                                         <Icon name="stock" size={18} style={{color: 'var(--accent)'}} />
                                     </div>
                                     <div>
@@ -681,7 +681,7 @@ export default function TinyERPPage({ user, onDataChanged, products, entries, ex
                                         <div style={{fontSize: '12px', color: 'var(--text-muted)'}}>Importar catalogo do Tiny</div>
                                     </div>
                                 </div>
-                                <p style={{fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '16px'}}>
+                                <p style={{fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '16px', flex: 1}}>
                                     Sincroniza produtos do Tiny ERP para o Orne Estoque. Produtos existentes sao atualizados pelo SKU.
                                 </p>
                                 <button
@@ -723,9 +723,9 @@ export default function TinyERPPage({ user, onDataChanged, products, entries, ex
                             </div>
 
                             {/* Stock sync card */}
-                            <div style={cardStyle}>
+                            <div style={{...cardStyle, display: 'flex', flexDirection: 'column', marginBottom: 0}}>
                                 <div style={{display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px'}}>
-                                    <div style={{width: '36px', height: '36px', borderRadius: 'var(--radius-sm)', background: 'var(--success-light)', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                                    <div style={{width: '36px', height: '36px', borderRadius: 'var(--radius-sm)', background: 'var(--success-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0}}>
                                         <Icon name="chart" size={18} style={{color: 'var(--success)'}} />
                                     </div>
                                     <div>
@@ -733,7 +733,7 @@ export default function TinyERPPage({ user, onDataChanged, products, entries, ex
                                         <div style={{fontSize: '12px', color: 'var(--text-muted)'}}>Ajustar quantidades</div>
                                     </div>
                                 </div>
-                                <p style={{fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '16px'}}>
+                                <p style={{fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '16px', flex: 1}}>
                                     Compara estoque do Tiny com o Orne e cria ajustes automaticos (entradas/saidas) para igualar.
                                 </p>
                                 <button
@@ -762,9 +762,9 @@ export default function TinyERPPage({ user, onDataChanged, products, entries, ex
                             </div>
 
                             {/* Image sync card */}
-                            <div style={cardStyle}>
+                            <div style={{...cardStyle, display: 'flex', flexDirection: 'column', marginBottom: 0}}>
                                 <div style={{display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px'}}>
-                                    <div style={{width: '36px', height: '36px', borderRadius: 'var(--radius-sm)', background: '#f0f9ff', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                                    <div style={{width: '36px', height: '36px', borderRadius: 'var(--radius-sm)', background: '#f0f9ff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0}}>
                                         <span style={{fontSize: '18px'}}>🖼️</span>
                                     </div>
                                     <div>
@@ -772,7 +772,7 @@ export default function TinyERPPage({ user, onDataChanged, products, entries, ex
                                         <div style={{fontSize: '12px', color: 'var(--text-muted)'}}>Importar fotos do Tiny</div>
                                     </div>
                                 </div>
-                                <p style={{fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '16px'}}>
+                                <p style={{fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '16px', flex: 1}}>
                                     Busca a imagem de cada produto no Tiny ERP (30 por vez). Produtos sem foto são marcados para não tentar novamente.
                                 </p>
                                 <button
@@ -806,9 +806,9 @@ export default function TinyERPPage({ user, onDataChanged, products, entries, ex
                             </div>
 
                             {/* Shopify image sync card */}
-                            <div style={cardStyle}>
+                            <div style={{...cardStyle, display: 'flex', flexDirection: 'column', marginBottom: 0}}>
                                 <div style={{display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px'}}>
-                                    <div style={{width: '36px', height: '36px', borderRadius: 'var(--radius-sm)', background: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                                    <div style={{width: '36px', height: '36px', borderRadius: 'var(--radius-sm)', background: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0}}>
                                         <span style={{fontSize: '18px'}}>🛍️</span>
                                     </div>
                                     <div>
@@ -816,7 +816,7 @@ export default function TinyERPPage({ user, onDataChanged, products, entries, ex
                                         <div style={{fontSize: '12px', color: 'var(--text-muted)'}}>Importar fotos do Shopify</div>
                                     </div>
                                 </div>
-                                <p style={{fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '16px'}}>
+                                <p style={{fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '16px', flex: 1}}>
                                     Busca imagens dos produtos no Shopify por SKU e preenche o campo imagem_url dos produtos correspondentes.
                                 </p>
                                 <button

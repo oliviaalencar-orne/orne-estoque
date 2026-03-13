@@ -316,6 +316,85 @@ export default async function handler(req, res) {
       }
     }
 
+    // 4. Auto-create stock entries for devoluções that reached ENTREGUE
+    let devEntriesCreated = 0;
+    let devEntriesErrors = 0;
+    try {
+      const devQuery = new URLSearchParams({
+        select: '*',
+        tipo: 'eq.devolucao',
+        status: 'eq.ENTREGUE',
+        entrada_criada: 'eq.false',
+      });
+      const devRes = await fetch(`${REST_URL}/shippings?${devQuery}`, {
+        headers: supabaseHeaders,
+      });
+      const devolucoes = devRes.ok ? await devRes.json() : [];
+
+      for (const dev of devolucoes) {
+        if (!dev.produtos?.length) continue;
+
+        // Atomic guard: flip entrada_criada
+        const guardRes = await fetch(
+          `${REST_URL}/shippings?id=eq.${dev.id}&entrada_criada=eq.false`,
+          {
+            method: 'PATCH',
+            headers: { ...supabaseHeaders, 'Prefer': 'return=representation' },
+            body: JSON.stringify({ entrada_criada: true }),
+          }
+        );
+        const guardData = await guardRes.json();
+        if (!guardData?.length) continue; // already claimed
+
+        for (const prod of dev.produtos) {
+          const sku = prod.produtoEstoque?.sku || prod.sku;
+          const quantidade = prod.quantidade;
+          if (!sku || !quantidade) { devEntriesErrors++; continue; }
+
+          // Verify SKU exists
+          const skuRes = await fetch(`${REST_URL}/products?sku=eq.${encodeURIComponent(sku)}&select=sku`, {
+            headers: supabaseHeaders,
+          });
+          const skuData = await skuRes.json();
+          if (!skuData?.length) {
+            console.warn(`[CRON] Devolução SKU não encontrado: ${sku}`);
+            devEntriesErrors++;
+            continue;
+          }
+
+          const entryPayload = {
+            type: 'DEVOLUCAO',
+            sku,
+            quantity: quantidade,
+            supplier: dev.cliente || '',
+            nf: `DEV-${dev.nf_numero || ''}`,
+            local_entrada: dev.hub_destino || '',
+            date: now,
+            user_id: 'cron-auto',
+          };
+
+          const entryRes = await fetch(`${REST_URL}/entries`, {
+            method: 'POST',
+            headers: { ...supabaseHeaders, 'Prefer': 'return=minimal' },
+            body: JSON.stringify(entryPayload),
+          });
+
+          if (entryRes.ok) {
+            devEntriesCreated++;
+            console.log(`[CRON] Entrada devolução criada: ${sku} x${quantidade} (NF: DEV-${dev.nf_numero})`);
+          } else {
+            devEntriesErrors++;
+            console.error(`[CRON] Erro ao criar entrada devolução: ${await entryRes.text()}`);
+          }
+        }
+      }
+      if (devolucoes.length > 0) {
+        console.log(`[CRON] Devoluções processadas: ${devolucoes.length}, entradas criadas: ${devEntriesCreated}, erros: ${devEntriesErrors}`);
+      }
+    } catch (err) {
+      console.error('[CRON] Erro ao processar devoluções:', err.message);
+    }
+
     const summary = {
       message: 'Cron job concluído',
       total: shippings.length,
@@ -326,6 +405,8 @@ export default async function handler(req, res) {
       checked,
       updated,
       errors,
+      devEntriesCreated,
+      devEntriesErrors,
       timestamp: now,
     };
 

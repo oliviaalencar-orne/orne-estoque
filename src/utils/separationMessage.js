@@ -24,7 +24,7 @@ function formatDateBR() {
 export function buildSeparationMessage({ hubName, separations }) {
   const lines = [];
 
-  lines.push('*ORNE DECOR — Solicitação de Separação*');
+  lines.push('*ORNE™ — Solicitação de Separação*');
   lines.push(`Data: ${formatDateBR()}`);
   lines.push(`HUB: ${hubName}`);
   lines.push('Solicitação: Separação das NFs abaixo');

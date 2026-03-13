@@ -15,6 +15,8 @@ import {
     copyMessageToClipboard,
 } from '@/utils/shippingMessage';
 import { getStatusLabel, getStatusColor } from '@/utils/statusLabels';
+import { criarEntradasDevolucao } from '@/utils/devolucaoEntries';
+import { getTransportadoraReal } from '@/utils/transportadora';
 
 // Resize image helper
 function resizeImage(file, maxWidth = 1200) {
@@ -116,9 +118,10 @@ export default function ShippingList({
 
     // WhatsApp copy handler
     const handleCopyClientMessage = async (shipping) => {
+        const resolved = { ...shipping, transportadora: getTransportadoraReal(shipping) };
         const message = isDevolucao
-            ? buildClientDevolucaoMessage(shipping, statusList)
-            : buildClientShippingMessage(shipping, statusList);
+            ? buildClientDevolucaoMessage(resolved, statusList)
+            : buildClientShippingMessage(resolved, statusList);
         const ok = await copyMessageToClipboard(message);
         if (ok) {
             setSuccess('Copiado!');
@@ -347,6 +350,36 @@ export default function ShippingList({
 
             // Refetch shippings from DB (EF already persisted)
             await onRefresh?.();
+
+            // Auto-create entries for devoluções that reached ENTREGUE via tracking
+            if (onAddEntry) {
+                try {
+                    const { data: pendentes } = await supabaseClient
+                        .from('shippings')
+                        .select('*')
+                        .eq('tipo', 'devolucao')
+                        .eq('status', 'ENTREGUE')
+                        .eq('entrada_criada', false);
+
+                    if (pendentes?.length > 0) {
+                        const { mapShippingFromDB } = await import('@/utils/mappers');
+                        let totalCreated = 0;
+                        for (const row of pendentes) {
+                            const dev = mapShippingFromDB(row);
+                            const result = await criarEntradasDevolucao(dev, onAddEntry);
+                            totalCreated += result.created;
+                        }
+                        if (totalCreated > 0) {
+                            setSuccess(prev => {
+                                const base = prev ? prev + ' | ' : '';
+                                return base + `${totalCreated} produto${totalCreated !== 1 ? 's' : ''} de devolução retornaram ao estoque.`;
+                            });
+                        }
+                    }
+                } catch (err) {
+                    console.error('[devolucao] Erro ao processar devoluções pós-rastreio:', err);
+                }
+            }
         } catch (err) {
             console.error('Erro geral ao atualizar rastreios:', err.message);
         }
@@ -367,6 +400,25 @@ export default function ShippingList({
             status: newStatus,
             [`status_${newStatus}_date`]: new Date().toISOString()
         });
+
+        // Auto-create stock entries when devolução reaches ENTREGUE
+        if (newStatus === 'ENTREGUE' && shipping.tipo === 'devolucao' && !shipping.entradaCriada && onAddEntry) {
+            try {
+                const result = await criarEntradasDevolucao(
+                    { ...shipping, status: 'ENTREGUE' },
+                    onAddEntry
+                );
+                if (result.created > 0) {
+                    setSuccess(`Devolução recebida! ${result.created} produto${result.created !== 1 ? 's' : ''} retornaram ao estoque.`);
+                    setTimeout(() => setSuccess(''), 8000);
+                }
+                if (result.errors > 0) {
+                    console.warn(`[devolucao] ${result.errors} erro(s) ao criar entradas`);
+                }
+            } catch (err) {
+                console.error('[devolucao] Erro ao criar entradas:', err);
+            }
+        }
     };
 
     // Buscar rastreio no Melhor Envio pelo número da NF (com nome do cliente como fallback)
@@ -522,7 +574,7 @@ export default function ShippingList({
                                     <td style={{fontSize: '12px'}}>
                                         {s.entregaLocal ? (
                                             <span style={{color: '#065F46', fontWeight: 500}}>📦 Local</span>
-                                        ) : (s.transportadora || '-')}
+                                        ) : (getTransportadoraReal(s) || '-')}
                                     </td>
                                     <td>
                                         {s.entregaLocal ? (

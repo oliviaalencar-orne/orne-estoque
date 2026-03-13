@@ -2171,6 +2171,17 @@
             const isDevolucao = tipoView === 'devolucao';
             const activeStatusList = isDevolucao ? statusListDevolucao : statusList;
 
+            // Detect real carrier from tracking code
+            const getTransportadoraReal = (s) => {
+                if (s.transportadora && s.transportadora !== 'Melhor Envio') return s.transportadora;
+                const code = (s.codigoRastreio || '').trim().toUpperCase();
+                if (!code) return s.transportadora || '';
+                if (code.startsWith('LGI')) return 'Loggi';
+                if (code.startsWith('JD') || code.startsWith('JAD')) return 'Jadlog';
+                if (/^[A-Z]{2}\d{9,10}[A-Z]{2}$/.test(code)) return 'Correios';
+                return s.transportadora || 'Melhor Envio';
+            };
+
             // WhatsApp message builder (inline — equipe version)
             const buildMessage = (s) => {
                 if (isDevolucao) return buildMessageDevolucao(s);
@@ -2179,9 +2190,9 @@
                 lines.push(`Olá ${s.cliente || 'Cliente'}! 👋`);
                 lines.push('');
                 if (isEntregue) {
-                    lines.push('Informamos que seu pedido da *ORNE — decor studio* foi *Entregue*!');
+                    lines.push('Informamos que seu pedido da *ORNE™* foi *Entregue*!');
                 } else {
-                    lines.push(`Informamos que seu pedido da *ORNE — decor studio* está com status: *${statusList[s.status]?.label || s.status}*.`);
+                    lines.push(`Informamos que seu pedido da *ORNE™* está com status: *${statusList[s.status]?.label || s.status}*.`);
                 }
                 if (s.nfNumero) { lines.push(''); lines.push(`NF: ${s.nfNumero}`); }
                 if (isEntregue) {
@@ -2194,8 +2205,9 @@
                     }
                     if (s.comprovanteObs) lines.push(`Observação: ${s.comprovanteObs}`);
                 } else {
-                    if (s.transportadora) { lines.push(''); lines.push(`Transportadora: ${s.transportadora}`); }
-                    if (s.linkRastreio) { if (!s.transportadora) lines.push(''); lines.push(`Link de rastreio: ${s.linkRastreio}`); }
+                    const transp = getTransportadoraReal(s);
+                    if (transp) { lines.push(''); lines.push(`Transportadora: ${transp}`); }
+                    if (s.linkRastreio) { if (!transp) lines.push(''); lines.push(`Link de rastreio: ${s.linkRastreio}`); }
                 }
                 lines.push(''); lines.push('Caso tenha dúvidas, estamos à disposição!'); lines.push('ornedecor.com');
                 return lines.join('\n');
@@ -2208,7 +2220,8 @@
                 lines.push(`Status: *${stLabel}*`);
                 if (s.hubDestino) lines.push(`HUB Destino: ${s.hubDestino}`);
                 if (s.motivoDevolucao) lines.push(`Motivo: ${s.motivoDevolucao}`);
-                if (s.transportadora) lines.push(`Transportadora: ${s.transportadora}`);
+                const transpDev = getTransportadoraReal(s);
+                if (transpDev) lines.push(`Transportadora: ${transpDev}`);
                 if (s.codigoRastreio) lines.push(`Rastreio: ${s.codigoRastreio}`);
                 return lines.join('\n');
             };
@@ -2409,7 +2422,7 @@
                                                     <td style={{fontSize: '12px'}}>
                                                         {s.entregaLocal ? (
                                                             <span style={{color: '#065F46', fontWeight: 500}}>📦 Local</span>
-                                                        ) : (s.transportadora || '-')}
+                                                        ) : (getTransportadoraReal(s) || '-')}
                                                     </td>
                                                     <td>
                                                         {s.entregaLocal ? (
@@ -2667,8 +2680,8 @@
                                                     </div>
                                                 </td>
                                                 <td>
-                                                    <span className={`badge ${m.movType === 'entry' ? 'badge-success' : 'badge-danger'}`}>
-                                                        {m.movType === 'entry' ? 'Entrada' : 'Saida'}
+                                                    <span className={`badge ${m.type === 'DEVOLUCAO' ? 'badge-info' : m.movType === 'entry' ? 'badge-success' : 'badge-danger'}`}>
+                                                        {m.type === 'DEVOLUCAO' ? '\u21a9 Devolu\u00e7\u00e3o' : m.movType === 'entry' ? 'Entrada' : 'Saida'}
                                                     </span>
                                                 </td>
                                                 <td style={{maxWidth: '300px'}}>

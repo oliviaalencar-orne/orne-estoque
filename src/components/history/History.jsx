@@ -309,8 +309,8 @@ export default function History({ entries, exits, products, onUpdateEntry, onDel
                                             </div>
                                         </td>
                                         <td>
-                                            <span className={`badge ${m.movType === 'entry' ? 'badge-success' : 'badge-danger'}`}>
-                                                {m.movType === 'entry' ? '\u2193 Entrada' : '\u2191 Saida'}
+                                            <span className={`badge ${m.type === 'DEVOLUCAO' ? 'badge-info' : m.movType === 'entry' ? 'badge-success' : 'badge-danger'}`}>
+                                                {m.type === 'DEVOLUCAO' ? '\u21a9 Devolu\u00e7\u00e3o' : m.movType === 'entry' ? '\u2193 Entrada' : '\u2191 Saida'}
                                             </span>
                                         </td>
                                         <td style={{maxWidth: '300px'}}>
