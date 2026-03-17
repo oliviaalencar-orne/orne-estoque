@@ -30,8 +30,11 @@ const ALL_STATUSES = ['pendente', 'separado', 'embalado', 'despachado'];
 export default function SeparationList({
   separations, onUpdate, onDelete, onEdit, onSendToDispatch,
   onBatchStatusChange, onBatchDispatch,
-  hubs, showHubBadge, isStockAdmin
+  hubs, showHubBadge, isStockAdmin, isOperador = false
 }) {
+  const canEditSep = isStockAdmin || isOperador;
+  const canDeleteSep = isStockAdmin;
+  const canCreateSep = isStockAdmin;
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [loadingId, setLoadingId] = useState(null);
@@ -42,10 +45,10 @@ export default function SeparationList({
   const [batchEntregaLocal, setBatchEntregaLocal] = useState(false);
   const shareMenuSepRef = useRef(null);
 
-  // Use equipe labels when not admin
-  const displayConfig = isStockAdmin ? STATUS_CONFIG : EQUIPE_STATUS_CONFIG;
+  // Use equipe labels when not admin/operador
+  const displayConfig = (isStockAdmin || isOperador) ? STATUS_CONFIG : EQUIPE_STATUS_CONFIG;
 
-  // Batch selection state (admin only)
+  // Batch selection state (admin/operador)
   const [selectedIds, setSelectedIds] = useState(new Set());
 
   const formatDate = (dateStr) => {
@@ -57,7 +60,7 @@ export default function SeparationList({
   const filtered = useMemo(() => {
     let items = [...separations];
     if (statusFilter !== 'all') {
-      if (!isStockAdmin && statusFilter === 'em_separacao') {
+      if (!isStockAdmin && !isOperador && statusFilter === 'em_separacao') {
         // Equipe merged filter: "Em separação" = pendente + separado
         items = items.filter(s => s.status === 'pendente' || s.status === 'separado');
       } else {
@@ -73,7 +76,7 @@ export default function SeparationList({
       );
     }
     return items.sort((a, b) => new Date(b.date) - new Date(a.date));
-  }, [separations, searchTerm, statusFilter, isStockAdmin]);
+  }, [separations, searchTerm, statusFilter, isStockAdmin, isOperador]);
 
   const counts = useMemo(() => {
     const c = { all: separations.length, pendente: 0, separado: 0, embalado: 0, despachado: 0 };
@@ -194,7 +197,7 @@ export default function SeparationList({
 
   // Build filter tabs based on role
   const filterTabs = useMemo(() => {
-    if (isStockAdmin) {
+    if (isStockAdmin || isOperador) {
       return [
         { key: 'all', label: `Todos (${counts.all})` },
         { key: 'pendente', label: `Pendente (${counts.pendente})` },
@@ -210,7 +213,7 @@ export default function SeparationList({
       { key: 'embalado', label: `Embalando (${counts.embalado})` },
       { key: 'despachado', label: `Despachado (${counts.despachado})` },
     ];
-  }, [isStockAdmin, counts]);
+  }, [isStockAdmin, isOperador, counts]);
 
   return (
     <div>
@@ -240,8 +243,8 @@ export default function SeparationList({
               >{f.label}</button>
             ))}
           </div>
-          {/* Select All checkbox — admin only */}
-          {isStockAdmin && selectableItems.length > 0 && (
+          {/* Select All checkbox — admin/operador */}
+          {canEditSep && selectableItems.length > 0 && (
             <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
               <input
                 type="checkbox"
@@ -274,13 +277,13 @@ export default function SeparationList({
             return (
               <div key={sep.id} className="card" style={{
                 padding: '16px',
-                borderLeft: isSuccess ? '3px solid var(--success)' : (isStockAdmin && isSelected) ? '3px solid var(--primary)' : undefined,
-                background: (isStockAdmin && isSelected) ? 'var(--bg-secondary)' : undefined,
+                borderLeft: isSuccess ? '3px solid var(--success)' : (canEditSep && isSelected) ? '3px solid var(--primary)' : undefined,
+                background: (canEditSep && isSelected) ? 'var(--bg-secondary)' : undefined,
                 transition: 'border-left 0.3s, background 0.2s',
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', flexWrap: 'wrap' }}>
-                  {/* Checkbox — admin only */}
-                  {isStockAdmin && isSelectable && (
+                  {/* Checkbox — admin/operador */}
+                  {canEditSep && isSelectable && (
                     <div style={{ display: 'flex', alignItems: 'center', paddingTop: '2px' }}>
                       <input
                         type="checkbox"
@@ -336,8 +339,8 @@ export default function SeparationList({
                       </div>
                     )}
                   </div>
-                  {/* Action buttons — admin only */}
-                  {isStockAdmin && (
+                  {/* Action buttons — admin/operador can edit, only admin can delete */}
+                  {canEditSep && (
                     <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
                       {action && (
                         <button
@@ -379,17 +382,19 @@ export default function SeparationList({
                           >
                             <Icon name="edit" size={14} />
                           </button>
-                          <button
-                            className="btn btn-secondary"
-                            style={{ fontSize: '12px', padding: '6px 10px', color: 'var(--danger)' }}
-                            onClick={() => {
-                              if (confirm('Excluir esta separação?')) onDelete(sep.id);
-                            }}
-                            title="Excluir"
-                            disabled={isLoading}
-                          >
-                            <Icon name="delete" size={14} />
-                          </button>
+                          {canDeleteSep && (
+                            <button
+                              className="btn btn-secondary"
+                              style={{ fontSize: '12px', padding: '6px 10px', color: 'var(--danger)' }}
+                              onClick={() => {
+                                if (confirm('Excluir esta separação?')) onDelete(sep.id);
+                              }}
+                              title="Excluir"
+                              disabled={isLoading}
+                            >
+                              <Icon name="delete" size={14} />
+                            </button>
+                          )}
                         </>
                       )}
                     </div>
@@ -401,8 +406,8 @@ export default function SeparationList({
         </div>
       )}
 
-      {/* ── Floating batch action bar — admin only ── */}
-      {isStockAdmin && selectedCount > 0 && (
+      {/* ── Floating batch action bar — admin/operador ── */}
+      {canEditSep && selectedCount > 0 && (
         <div style={{
           position: 'fixed',
           bottom: '20px',
@@ -486,8 +491,8 @@ export default function SeparationList({
         </div>
       )}
 
-      {/* Individual share dropdown — fixed, outside any container (admin only) */}
-      {isStockAdmin && shareMenuId && shareMenuSepRef.current && (
+      {/* Individual share dropdown — fixed, outside any container */}
+      {canEditSep && shareMenuId && shareMenuSepRef.current && (
         <>
           <div
             style={{ position: 'fixed', inset: 0, zIndex: 9998 }}

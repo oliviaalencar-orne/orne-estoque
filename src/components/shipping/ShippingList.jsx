@@ -594,7 +594,7 @@ export default function ShippingList({
                                                         📷 {s.comprovanteFotos.length} foto{s.comprovanteFotos.length !== 1 ? 's' : ''}
                                                     </button>
                                                 )}
-                                                {!(s.comprovanteFotos || []).length && !s.recebedorNome && isStockAdmin && (
+                                                {!(s.comprovanteFotos || []).length && !s.recebedorNome && canEdit && (
                                                     <button
                                                         className="btn btn-secondary btn-sm"
                                                         onClick={() => openComprovante(s)}
@@ -642,7 +642,7 @@ export default function ShippingList({
                                                 )}
                                             </div>
                                         ) : (
-                                            isStockAdmin ? (
+                                            canEdit ? (
                                                 <button
                                                     className="btn btn-secondary btn-sm"
                                                     onClick={() => setEditingShipping({...s})}
@@ -1089,7 +1089,7 @@ export default function ShippingList({
                             </div>
                         )}
 
-                        {isStockAdmin ? (
+                        {canEdit ? (
                             <>
                                 <div className="form-group">
                                     <label className="form-label">Recebido por</label>

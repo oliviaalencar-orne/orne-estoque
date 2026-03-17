@@ -5,7 +5,8 @@ import { useState, useCallback } from 'react';
 import { supabaseClient } from '@/config/supabase';
 import { generateId } from '@/utils/helpers';
 
-export function useSeparations(user, isStockAdmin) {
+export function useSeparations(user, isStockAdmin, isOperador = false) {
+  const canEditSeparation = isStockAdmin || isOperador;
   const [separations, setSeparations] = useState([]);
 
   const addSeparation = useCallback(
@@ -53,7 +54,7 @@ export function useSeparations(user, isStockAdmin) {
 
   const updateSeparation = useCallback(
     async (separationId, data) => {
-      if (!isStockAdmin) {
+      if (!canEditSeparation) {
         alert('Sem permissão para esta ação');
         return;
       }
@@ -79,7 +80,7 @@ export function useSeparations(user, isStockAdmin) {
         alert('Erro ao atualizar separação: ' + error.message);
       }
     },
-    [isStockAdmin]
+    [canEditSeparation]
   );
 
   const deleteSeparation = useCallback(

@@ -46,6 +46,7 @@ export default function AdminPanel({ currentUserId }) {
   const roleBadge = (role) => {
     const map = {
       'admin': { label: 'Admin', cls: 'badge-info' },
+      'operador': { label: 'Operador', cls: 'badge-success' },
       'equipe': { label: 'Equipe', cls: 'badge-warning' },
       'user': { label: 'Usuário', cls: '' },
     };
@@ -104,6 +105,7 @@ export default function AdminPanel({ currentUserId }) {
                           style={{fontSize: '12px', padding: '4px 8px', minHeight: 'auto', width: 'auto', minWidth: '100px'}}
                         >
                           <option value="admin">Admin</option>
+                          <option value="operador">Operador</option>
                           <option value="equipe">Equipe</option>
                           <option value="user">Usuário</option>
                         </select>

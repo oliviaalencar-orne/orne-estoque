@@ -102,7 +102,8 @@ export default function App() {
   } = useAuth();
 
   // Equipe has read access to separation and shipping (but no admin actions)
-  const canViewSeparation = isStockAdmin || isEquipe;
+  // Operador can edit separations and shippings (but not create/delete)
+  const canViewSeparation = isStockAdmin || isEquipe || isOperador;
   const canViewShipping = isStockAdmin || isEquipe || isOperador;
 
   // ── Tab navigation (persisted in sessionStorage) ─────────────────────
@@ -142,7 +143,7 @@ export default function App() {
     useShippings(user, isStockAdmin, isOperador);
 
   const { separations, setSeparations, addSeparation, updateSeparation, deleteSeparation } =
-    useSeparations(user, isStockAdmin);
+    useSeparations(user, isStockAdmin, isOperador);
 
   const { categories, setCategories, addCategory, updateCategory, deleteCategory } =
     useCategories(isStockAdmin);
@@ -201,8 +202,8 @@ export default function App() {
     setSyncStatus('syncing');
     const channels = [];
 
-    if (isEquipe) {
-      // ═══ EQUIPE MODE: 2 realtime channels (shippings + separations) ═══
+    if (isEquipe || isOperador) {
+      // ═══ EQUIPE/OPERADOR MODE: 2 realtime channels (shippings + separations) ═══
 
       // Categories — fetch once, no realtime
       supabaseClient.from('categories').select('*').then(({ data }) => {
@@ -366,7 +367,7 @@ export default function App() {
         </div>
 
 
-        {isEquipe && (
+        {(isEquipe || isOperador) && (
           <div style={{ padding: '0 14px', marginBottom: '16px' }}>
             <div style={{
               width: '100%',
@@ -380,7 +381,7 @@ export default function App() {
               fontFamily: 'inherit',
               letterSpacing: '0.2px',
             }}>
-              Acesso: Consulta
+              {isOperador ? 'Acesso: Operador' : 'Acesso: Consulta'}
             </div>
           </div>
         )}
@@ -469,7 +470,7 @@ export default function App() {
             </>
           )}
 
-          {isStockAdmin && (
+          {(isStockAdmin || isOperador) && (
             <>
               <div className="nav-section">Relatórios</div>
               <li className="nav-item">
@@ -484,7 +485,11 @@ export default function App() {
                   Histórico
                 </a>
               </li>
+            </>
+          )}
 
+          {isStockAdmin && (
+            <>
               <div className="nav-section">Integrações</div>
               <li className="nav-item">
                 <a
@@ -633,6 +638,7 @@ export default function App() {
                 onAddShipping={addShipping}
                 onAddExit={addExit}
                 isStockAdmin={isStockAdmin}
+                isOperador={isOperador}
                 hubs={hubs}
                 onAddHub={addHub}
                 onUpdateHub={updateHub}
@@ -670,21 +676,25 @@ export default function App() {
             />
           </div>
           <div style={{ display: activeTab === 'history' ? 'block' : 'none' }}>
-            <History
-              entries={entries}
-              exits={exits}
-              products={products}
-              shippings={shippings}
-              onUpdateEntry={updateEntry}
-              onDeleteEntry={deleteEntry}
-              onUpdateExit={updateExit}
-              onDeleteExit={deleteExit}
-              isStockAdmin={isStockAdmin}
-            />
+            {(isStockAdmin || isOperador) ? (
+              <History
+                entries={entries}
+                exits={exits}
+                products={products}
+                shippings={shippings}
+                onUpdateEntry={updateEntry}
+                onDeleteEntry={deleteEntry}
+                onUpdateExit={updateExit}
+                onDeleteExit={deleteExit}
+                isStockAdmin={isStockAdmin}
+              />
+            ) : (
+              <AccessRestricted />
+            )}
           </div>
           {/* Tiny ERP — kept mounted to preserve connection status & sync progress */}
           <div style={{ display: activeTab === 'tiny' ? 'block' : 'none' }}>
-            <TinyERPPage
+            {isStockAdmin ? <TinyERPPage
               user={user}
               onDataChanged={handleDataChanged}
               products={products}
@@ -700,7 +710,7 @@ export default function App() {
               onAddCategory={addCategory}
               onUpdateCategory={updateCategory}
               onDeleteCategory={deleteCategory}
-            />
+            /> : <AccessRestricted />}
           </div>
 
           {/* Rare tabs — mounted on demand */}
@@ -848,7 +858,7 @@ export default function App() {
           <span dangerouslySetInnerHTML={{ __html: ICONS.shipping }}></span>
           Expedição
         </button>
-        {isStockAdmin && (
+        {(isStockAdmin || isOperador) && (
           <button
             className="bottom-sheet-item"
             onClick={() => handleTabChange('history')}

@@ -20,8 +20,10 @@ export default function SeparationManager({
   categories, locaisOrigem, onUpdateLocais,
   onAddProduct, onAddCategory, onUpdateCategory, onDeleteCategory,
   user, onSendToDispatch, onAddShipping, onAddExit, isStockAdmin,
+  isOperador,
   hubs, onAddHub, onUpdateHub, onDeleteHub
 }) {
+  const canEditSeparation = isStockAdmin || isOperador;
   const [activeView, setActiveView] = useState('list');
   const [editingSeparation, setEditingSeparation] = useState(null);
   const [success, setSuccess] = useState('');
@@ -367,8 +369,8 @@ export default function SeparationManager({
         </div>
       )}
 
-      {/* Consolidated export button — only on specific HUB tabs, admin only */}
-      {isStockAdmin && isHubSelected && (
+      {/* Consolidated export button — on specific HUB tabs, for admin/operador */}
+      {canEditSeparation && isHubSelected && (
         <div className="card" style={{ marginBottom: '12px', padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
             {hasPending
@@ -405,8 +407,8 @@ export default function SeparationManager({
         </div>
       )}
 
-      {/* Share dropdown — rendered as fixed portal outside any container (admin only) */}
-      {isStockAdmin && showShareMenu && (
+      {/* Share dropdown — rendered as fixed portal outside any container */}
+      {canEditSeparation && showShareMenu && (
         <>
           <div
             style={{ position: 'fixed', inset: 0, zIndex: 9998 }}
@@ -520,6 +522,7 @@ export default function SeparationManager({
           hubs={hubs}
           showHubBadge={selectedHubId === 'all'}
           isStockAdmin={isStockAdmin}
+          isOperador={isOperador}
         />
       )}
 

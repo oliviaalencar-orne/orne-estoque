@@ -541,15 +541,17 @@ export default function ShippingManager({
                             </>
                         )}
                     </div>
-                    <button
-                        className="btn btn-secondary"
-                        onClick={() => setShowLocaisModal(true)}
-                        title="Configurar locais de origem"
-                        style={{display: 'flex', alignItems: 'center', gap: '6px'}}
-                    >
-                        <Icon name="settings" size={14} />
-                        <span>Locais de Origem</span>
-                    </button>
+                    {isStockAdmin && (
+                        <button
+                            className="btn btn-secondary"
+                            onClick={() => setShowLocaisModal(true)}
+                            title="Configurar locais de origem"
+                            style={{display: 'flex', alignItems: 'center', gap: '6px'}}
+                        >
+                            <Icon name="settings" size={14} />
+                            <span>Locais de Origem</span>
+                        </button>
+                    )}
                 </div>
             </div>
 
