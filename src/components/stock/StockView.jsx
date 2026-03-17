@@ -299,7 +299,23 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                 </div>
             </td>
             <td>
-                <div className="product-name">{p.name}</div>
+                <div className="product-name" style={{display: 'flex', alignItems: 'center', gap: '4px'}}>
+                    {p.name}
+                    {p.observations && p.observations.trim() && (
+                        <span
+                            className="obs-trigger"
+                            style={{position: 'relative', display: 'inline-flex', alignItems: 'center', cursor: 'help', flexShrink: 0}}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{opacity: 0.75}}>
+                                <circle cx="12" cy="12" r="10" />
+                                <line x1="12" y1="8" x2="12" y2="12" />
+                                <line x1="12" y1="16" x2="12.01" y2="16" />
+                            </svg>
+                            <span className="obs-tooltip">{p.observations}</span>
+                        </span>
+                    )}
+                </div>
                 {p.local && <div className="product-local">{'\uD83D\uDCCD'} {p.local}</div>}
             </td>
             <td className="hide-mobile product-sku">{p.sku}</td>
@@ -313,17 +329,6 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
             </td>
             <td className="hide-mobile" style={{fontSize: '12px', color: 'var(--text-secondary)'}}>
                 {p.unitPrice > 0 ? `R$ ${formatBRL(p.unitPrice)}` : '\u2014'}
-            </td>
-            <td style={{width: '32px', padding: '6px'}}>
-                {p.observations && p.observations.trim() && (
-                    <span
-                        title={p.observations}
-                        style={{color: '#d97706', cursor: 'help'}}
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        {'\u26A0\uFE0F'}
-                    </span>
-                )}
             </td>
         </tr>
     );
@@ -644,7 +649,6 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                                                 <SortHeader field="sku" className="hide-mobile">SKU</SortHeader>
                                                 <SortHeader field="quantity">Estoque</SortHeader>
                                                 <SortHeader field="price" className="hide-mobile">Preço</SortHeader>
-                                                <th style={{width: '32px'}}></th>
                                             </tr>
                                         </thead>
                                         <tbody>
