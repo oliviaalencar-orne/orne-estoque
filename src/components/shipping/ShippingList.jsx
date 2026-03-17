@@ -59,6 +59,7 @@ export default function ShippingList({
     const [atualizandoRastreio, setAtualizandoRastreio] = useState(false);
     const [buscandoNF, setBuscandoNF] = useState(null); // shipping id being searched
     const [openStatusMenu, setOpenStatusMenu] = useState(null);
+    const [statusMenuPos, setStatusMenuPos] = useState({ top: 0, left: 0, openUp: false });
     const [success, setSuccess] = useState('');
     const [error, setError] = useState('');
     const [comprovanteModal, setComprovanteModal] = useState(null); // shipping object
@@ -673,7 +674,23 @@ export default function ShippingList({
                                             {canEdit && (statusTransitions[s.status] || []).length > 0 && (
                                                 <>
                                                     <button
-                                                        onClick={() => setOpenStatusMenu(openStatusMenu === s.id ? null : s.id)}
+                                                        onClick={(e) => {
+                                                            if (openStatusMenu === s.id) {
+                                                                setOpenStatusMenu(null);
+                                                                return;
+                                                            }
+                                                            const rect = e.currentTarget.getBoundingClientRect();
+                                                            const allStatuses = Object.keys(statusList);
+                                                            const menuHeight = allStatuses.length * 40 + 8;
+                                                            const spaceBelow = window.innerHeight - rect.bottom - 8;
+                                                            const openUp = spaceBelow < menuHeight && rect.top > menuHeight;
+                                                            setStatusMenuPos({
+                                                                top: openUp ? rect.top - menuHeight : rect.bottom + 4,
+                                                                left: rect.left,
+                                                                openUp,
+                                                            });
+                                                            setOpenStatusMenu(s.id);
+                                                        }}
                                                         style={{
                                                             display: 'inline-flex',
                                                             alignItems: 'center',
@@ -700,58 +717,70 @@ export default function ShippingList({
                                                     {openStatusMenu === s.id && (
                                                         <>
                                                             <div
-                                                                style={{position: 'fixed', inset: 0, zIndex: 998}}
+                                                                style={{position: 'fixed', inset: 0, zIndex: 9998}}
                                                                 onClick={() => setOpenStatusMenu(null)}
                                                             />
                                                             <div style={{
-                                                                position: 'absolute',
-                                                                top: 'calc(100% + 4px)',
-                                                                left: 0,
-                                                                zIndex: 999,
+                                                                position: 'fixed',
+                                                                top: `${statusMenuPos.top}px`,
+                                                                left: `${statusMenuPos.left}px`,
+                                                                zIndex: 9999,
                                                                 background: '#fff',
-                                                                border: '1px solid var(--border)',
+                                                                border: '1px solid #e5e7eb',
                                                                 borderRadius: '8px',
-                                                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                                                                padding: '4px',
-                                                                minWidth: '120px',
+                                                                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                                                                padding: '4px 0',
+                                                                minWidth: '200px',
                                                             }}>
-                                                                {statusTransitions[s.status].map(nextStatus => (
-                                                                    <button
-                                                                        key={nextStatus}
-                                                                        onClick={() => {
-                                                                            handleUpdateStatus(s, nextStatus);
-                                                                            setOpenStatusMenu(null);
-                                                                        }}
-                                                                        style={{
-                                                                            display: 'flex',
-                                                                            alignItems: 'center',
-                                                                            gap: '8px',
-                                                                            width: '100%',
-                                                                            padding: '6px 10px',
-                                                                            border: 'none',
-                                                                            background: 'transparent',
-                                                                            borderRadius: '6px',
-                                                                            cursor: 'pointer',
-                                                                            fontSize: '11px',
-                                                                            fontWeight: '500',
-                                                                            color: statusList[nextStatus]?.textColor || '#374151',
-                                                                            textAlign: 'left',
-                                                                            transition: 'background 0.12s',
-                                                                            whiteSpace: 'nowrap',
-                                                                        }}
-                                                                        onMouseEnter={(e) => { e.currentTarget.style.background = statusList[nextStatus]?.bg || '#f3f4f6'; }}
-                                                                        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-                                                                    >
-                                                                        <span style={{
-                                                                            width: '6px',
-                                                                            height: '6px',
-                                                                            borderRadius: '50%',
-                                                                            background: statusList[nextStatus]?.color || '#999',
-                                                                            flexShrink: 0,
-                                                                        }} />
-                                                                        {isDevolucao ? (getStatusLabel(nextStatus, 'devolucao') || statusList[nextStatus]?.label) : statusList[nextStatus]?.label}
-                                                                    </button>
-                                                                ))}
+                                                                {Object.keys(statusList).map(statusKey => {
+                                                                    const isCurrent = statusKey === s.status;
+                                                                    const isDisabled = isCurrent || !(statusTransitions[s.status] || []).includes(statusKey);
+                                                                    const label = isDevolucao ? (getStatusLabel(statusKey, 'devolucao') || statusList[statusKey]?.label) : statusList[statusKey]?.label;
+                                                                    return (
+                                                                        <button
+                                                                            key={statusKey}
+                                                                            onClick={() => {
+                                                                                if (!isDisabled) {
+                                                                                    handleUpdateStatus(s, statusKey);
+                                                                                    setOpenStatusMenu(null);
+                                                                                }
+                                                                            }}
+                                                                            disabled={isDisabled && !isCurrent}
+                                                                            style={{
+                                                                                display: 'flex',
+                                                                                alignItems: 'center',
+                                                                                gap: '10px',
+                                                                                width: '100%',
+                                                                                height: '40px',
+                                                                                padding: '0 14px',
+                                                                                border: 'none',
+                                                                                background: isCurrent ? (statusList[statusKey]?.bg || '#f3f4f6') : 'transparent',
+                                                                                borderRadius: '0',
+                                                                                cursor: isDisabled ? 'default' : 'pointer',
+                                                                                fontSize: '13px',
+                                                                                fontWeight: isCurrent ? '700' : '500',
+                                                                                color: isDisabled && !isCurrent ? '#c0c4cc' : (statusList[statusKey]?.textColor || '#374151'),
+                                                                                textAlign: 'left',
+                                                                                transition: 'background 0.12s',
+                                                                                whiteSpace: 'nowrap',
+                                                                                opacity: isDisabled && !isCurrent ? 0.5 : 1,
+                                                                            }}
+                                                                            onMouseEnter={(e) => { if (!isDisabled) e.currentTarget.style.background = statusList[statusKey]?.bg || '#f3f4f6'; }}
+                                                                            onMouseLeave={(e) => { if (!isCurrent) e.currentTarget.style.background = 'transparent'; }}
+                                                                        >
+                                                                            <span style={{
+                                                                                width: '8px',
+                                                                                height: '8px',
+                                                                                borderRadius: '50%',
+                                                                                background: statusList[statusKey]?.color || '#999',
+                                                                                flexShrink: 0,
+                                                                                opacity: isDisabled && !isCurrent ? 0.4 : 1,
+                                                                            }} />
+                                                                            {label}
+                                                                            {isCurrent && <span style={{ marginLeft: 'auto', fontSize: '11px', color: '#9ca3af' }}>atual</span>}
+                                                                        </button>
+                                                                    );
+                                                                })}
                                                             </div>
                                                         </>
                                                     )}
