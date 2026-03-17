@@ -347,10 +347,21 @@ export default async function handler(req, res) {
         const guardData = await guardRes.json();
         if (!guardData?.length) continue; // already claimed
 
+        const nfDev = `DEV-${dev.nf_numero || ''}`;
+
         for (const prod of dev.produtos) {
           const sku = prod.produtoEstoque?.sku || prod.sku;
           const quantidade = prod.quantidade;
           if (!sku || !quantidade) { devEntriesErrors++; continue; }
+
+          // Check for existing entry (avoid duplicates from manual entries)
+          const dupQuery = `sku=eq.${encodeURIComponent(sku)}&or=(nf.eq.${encodeURIComponent(nfDev)},nf.eq.${encodeURIComponent(dev.nf_numero || '')})&select=id&limit=1`;
+          const dupRes = await fetch(`${REST_URL}/entries?${dupQuery}`, { headers: supabaseHeaders });
+          const dupData = dupRes.ok ? await dupRes.json() : [];
+          if (dupData.length > 0) {
+            console.log(`[CRON] Entrada já existe para SKU ${sku} NF ${nfDev}, pulando`);
+            continue;
+          }
 
           // Verify SKU exists
           const skuRes = await fetch(`${REST_URL}/products?sku=eq.${encodeURIComponent(sku)}&select=sku`, {
@@ -368,7 +379,7 @@ export default async function handler(req, res) {
             sku,
             quantity: quantidade,
             supplier: dev.cliente || '',
-            nf: `DEV-${dev.nf_numero || ''}`,
+            nf: nfDev,
             local_entrada: dev.hub_destino || '',
             date: now,
             user_id: 'cron-auto',

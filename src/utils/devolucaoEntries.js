@@ -33,13 +33,29 @@ export async function criarEntradasDevolucao(shipping, onAddEntry) {
   }
 
   let created = 0;
+  let skipped = 0;
   let errors = 0;
+  const nfDev = `DEV-${shipping.nfNumero || ''}`;
 
   for (const prod of shipping.produtos) {
     const sku = prod.produtoEstoque?.sku || prod.sku;
     const quantidade = prod.quantidade;
     if (!sku || !quantidade) {
       errors++;
+      continue;
+    }
+
+    // Check for existing entry with same SKU and NF (DEV-xxx or xxx)
+    const { data: existing } = await supabaseClient
+      .from('entries')
+      .select('id')
+      .eq('sku', sku)
+      .or(`nf.eq.${nfDev},nf.eq.${shipping.nfNumero || ''}`)
+      .limit(1);
+
+    if (existing && existing.length > 0) {
+      console.log(`[devolucao] Entrada já existe para SKU ${sku} NF ${nfDev}, pulando`);
+      skipped++;
       continue;
     }
 
@@ -62,7 +78,7 @@ export async function criarEntradasDevolucao(shipping, onAddEntry) {
         sku,
         quantity: quantidade,
         supplier: shipping.cliente || '',
-        nf: `DEV-${shipping.nfNumero || ''}`,
+        nf: nfDev,
         localEntrada: shipping.hubDestino || '',
       });
       created++;
@@ -72,5 +88,5 @@ export async function criarEntradasDevolucao(shipping, onAddEntry) {
     }
   }
 
-  return { created, errors };
+  return { created, skipped, errors };
 }
