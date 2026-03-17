@@ -2146,6 +2146,7 @@
 
             const statusList = {
                 'DESPACHADO':          { label: 'Despachado',             color: '#d97706', bg: 'rgba(217,119,6,0.08)' },
+                'AGUARDANDO_COLETA':   { label: 'Aguardando Coleta',      color: '#f59e0b', bg: 'rgba(245,158,11,0.08)' },
                 'EM_TRANSITO':         { label: 'Em Trânsito',            color: '#3b82f6', bg: 'rgba(59,130,246,0.08)' },
                 'SAIU_ENTREGA':        { label: 'Saiu p/ Entrega',        color: '#7c3aed', bg: 'rgba(124,58,237,0.08)' },
                 'TENTATIVA_ENTREGA':   { label: 'Tentativa de Entrega',   color: '#ea580c', bg: 'rgba(234,88,12,0.08)' },
@@ -2158,6 +2159,7 @@
 
             const statusListDevolucao = {
                 'DESPACHADO':          { label: 'Devolvendo',             color: '#d97706', bg: 'rgba(217,119,6,0.08)' },
+                'AGUARDANDO_COLETA':   { label: 'Aguardando Coleta',      color: '#f59e0b', bg: 'rgba(245,158,11,0.08)' },
                 'EM_TRANSITO':         { label: 'Em Trânsito',            color: '#3b82f6', bg: 'rgba(59,130,246,0.08)' },
                 'SAIU_ENTREGA':        { label: 'Em Rota de Entrega',     color: '#7c3aed', bg: 'rgba(124,58,237,0.08)' },
                 'TENTATIVA_ENTREGA':   { label: 'Tentativa de Entrega',   color: '#ea580c', bg: 'rgba(234,88,12,0.08)' },
@@ -2266,7 +2268,7 @@
                 .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
 
             const totalShippings = tipoFiltered.length;
-            const pendingCount = tipoFiltered.filter(s => s.status === 'DESPACHADO' || s.status === 'PENDENTE').length;
+            const pendingCount = tipoFiltered.filter(s => s.status === 'DESPACHADO' || s.status === 'AGUARDANDO_COLETA' || s.status === 'PENDENTE').length;
             const transitCount = tipoFiltered.filter(s => s.status === 'EM_TRANSITO' || s.status === 'SAIU_ENTREGA' || s.status === 'TENTATIVA_ENTREGA').length;
             const deliveredCount = tipoFiltered.filter(s => s.status === 'ENTREGUE').length;
 

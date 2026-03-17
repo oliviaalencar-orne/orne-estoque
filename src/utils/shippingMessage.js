@@ -72,6 +72,7 @@ export function buildClientShippingMessage(shipping, statusLabels) {
 export function buildClientDevolucaoMessage(shipping, statusLabels) {
   const DEVOLUCAO_LABELS = {
     DESPACHADO: 'Devolvendo',
+    AGUARDANDO_COLETA: 'Aguardando Coleta',
     EM_TRANSITO: 'Em Trânsito',
     SAIU_ENTREGA: 'Em Rota de Entrega',
     TENTATIVA_ENTREGA: 'Tentativa de Entrega',

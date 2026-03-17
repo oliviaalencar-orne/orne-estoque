@@ -54,6 +54,7 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
         const recent = (shippings || []).filter(s => new Date(s.date) >= cutoff && (!s.tipo || s.tipo === 'despacho'));
         return {
             DESPACHADO: recent.filter(s => s.status === 'DESPACHADO').length,
+            AGUARDANDO_COLETA: recent.filter(s => s.status === 'AGUARDANDO_COLETA').length,
             EM_TRANSITO: recent.filter(s => s.status === 'EM_TRANSITO').length,
             SAIU_ENTREGA: recent.filter(s => s.status === 'SAIU_ENTREGA').length,
             TENTATIVA_ENTREGA: recent.filter(s => s.status === 'TENTATIVA_ENTREGA').length,
@@ -408,7 +409,7 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
                         Resumo Logístico <span style={{fontWeight: 400, fontSize: '12px', color: 'var(--text-muted)'}}>(30 dias)</span>
                     </h2>
                     <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '12px'}}>
-                        {Object.entries(statusList).filter(([key]) => (shippingStats[key] || 0) > 0 || ['DESPACHADO', 'EM_TRANSITO', 'ENTREGUE', 'DEVOLVIDO'].includes(key)).map(([key, val]) => (
+                        {Object.entries(statusList).filter(([key]) => (shippingStats[key] || 0) > 0 || ['DESPACHADO', 'AGUARDANDO_COLETA', 'EM_TRANSITO', 'ENTREGUE', 'DEVOLVIDO'].includes(key)).map(([key, val]) => (
                             <div key={key} style={{
                                 textAlign: 'center',
                                 padding: '12px 8px',

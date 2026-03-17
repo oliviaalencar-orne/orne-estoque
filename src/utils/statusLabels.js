@@ -7,6 +7,7 @@
 
 const DEVOLUCAO_LABELS = {
   DESPACHADO: 'Devolvendo',
+  AGUARDANDO_COLETA: 'Aguardando Coleta',
   EM_TRANSITO: 'Em Trânsito',
   SAIU_ENTREGA: 'Em Rota de Entrega',
   TENTATIVA_ENTREGA: 'Tentativa de Entrega',
@@ -15,6 +16,7 @@ const DEVOLUCAO_LABELS = {
 
 const DEVOLUCAO_COLORS = {
   DESPACHADO: '#d97706',
+  AGUARDANDO_COLETA: '#f59e0b',
   EM_TRANSITO: '#3b82f6',
   SAIU_ENTREGA: '#7c3aed',
   TENTATIVA_ENTREGA: '#ea580c',

@@ -218,8 +218,8 @@ export default function ShippingList({
     }, [shippings, searchTerm, statusFilter, shipPeriodFilter, shipCustomMonth, shipCustomYear]);
 
     // Status progression — only advances, never regresses
-    const STATUS_RANK = { DESPACHADO: 0, EM_TRANSITO: 1, SAIU_ENTREGA: 2, TENTATIVA_ENTREGA: 2, ENTREGUE: 3, DEVOLVIDO: 3 };
-    const VALID_STATUSES = ['DESPACHADO', 'EM_TRANSITO', 'SAIU_ENTREGA', 'TENTATIVA_ENTREGA', 'ENTREGUE', 'DEVOLVIDO'];
+    const STATUS_RANK = { DESPACHADO: 0, AGUARDANDO_COLETA: 0.5, EM_TRANSITO: 1, SAIU_ENTREGA: 2, TENTATIVA_ENTREGA: 2, ENTREGUE: 3, DEVOLVIDO: 3 };
+    const VALID_STATUSES = ['DESPACHADO', 'AGUARDANDO_COLETA', 'EM_TRANSITO', 'SAIU_ENTREGA', 'TENTATIVA_ENTREGA', 'ENTREGUE', 'DEVOLVIDO'];
 
     const shouldUpdateStatus = (currentStatus, newStatus) => {
         if (!VALID_STATUSES.includes(newStatus)) return false;
@@ -280,7 +280,7 @@ export default function ShippingList({
 
     // Atualizar todos os rastreios pendentes — EF v15 persists directly
     const atualizarTodosRastreios = async () => {
-        const activeStatuses = ['DESPACHADO', 'EM_TRANSITO', 'SAIU_ENTREGA', 'TENTATIVA_ENTREGA'];
+        const activeStatuses = ['DESPACHADO', 'AGUARDANDO_COLETA', 'EM_TRANSITO', 'SAIU_ENTREGA', 'TENTATIVA_ENTREGA'];
         const pendentes = shippings.filter(s =>
             activeStatuses.includes(s.status) &&
             !s.entregaLocal &&

@@ -22,6 +22,7 @@ const transportadoras = ['Melhor Envio', 'Correios', 'Jadlog', 'Total Express', 
 
 export const statusList = {
     'DESPACHADO':          { label: 'Despachado',             color: '#d97706', textColor: '#92400E', bg: '#FEF3C7' },
+    'AGUARDANDO_COLETA':   { label: 'Aguardando Coleta',      color: '#f59e0b', textColor: '#78350F', bg: '#FEF3C7' },
     'EM_TRANSITO':         { label: 'Em Trânsito',            color: '#3b82f6', textColor: '#1E40AF', bg: '#DBEAFE' },
     'SAIU_ENTREGA':        { label: 'Saiu p/ Entrega',        color: '#7c3aed', textColor: '#5B21B6', bg: '#EDE9FE' },
     'TENTATIVA_ENTREGA':   { label: 'Tentativa de Entrega',   color: '#ea580c', textColor: '#9A3412', bg: '#FFF7ED' },
@@ -30,7 +31,8 @@ export const statusList = {
 };
 
 export const STATUS_TRANSITIONS = {
-    'DESPACHADO':          ['EM_TRANSITO', 'ENTREGUE', 'DEVOLVIDO'],
+    'DESPACHADO':          ['AGUARDANDO_COLETA', 'EM_TRANSITO', 'ENTREGUE', 'DEVOLVIDO'],
+    'AGUARDANDO_COLETA':   ['EM_TRANSITO', 'ENTREGUE', 'DEVOLVIDO'],
     'EM_TRANSITO':         ['SAIU_ENTREGA', 'ENTREGUE', 'DEVOLVIDO'],
     'SAIU_ENTREGA':        ['TENTATIVA_ENTREGA', 'ENTREGUE', 'DEVOLVIDO'],
     'TENTATIVA_ENTREGA':   ['SAIU_ENTREGA', 'ENTREGUE', 'DEVOLVIDO'],

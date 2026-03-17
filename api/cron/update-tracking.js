@@ -15,11 +15,12 @@
  *   MELHOR_ENVIO_TOKEN       — Token do Melhor Envio (configurar em Supabase → Edge Function Secrets)
  */
 
-const VALID_STATUSES = ['DESPACHADO', 'EM_TRANSITO', 'SAIU_ENTREGA', 'TENTATIVA_ENTREGA', 'ENTREGUE', 'DEVOLVIDO'];
+const VALID_STATUSES = ['DESPACHADO', 'AGUARDANDO_COLETA', 'EM_TRANSITO', 'SAIU_ENTREGA', 'TENTATIVA_ENTREGA', 'ENTREGUE', 'DEVOLVIDO'];
 
 // Progressão válida — só avança, nunca retrocede
 const STATUS_RANK = {
   DESPACHADO: 0,
+  AGUARDANDO_COLETA: 0.5,
   EM_TRANSITO: 1,
   SAIU_ENTREGA: 2,
   TENTATIVA_ENTREGA: 2,
@@ -77,7 +78,7 @@ export default async function handler(req, res) {
     // 1. Buscar shippings pendentes de atualização (4 status ativos)
     const query = new URLSearchParams({
       select: 'id,nf_numero,cliente,status,codigo_rastreio,melhor_envio_id,transportadora,entrega_local',
-      or: '(status.eq.DESPACHADO,status.eq.EM_TRANSITO,status.eq.SAIU_ENTREGA,status.eq.TENTATIVA_ENTREGA)',
+      or: '(status.eq.DESPACHADO,status.eq.AGUARDANDO_COLETA,status.eq.EM_TRANSITO,status.eq.SAIU_ENTREGA,status.eq.TENTATIVA_ENTREGA)',
     });
 
     const shippingsRes = await fetch(`${REST_URL}/shippings?${query}`, {
