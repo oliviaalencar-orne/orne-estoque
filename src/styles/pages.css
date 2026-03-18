@@ -125,7 +125,6 @@
 
 /* Observation tooltip */
 .obs-trigger .obs-tooltip {
-    display: none;
     position: absolute;
     top: calc(100% + 6px);
     left: 50%;
@@ -144,9 +143,16 @@
     pointer-events: none;
     min-width: 120px;
     text-align: left;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.15s ease, visibility 0.15s ease;
+    display: block;
+    right: auto;
+    width: auto;
 }
 .obs-trigger:hover .obs-tooltip {
-    display: block;
+    opacity: 1;
+    visibility: visible;
 }
 
 .product-sku {
