@@ -274,6 +274,24 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
         return Object.entries(saldoPorNF).filter(([, dados]) => dados.entradas - dados.saidas > 0);
     };
 
+    // Observation tooltip state
+    const [obsTooltip, setObsTooltip] = React.useState(null);
+
+    const showObsTooltip = (e, text) => {
+        e.stopPropagation();
+        const rect = e.currentTarget.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const openUp = spaceBelow < 120;
+        setObsTooltip({
+            text,
+            left: rect.left + rect.width / 2,
+            top: openUp ? rect.top - 8 : rect.bottom + 8,
+            openUp,
+        });
+    };
+
+    const hideObsTooltip = () => setObsTooltip(null);
+
     // Render a product row
     const renderProductRow = (p) => (
         <tr
@@ -303,8 +321,9 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                     {p.name}
                     {p.observations && p.observations.trim() && (
                         <span
-                            className="obs-trigger"
-                            style={{position: 'relative', display: 'inline-flex', alignItems: 'center', cursor: 'help', flexShrink: 0}}
+                            style={{display: 'inline-flex', alignItems: 'center', cursor: 'help', flexShrink: 0}}
+                            onMouseEnter={(e) => showObsTooltip(e, p.observations)}
+                            onMouseLeave={hideObsTooltip}
                             onClick={(e) => e.stopPropagation()}
                         >
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{opacity: 0.75}}>
@@ -312,7 +331,6 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                                 <line x1="12" y1="8" x2="12" y2="12" />
                                 <line x1="12" y1="16" x2="12.01" y2="16" />
                             </svg>
-                            <span className="obs-tooltip">{p.observations}</span>
                         </span>
                     )}
                 </div>
@@ -687,6 +705,31 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                         margin: '0 auto'
                     }} />
                 </div>
+            )}
+
+            {obsTooltip && (
+                <div style={{
+                    position: 'fixed',
+                    left: obsTooltip.left,
+                    top: obsTooltip.openUp ? 'auto' : obsTooltip.top,
+                    bottom: obsTooltip.openUp ? (window.innerHeight - obsTooltip.top) + 'px' : 'auto',
+                    transform: 'translateX(-50%)',
+                    maxWidth: '300px',
+                    minWidth: '120px',
+                    background: '#1f2937',
+                    color: '#fff',
+                    padding: '8px 12px',
+                    borderRadius: '6px',
+                    fontSize: '13px',
+                    fontWeight: 400,
+                    lineHeight: 1.4,
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                    zIndex: 9999,
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                    pointerEvents: 'none',
+                    textAlign: 'left',
+                }}>{obsTooltip.text}</div>
             )}
 
             <style>{`
