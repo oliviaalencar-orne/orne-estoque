@@ -15,6 +15,7 @@ import ShippingForm from './ShippingForm';
 import ShippingXMLImport from './ShippingXMLImport';
 import ShippingBatchImport from './ShippingBatchImport';
 import DevolucaoForm from './DevolucaoForm';
+import ShippingAnalytics from './ShippingAnalytics';
 import { buscarRastreioPorNF } from '@/services/trackingService';
 
 // Constantes
@@ -473,12 +474,23 @@ export default function ShippingManager({
                         >
                             Devoluções ({devolucoes.length})
                         </button>
+                        <button
+                            className={`filter-tab ${tipoView === 'analise' ? 'active' : ''}`}
+                            onClick={() => { setTipoView('analise'); setActiveView('list'); }}
+                        >
+                            Análise
+                        </button>
                     </div>
                 );
             })()}
 
             {success && <div className="alert alert-success">{success}</div>}
             {error && <div className="alert alert-danger">{error}</div>}
+
+            {/* Análise view — full replacement */}
+            {tipoView === 'analise' && (
+                <ShippingAnalytics shippings={shippings} />
+            )}
 
             {/* Modal de Gestão de Locais */}
             {showLocaisModal && (
@@ -490,7 +502,7 @@ export default function ShippingManager({
             )}
 
             {/* Tabs — contextuais por tipoView */}
-            <div className="card" style={{marginBottom: '16px'}}>
+            {tipoView !== 'analise' && <div className="card" style={{marginBottom: '16px'}}>
                 <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px'}}>
                     <div className="filter-tabs">
                         <button
@@ -555,8 +567,9 @@ export default function ShippingManager({
                         </button>
                     )}
                 </div>
-            </div>
+            </div>}
 
+            {tipoView !== 'analise' && <>
             {/* Lista */}
             {activeView === 'list' && (
                 <ShippingList
@@ -741,6 +754,7 @@ export default function ShippingManager({
                     gerarLinkRastreio={gerarLinkRastreio}
                 />
             )}
+            </>}
         </div>
     );
 }
