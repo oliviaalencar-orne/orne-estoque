@@ -2,11 +2,11 @@
  * ShippingAnalytics.jsx — Logistics analytics dashboard for Expedição tab
  *
  * Uses Chart.js (same as Dashboard.jsx) for charts.
+ * Visual style matches Dashboard.jsx exactly — same colors, fonts, shadows.
  * All data processing done in frontend from shippings array.
  */
-import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Chart } from 'chart.js/auto';
-import { getTransportadoraReal } from '@/utils/transportadora';
 
 // HUB normalization map
 const HUB_MAP = {
@@ -95,28 +95,29 @@ function weekLabel(d) {
     return `${formatDate(d)} - ${formatDate(end)}`;
 }
 
-// Colors — sober palette (Notion/Linear/Stripe style)
-const COLORS = {
-    primary: '#374151',
-    secondary: '#9CA3AF',
-    text: '#111827',
-    textMuted: '#6B7280',
-    border: '#E5E7EB',
-    gridLine: '#F3F4F6',
-    headerBg: '#F9FAFB',
-    green: '#059669',
-    amber: '#D97706',
-    red: '#DC2626',
+// Chart style constants — copied from Dashboard.jsx
+const CHART = {
+    tooltipBg: '#2C2640',
+    gridColor: '#F3F0EC',
+    tickColor: '#7A7585',
+    barColor: '#F4B08A',        // Dashboard peach
+    barColorAlt: '#C4B5A4',     // Muted complement
+    barRadius: 6,
+    barThickness: 20,
+    cornerRadius: 8,
+    tooltipPadding: 12,
+    fontFamily: 'Inter',
 };
 
+// Status colors — match statusList from ShippingManager
 const STATUS_COLORS = {
-    'DESPACHADO': '#6B7280',
-    'AGUARDANDO_COLETA': '#D97706',
-    'EM_TRANSITO': '#374151',
-    'SAIU_ENTREGA': '#4B5563',
-    'TENTATIVA_ENTREGA': '#9CA3AF',
-    'ENTREGUE': '#059669',
-    'DEVOLVIDO': '#DC2626',
+    'DESPACHADO': '#d97706',
+    'AGUARDANDO_COLETA': '#f59e0b',
+    'EM_TRANSITO': '#3b82f6',
+    'SAIU_ENTREGA': '#7c3aed',
+    'TENTATIVA_ENTREGA': '#ea580c',
+    'ENTREGUE': '#10b981',
+    'DEVOLVIDO': '#ef4444',
 };
 
 const STATUS_LABELS = {
@@ -297,7 +298,7 @@ export default function ShippingAnalytics({ shippings }) {
                 status: st,
                 label: STATUS_LABELS[st] || st,
                 count: counts[st],
-                color: STATUS_COLORS[st] || COLORS.gray,
+                color: STATUS_COLORS[st] || '#7A7585',
             }));
     }, [filtered]);
 
@@ -327,6 +328,31 @@ export default function ShippingAnalytics({ shippings }) {
         return { carriers: carrierList, hubs: hubList, data: hubs };
     }, [filtered]);
 
+    // Shared tooltip config (matches Dashboard.jsx)
+    const tooltipConfig = {
+        backgroundColor: CHART.tooltipBg,
+        titleFont: { size: 12, weight: '600', family: CHART.fontFamily },
+        bodyFont: { size: 11, family: CHART.fontFamily },
+        padding: CHART.tooltipPadding,
+        cornerRadius: CHART.cornerRadius,
+    };
+
+    // Shared legend config (square icons like Dashboard line chart)
+    const legendConfig = {
+        display: true,
+        position: 'top',
+        align: 'end',
+        labels: {
+            boxWidth: 12,
+            boxHeight: 12,
+            borderRadius: 3,
+            useBorderRadius: true,
+            font: { size: 11, family: CHART.fontFamily },
+            color: CHART.tickColor,
+            padding: 16,
+        },
+    };
+
     // Chart: daily volume
     useEffect(() => {
         if (!dailyChartRef.current || dailyData.labels.length === 0) return;
@@ -340,12 +366,16 @@ export default function ShippingAnalytics({ shippings }) {
                     {
                         label: 'Via Transportadora',
                         data: dailyData.transp,
-                        backgroundColor: COLORS.primary,
+                        backgroundColor: CHART.barColor,
+                        borderRadius: CHART.barRadius,
+                        barThickness: CHART.barThickness,
                     },
                     {
                         label: 'Entrega Local',
                         data: dailyData.local,
-                        backgroundColor: COLORS.secondary,
+                        backgroundColor: CHART.barColorAlt,
+                        borderRadius: CHART.barRadius,
+                        barThickness: CHART.barThickness,
                     },
                 ],
             },
@@ -353,12 +383,9 @@ export default function ShippingAnalytics({ shippings }) {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { position: 'top', labels: { usePointStyle: true, padding: 16, font: { size: 12, family: 'Inter' } } },
+                    legend: legendConfig,
                     tooltip: {
-                        backgroundColor: '#1F2937',
-                        titleFont: { family: 'Inter' },
-                        bodyFont: { family: 'Inter' },
-                        cornerRadius: 6,
+                        ...tooltipConfig,
                         callbacks: {
                             footer: (items) => {
                                 const total = items.reduce((s, i) => s + i.parsed.y, 0);
@@ -371,13 +398,13 @@ export default function ShippingAnalytics({ shippings }) {
                     x: {
                         stacked: true,
                         grid: { display: false },
-                        ticks: { color: COLORS.textMuted, font: { size: 11, family: 'Inter' }, maxRotation: 45 },
+                        ticks: { color: CHART.tickColor, font: { size: 10, family: CHART.fontFamily }, maxRotation: 45 },
                     },
                     y: {
                         stacked: true,
                         beginAtZero: true,
-                        ticks: { stepSize: 1, color: COLORS.textMuted, font: { size: 11, family: 'Inter' } },
-                        grid: { color: COLORS.gridLine },
+                        ticks: { stepSize: 1, color: CHART.tickColor, font: { size: 11, family: CHART.fontFamily } },
+                        grid: { color: CHART.gridColor, drawBorder: false },
                     },
                 },
             },
@@ -396,8 +423,9 @@ export default function ShippingAnalytics({ shippings }) {
                 labels: carrierData.labels,
                 datasets: [{
                     data: carrierData.values,
-                    backgroundColor: COLORS.primary,
-                    barThickness: 24,
+                    backgroundColor: CHART.barColor,
+                    borderRadius: CHART.barRadius,
+                    barThickness: 16,
                 }],
             },
             options: {
@@ -407,10 +435,7 @@ export default function ShippingAnalytics({ shippings }) {
                 plugins: {
                     legend: { display: false },
                     tooltip: {
-                        backgroundColor: '#1F2937',
-                        titleFont: { family: 'Inter' },
-                        bodyFont: { family: 'Inter' },
-                        cornerRadius: 6,
+                        ...tooltipConfig,
                         callbacks: {
                             label: (ctx) => {
                                 const pct = carrierData.total > 0 ? Math.round((ctx.parsed.x / carrierData.total) * 100) : 0;
@@ -420,8 +445,8 @@ export default function ShippingAnalytics({ shippings }) {
                     },
                 },
                 scales: {
-                    x: { beginAtZero: true, ticks: { stepSize: 1, color: COLORS.textMuted, font: { size: 11, family: 'Inter' } }, grid: { color: COLORS.gridLine } },
-                    y: { grid: { display: false }, ticks: { color: COLORS.textMuted, font: { size: 12, family: 'Inter' } } },
+                    x: { beginAtZero: true, ticks: { stepSize: 1, color: CHART.tickColor, font: { size: 11, family: CHART.fontFamily } }, grid: { color: CHART.gridColor, drawBorder: false } },
+                    y: { grid: { display: false }, ticks: { color: CHART.tickColor, font: { size: 12, family: CHART.fontFamily } } },
                 },
             },
         });
@@ -440,21 +465,29 @@ export default function ShippingAnalytics({ shippings }) {
                 datasets: [{
                     data: statusData.map(s => s.count),
                     backgroundColor: statusData.map(s => s.color),
-                    borderWidth: 2,
-                    borderColor: '#fff',
+                    borderWidth: 0,
+                    spacing: 2,
                 }],
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                cutout: '60%',
+                cutout: '65%',
                 plugins: {
-                    legend: { position: 'right', labels: { usePointStyle: true, pointStyleWidth: 8, padding: 12, color: COLORS.textMuted, font: { size: 12, family: 'Inter' } } },
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            boxWidth: 12,
+                            boxHeight: 12,
+                            borderRadius: 3,
+                            useBorderRadius: true,
+                            font: { size: 11, family: CHART.fontFamily },
+                            color: CHART.tickColor,
+                            padding: 12,
+                        },
+                    },
                     tooltip: {
-                        backgroundColor: '#1F2937',
-                        titleFont: { family: 'Inter' },
-                        bodyFont: { family: 'Inter' },
-                        cornerRadius: 6,
+                        ...tooltipConfig,
                         callbacks: {
                             label: (ctx) => {
                                 const total = statusData.reduce((s, d) => s + d.count, 0);
@@ -469,135 +502,124 @@ export default function ShippingAnalytics({ shippings }) {
         return () => { if (statusChartInstance.current) statusChartInstance.current.destroy(); };
     }, [statusData]);
 
-    const cardStyle = {
-        background: 'white',
-        border: `1px solid ${COLORS.border}`,
-        borderRadius: '10px',
-        padding: '20px',
-        flex: '1 1 200px',
-        minWidth: '160px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-    };
-
-    const sectionStyle = {
-        background: 'white',
-        border: `1px solid ${COLORS.border}`,
-        borderRadius: '10px',
-        padding: '24px',
-        marginBottom: '24px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-    };
-
     return (
         <div>
             {/* Filters */}
-            <div style={{
-                ...sectionStyle,
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: '16px',
-                alignItems: 'flex-end',
-                padding: '16px 20px',
-            }}>
-                <div style={{ flex: '0 0 auto' }}>
-                    <label className="form-label" style={{ marginBottom: '4px', fontSize: '12px' }}>Período</label>
-                    <select
-                        className="form-select"
-                        value={periodType}
-                        onChange={e => setPeriodType(e.target.value)}
-                        style={{ minWidth: '180px' }}
-                    >
-                        {PERIOD_OPTIONS.map(o => (
-                            <option key={o.value} value={o.value}>{o.label}</option>
-                        ))}
-                    </select>
-                </div>
-                {periodType === 'custom' && (
-                    <>
-                        <div style={{ flex: '0 0 auto' }}>
-                            <label className="form-label" style={{ marginBottom: '4px', fontSize: '12px' }}>Início</label>
-                            <input
-                                type="date"
-                                className="form-input"
-                                value={customStart}
-                                onChange={e => setCustomStart(e.target.value)}
-                            />
-                        </div>
-                        <div style={{ flex: '0 0 auto' }}>
-                            <label className="form-label" style={{ marginBottom: '4px', fontSize: '12px' }}>Fim</label>
-                            <input
-                                type="date"
-                                className="form-input"
-                                value={customEnd}
-                                onChange={e => setCustomEnd(e.target.value)}
-                            />
-                        </div>
-                    </>
-                )}
-                <div style={{ flex: '0 0 auto' }}>
-                    <label className="form-label" style={{ marginBottom: '4px', fontSize: '12px' }}>HUB</label>
-                    <select
-                        className="form-select"
-                        value={selectedHub}
-                        onChange={e => setSelectedHub(e.target.value)}
-                        style={{ minWidth: '200px' }}
-                    >
-                        {HUB_OPTIONS.map(h => (
-                            <option key={h} value={h}>{h}</option>
-                        ))}
-                    </select>
+            <div className="card" style={{ marginBottom: '24px' }}>
+                <div style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '16px',
+                    alignItems: 'flex-end',
+                }}>
+                    <div style={{ flex: '0 0 auto' }}>
+                        <label className="form-label" style={{ marginBottom: '4px', fontSize: '12px' }}>Período</label>
+                        <select
+                            className="form-select"
+                            value={periodType}
+                            onChange={e => setPeriodType(e.target.value)}
+                            style={{ minWidth: '180px' }}
+                        >
+                            {PERIOD_OPTIONS.map(o => (
+                                <option key={o.value} value={o.value}>{o.label}</option>
+                            ))}
+                        </select>
+                    </div>
+                    {periodType === 'custom' && (
+                        <>
+                            <div style={{ flex: '0 0 auto' }}>
+                                <label className="form-label" style={{ marginBottom: '4px', fontSize: '12px' }}>Início</label>
+                                <input
+                                    type="date"
+                                    className="form-input"
+                                    value={customStart}
+                                    onChange={e => setCustomStart(e.target.value)}
+                                />
+                            </div>
+                            <div style={{ flex: '0 0 auto' }}>
+                                <label className="form-label" style={{ marginBottom: '4px', fontSize: '12px' }}>Fim</label>
+                                <input
+                                    type="date"
+                                    className="form-input"
+                                    value={customEnd}
+                                    onChange={e => setCustomEnd(e.target.value)}
+                                />
+                            </div>
+                        </>
+                    )}
+                    <div style={{ flex: '0 0 auto' }}>
+                        <label className="form-label" style={{ marginBottom: '4px', fontSize: '12px' }}>HUB</label>
+                        <select
+                            className="form-select"
+                            value={selectedHub}
+                            onChange={e => setSelectedHub(e.target.value)}
+                            style={{ minWidth: '200px' }}
+                        >
+                            {HUB_OPTIONS.map(h => (
+                                <option key={h} value={h}>{h}</option>
+                            ))}
+                        </select>
+                    </div>
                 </div>
             </div>
 
             {/* Section 1: Summary cards */}
-            <div style={{ display: 'flex', gap: '16px', marginBottom: '24px', flexWrap: 'wrap' }}>
-                <div style={cardStyle}>
-                    <div style={{ fontSize: '12px', color: COLORS.textMuted, fontWeight: 500, marginBottom: '4px' }}>Total Envios</div>
-                    <div style={{ fontSize: '28px', fontWeight: 700, color: COLORS.text }}>{summary.total}</div>
-                    {summary.variacao !== null && (
-                        <div style={{
-                            fontSize: '12px',
-                            color: COLORS.textMuted,
-                            fontWeight: 500,
-                            marginTop: '4px',
-                        }}>
-                            {summary.variacao >= 0 ? '↑' : '↓'} {Math.abs(summary.variacao)}% vs período anterior
+            <div className="stats-grid" style={{ marginBottom: '24px' }}>
+                <div className="stat-card">
+                    <div className="stat-content">
+                        <div className="stat-value" style={{ fontVariantNumeric: 'tabular-nums' }}>{summary.total}</div>
+                        <div className="stat-label">Total Envios</div>
+                        {summary.variacao !== null && (
+                            <div style={{
+                                fontSize: '11px',
+                                color: 'var(--text-tertiary)',
+                                marginTop: '4px',
+                            }}>
+                                {summary.variacao >= 0 ? '↑' : '↓'} {Math.abs(summary.variacao)}% vs anterior
+                            </div>
+                        )}
+                    </div>
+                </div>
+                <div className="stat-card">
+                    <div className="stat-content">
+                        <div className="stat-value" style={{ fontVariantNumeric: 'tabular-nums' }}>{summary.viaTransp}</div>
+                        <div className="stat-label">Via Transportadora</div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px' }}>
+                            {summary.total > 0 ? Math.round((summary.viaTransp / summary.total) * 100) : 0}% do total
                         </div>
-                    )}
-                </div>
-                <div style={cardStyle}>
-                    <div style={{ fontSize: '12px', color: COLORS.textMuted, fontWeight: 500, marginBottom: '4px' }}>Via Transportadora</div>
-                    <div style={{ fontSize: '28px', fontWeight: 700, color: COLORS.text }}>{summary.viaTransp}</div>
-                    <div style={{ fontSize: '12px', color: COLORS.secondary, marginTop: '4px' }}>
-                        {summary.total > 0 ? Math.round((summary.viaTransp / summary.total) * 100) : 0}% do total
                     </div>
                 </div>
-                <div style={cardStyle}>
-                    <div style={{ fontSize: '12px', color: COLORS.textMuted, fontWeight: 500, marginBottom: '4px' }}>Entrega Local</div>
-                    <div style={{ fontSize: '28px', fontWeight: 700, color: COLORS.text }}>{summary.entregaLocal}</div>
-                    <div style={{ fontSize: '12px', color: COLORS.secondary, marginTop: '4px' }}>
-                        {summary.total > 0 ? Math.round((summary.entregaLocal / summary.total) * 100) : 0}% do total
+                <div className="stat-card">
+                    <div className="stat-content">
+                        <div className="stat-value" style={{ fontVariantNumeric: 'tabular-nums' }}>{summary.entregaLocal}</div>
+                        <div className="stat-label">Entrega Local</div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px' }}>
+                            {summary.total > 0 ? Math.round((summary.entregaLocal / summary.total) * 100) : 0}% do total
+                        </div>
                     </div>
                 </div>
-                <div style={cardStyle}>
-                    <div style={{ fontSize: '12px', color: COLORS.textMuted, fontWeight: 500, marginBottom: '4px' }}>Média/Dia</div>
-                    <div style={{ fontSize: '28px', fontWeight: 700, color: COLORS.text }}>{summary.mediaDia}</div>
-                    <div style={{ fontSize: '12px', color: COLORS.secondary, marginTop: '4px' }}>
-                        envios por dia
+                <div className="stat-card">
+                    <div className="stat-content">
+                        <div className="stat-value" style={{ fontVariantNumeric: 'tabular-nums' }}>{summary.mediaDia}</div>
+                        <div className="stat-label">Média/Dia</div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px' }}>
+                            envios por dia
+                        </div>
                     </div>
                 </div>
             </div>
 
             {/* Section 2: Daily volume chart */}
-            <div style={sectionStyle}>
-                <h3 style={{ margin: '0 0 16px', fontSize: '14px', fontWeight: 600, color: COLORS.text }}>
+            <div className="card" style={{ marginBottom: '24px' }}>
+                <h2 className="card-title" style={{ marginBottom: '20px' }}>
+                    <span className="card-title-icon">{'\u25A5'}</span>
                     Volume {dailyData.groupByWeek ? 'Semanal' : 'Diário'}
-                </h3>
-                <div style={{ height: '300px', position: 'relative' }}>
+                </h2>
+                <div style={{ height: '280px' }}>
                     {dailyData.labels.length > 0 ? (
                         <canvas ref={dailyChartRef} />
                     ) : (
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: COLORS.secondary }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-tertiary)', fontSize: '13px' }}>
                             Nenhum envio no período selecionado
                         </div>
                     )}
@@ -605,17 +627,18 @@ export default function ShippingAnalytics({ shippings }) {
             </div>
 
             {/* Section 3 + 5: Carrier ranking + Status (side by side on desktop) */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '24px', marginBottom: '24px' }}>
+            <div className="dashboard-analytics-grid" style={{ marginBottom: '24px' }}>
                 {/* Carrier ranking */}
-                <div style={sectionStyle}>
-                    <h3 style={{ margin: '0 0 16px', fontSize: '14px', fontWeight: 600, color: COLORS.text }}>
+                <div className="card" style={{ marginBottom: 0 }}>
+                    <h2 className="card-title" style={{ marginBottom: '20px' }}>
+                        <span className="card-title-icon">{'\u25C6'}</span>
                         Ranking de Transportadoras
-                    </h3>
-                    <div style={{ height: Math.max(200, carrierData.labels.length * 40 + 40), position: 'relative' }}>
+                    </h2>
+                    <div style={{ height: Math.max(180, carrierData.labels.length * 36 + 20) }}>
                         {carrierData.labels.length > 0 ? (
                             <canvas ref={carrierChartRef} />
                         ) : (
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: COLORS.secondary }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-tertiary)', fontSize: '13px' }}>
                                 Sem dados
                             </div>
                         )}
@@ -623,49 +646,53 @@ export default function ShippingAnalytics({ shippings }) {
                 </div>
 
                 {/* Status breakdown */}
-                <div style={sectionStyle}>
-                    <h3 style={{ margin: '0 0 16px', fontSize: '14px', fontWeight: 600, color: COLORS.text }}>
+                <div className="card" style={{ marginBottom: 0 }}>
+                    <h2 className="card-title" style={{ marginBottom: '20px' }}>
+                        <span className="card-title-icon">{'\u25CF'}</span>
                         Status dos Envios
-                    </h3>
-                    <div style={{ height: '280px', position: 'relative' }}>
+                    </h2>
+                    <div style={{ height: '220px' }}>
                         {statusData.length > 0 ? (
                             <canvas ref={statusChartRef} />
                         ) : (
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: COLORS.secondary }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-tertiary)', fontSize: '13px' }}>
                                 Sem dados
                             </div>
                         )}
                     </div>
-                    {/* Status badges below chart */}
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '12px' }}>
-                        {statusData.filter(s => s.status !== 'ENTREGUE').map(s => (
-                            <span key={s.status} style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                padding: '4px 10px',
-                                borderRadius: '6px',
-                                fontSize: '12px',
-                                fontWeight: 500,
-                                background: COLORS.gridLine,
-                                color: COLORS.primary,
-                            }}>
-                                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: s.color }} />
-                                {s.label}: {s.count}
-                            </span>
-                        ))}
-                    </div>
+                    {/* Active status badges */}
+                    {statusData.filter(s => s.status !== 'ENTREGUE').length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '16px' }}>
+                            {statusData.filter(s => s.status !== 'ENTREGUE').map(s => (
+                                <span key={s.status} style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    padding: '4px 10px',
+                                    borderRadius: 'var(--radius-sm)',
+                                    fontSize: '11px',
+                                    fontWeight: 600,
+                                    background: 'var(--bg-tertiary)',
+                                    color: 'var(--text-secondary)',
+                                }}>
+                                    <span style={{ width: '8px', height: '8px', borderRadius: '2px', background: s.color }} />
+                                    {s.label}: {s.count}
+                                </span>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </div>
 
             {/* Section 4: Volume by HUB */}
-            <div style={sectionStyle}>
-                <h3 style={{ margin: '0 0 16px', fontSize: '14px', fontWeight: 600, color: COLORS.text }}>
+            <div className="card" style={{ marginBottom: '24px' }}>
+                <h2 className="card-title" style={{ marginBottom: '16px' }}>
+                    <span className="card-title-icon">{'\u25A3'}</span>
                     Volume por HUB
-                </h3>
+                </h2>
                 {hubData.length > 0 ? (
-                    <div style={{ overflowX: 'auto' }}>
-                        <table className="table" style={{ minWidth: '500px' }}>
+                    <div className="table-container">
+                        <table className="table">
                             <thead>
                                 <tr>
                                     <th style={{ textAlign: 'left' }}>HUB</th>
@@ -678,28 +705,28 @@ export default function ShippingAnalytics({ shippings }) {
                             <tbody>
                                 {hubData.map(h => (
                                     <tr key={h.hub}>
-                                        <td style={{ fontWeight: 600, color: COLORS.primary }}>{h.hub}</td>
-                                        <td style={{ textAlign: 'center', color: COLORS.primary }}>{h.total}</td>
-                                        <td style={{ textAlign: 'center', color: COLORS.textMuted }}>{h.local}</td>
-                                        <td style={{ textAlign: 'center', color: COLORS.textMuted }}>{h.transp}</td>
+                                        <td style={{ fontWeight: 500 }}>{h.hub}</td>
+                                        <td style={{ textAlign: 'center', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{h.total}</td>
+                                        <td style={{ textAlign: 'center', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>{h.local}</td>
+                                        <td style={{ textAlign: 'center', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>{h.transp}</td>
                                         <td>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                 <div style={{
                                                     flex: 1,
-                                                    height: '6px',
-                                                    background: COLORS.gridLine,
-                                                    borderRadius: '3px',
+                                                    height: '4px',
+                                                    background: 'var(--border-default)',
+                                                    borderRadius: '2px',
                                                     overflow: 'hidden',
                                                 }}>
                                                     <div style={{
                                                         width: `${h.pctLocal}%`,
                                                         height: '100%',
-                                                        background: COLORS.primary,
-                                                        borderRadius: '3px',
-                                                        transition: 'width 0.3s',
+                                                        background: 'var(--text-secondary)',
+                                                        borderRadius: '2px',
+                                                        transition: 'width 0.5s ease',
                                                     }} />
                                                 </div>
-                                                <span style={{ fontSize: '12px', fontWeight: 500, color: COLORS.textMuted, minWidth: '36px' }}>
+                                                <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-tertiary)', minWidth: '36px', fontVariantNumeric: 'tabular-nums' }}>
                                                     {h.pctLocal}%
                                                 </span>
                                             </div>
@@ -710,18 +737,19 @@ export default function ShippingAnalytics({ shippings }) {
                         </table>
                     </div>
                 ) : (
-                    <div style={{ textAlign: 'center', color: COLORS.secondary, padding: '24px' }}>Sem dados no período</div>
+                    <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: '32px', fontSize: '13px' }}>Sem dados no período</div>
                 )}
             </div>
 
             {/* Section 6: HUB × Carrier matrix */}
-            <div style={sectionStyle}>
-                <h3 style={{ margin: '0 0 16px', fontSize: '14px', fontWeight: 600, color: COLORS.text }}>
+            <div className="card">
+                <h2 className="card-title" style={{ marginBottom: '16px' }}>
+                    <span className="card-title-icon">{'\u229E'}</span>
                     Desempenho por HUB × Transportadora
-                </h3>
+                </h2>
                 {matrixData.hubs.length > 0 ? (
-                    <div style={{ overflowX: 'auto' }}>
-                        <table className="table" style={{ minWidth: '500px' }}>
+                    <div className="table-container">
+                        <table className="table">
                             <thead>
                                 <tr>
                                     <th style={{ textAlign: 'left' }}></th>
@@ -736,13 +764,13 @@ export default function ShippingAnalytics({ shippings }) {
                                     const hubTotal = Object.values(matrixData.data[hub]).reduce((s, v) => s + v, 0);
                                     return (
                                         <tr key={hub}>
-                                            <td style={{ fontWeight: 600, whiteSpace: 'nowrap', color: COLORS.primary }}>{hub}</td>
+                                            <td style={{ fontWeight: 500, whiteSpace: 'nowrap' }}>{hub}</td>
                                             {matrixData.carriers.map(c => (
-                                                <td key={c} style={{ textAlign: 'center', color: matrixData.data[hub][c] ? COLORS.primary : COLORS.secondary }}>
+                                                <td key={c} style={{ textAlign: 'center', fontVariantNumeric: 'tabular-nums', color: matrixData.data[hub][c] ? 'var(--text-primary)' : 'var(--text-tertiary)' }}>
                                                     {matrixData.data[hub][c] || '-'}
                                                 </td>
                                             ))}
-                                            <td style={{ textAlign: 'center', fontWeight: 600, color: COLORS.text }}>{hubTotal}</td>
+                                            <td style={{ textAlign: 'center', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{hubTotal}</td>
                                         </tr>
                                     );
                                 })}
@@ -750,7 +778,7 @@ export default function ShippingAnalytics({ shippings }) {
                         </table>
                     </div>
                 ) : (
-                    <div style={{ textAlign: 'center', color: COLORS.secondary, padding: '24px' }}>Sem dados no período</div>
+                    <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: '32px', fontSize: '13px' }}>Sem dados no período</div>
                 )}
             </div>
         </div>
