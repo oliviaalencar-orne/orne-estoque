@@ -95,26 +95,28 @@ function weekLabel(d) {
     return `${formatDate(d)} - ${formatDate(end)}`;
 }
 
-// Colors
+// Colors — sober palette (Notion/Linear/Stripe style)
 const COLORS = {
-    blue: '#3B82F6',
-    green: '#10B981',
-    amber: '#F59E0B',
-    red: '#EF4444',
-    purple: '#8B5CF6',
-    gray: '#6B7280',
-    orange: '#F97316',
-    cyan: '#06B6D4',
+    primary: '#374151',
+    secondary: '#9CA3AF',
+    text: '#111827',
+    textMuted: '#6B7280',
+    border: '#E5E7EB',
+    gridLine: '#F3F4F6',
+    headerBg: '#F9FAFB',
+    green: '#059669',
+    amber: '#D97706',
+    red: '#DC2626',
 };
 
 const STATUS_COLORS = {
-    'DESPACHADO': COLORS.amber,
+    'DESPACHADO': '#6B7280',
     'AGUARDANDO_COLETA': '#D97706',
-    'EM_TRANSITO': COLORS.blue,
-    'SAIU_ENTREGA': COLORS.purple,
-    'TENTATIVA_ENTREGA': COLORS.orange,
-    'ENTREGUE': COLORS.green,
-    'DEVOLVIDO': COLORS.red,
+    'EM_TRANSITO': '#374151',
+    'SAIU_ENTREGA': '#4B5563',
+    'TENTATIVA_ENTREGA': '#9CA3AF',
+    'ENTREGUE': '#059669',
+    'DEVOLVIDO': '#DC2626',
 };
 
 const STATUS_LABELS = {
@@ -338,14 +340,12 @@ export default function ShippingAnalytics({ shippings }) {
                     {
                         label: 'Via Transportadora',
                         data: dailyData.transp,
-                        backgroundColor: COLORS.blue,
-                        borderRadius: 3,
+                        backgroundColor: COLORS.primary,
                     },
                     {
                         label: 'Entrega Local',
                         data: dailyData.local,
-                        backgroundColor: COLORS.green,
-                        borderRadius: 3,
+                        backgroundColor: COLORS.secondary,
                     },
                 ],
             },
@@ -355,6 +355,10 @@ export default function ShippingAnalytics({ shippings }) {
                 plugins: {
                     legend: { position: 'top', labels: { usePointStyle: true, padding: 16, font: { size: 12, family: 'Inter' } } },
                     tooltip: {
+                        backgroundColor: '#1F2937',
+                        titleFont: { family: 'Inter' },
+                        bodyFont: { family: 'Inter' },
+                        cornerRadius: 6,
                         callbacks: {
                             footer: (items) => {
                                 const total = items.reduce((s, i) => s + i.parsed.y, 0);
@@ -367,13 +371,13 @@ export default function ShippingAnalytics({ shippings }) {
                     x: {
                         stacked: true,
                         grid: { display: false },
-                        ticks: { font: { size: 11, family: 'Inter' }, maxRotation: 45 },
+                        ticks: { color: COLORS.textMuted, font: { size: 11, family: 'Inter' }, maxRotation: 45 },
                     },
                     y: {
                         stacked: true,
                         beginAtZero: true,
-                        ticks: { stepSize: 1, font: { size: 11, family: 'Inter' } },
-                        grid: { color: '#f3f4f6' },
+                        ticks: { stepSize: 1, color: COLORS.textMuted, font: { size: 11, family: 'Inter' } },
+                        grid: { color: COLORS.gridLine },
                     },
                 },
             },
@@ -386,23 +390,14 @@ export default function ShippingAnalytics({ shippings }) {
         if (!carrierChartRef.current || carrierData.labels.length === 0) return;
         if (carrierChartInstance.current) carrierChartInstance.current.destroy();
 
-        const barColors = carrierData.labels.map(l => {
-            if (l === 'Entrega Local') return COLORS.green;
-            if (l === 'Loggi') return '#FF6B35';
-            if (l === 'Correios') return '#FFD700';
-            if (l === 'Jadlog') return COLORS.cyan;
-            return COLORS.gray;
-        });
-
         carrierChartInstance.current = new Chart(carrierChartRef.current, {
             type: 'bar',
             data: {
                 labels: carrierData.labels,
                 datasets: [{
                     data: carrierData.values,
-                    backgroundColor: barColors,
-                    borderRadius: 4,
-                    barThickness: 28,
+                    backgroundColor: COLORS.primary,
+                    barThickness: 24,
                 }],
             },
             options: {
@@ -412,6 +407,10 @@ export default function ShippingAnalytics({ shippings }) {
                 plugins: {
                     legend: { display: false },
                     tooltip: {
+                        backgroundColor: '#1F2937',
+                        titleFont: { family: 'Inter' },
+                        bodyFont: { family: 'Inter' },
+                        cornerRadius: 6,
                         callbacks: {
                             label: (ctx) => {
                                 const pct = carrierData.total > 0 ? Math.round((ctx.parsed.x / carrierData.total) * 100) : 0;
@@ -421,8 +420,8 @@ export default function ShippingAnalytics({ shippings }) {
                     },
                 },
                 scales: {
-                    x: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 11, family: 'Inter' } }, grid: { color: '#f3f4f6' } },
-                    y: { grid: { display: false }, ticks: { font: { size: 12, family: 'Inter' } } },
+                    x: { beginAtZero: true, ticks: { stepSize: 1, color: COLORS.textMuted, font: { size: 11, family: 'Inter' } }, grid: { color: COLORS.gridLine } },
+                    y: { grid: { display: false }, ticks: { color: COLORS.textMuted, font: { size: 12, family: 'Inter' } } },
                 },
             },
         });
@@ -450,8 +449,12 @@ export default function ShippingAnalytics({ shippings }) {
                 maintainAspectRatio: false,
                 cutout: '60%',
                 plugins: {
-                    legend: { position: 'right', labels: { usePointStyle: true, padding: 12, font: { size: 12, family: 'Inter' } } },
+                    legend: { position: 'right', labels: { usePointStyle: true, pointStyleWidth: 8, padding: 12, color: COLORS.textMuted, font: { size: 12, family: 'Inter' } } },
                     tooltip: {
+                        backgroundColor: '#1F2937',
+                        titleFont: { family: 'Inter' },
+                        bodyFont: { family: 'Inter' },
+                        cornerRadius: 6,
                         callbacks: {
                             label: (ctx) => {
                                 const total = statusData.reduce((s, d) => s + d.count, 0);
@@ -468,19 +471,21 @@ export default function ShippingAnalytics({ shippings }) {
 
     const cardStyle = {
         background: 'white',
-        border: '1px solid var(--border-default, #e5e7eb)',
-        borderRadius: '12px',
+        border: `1px solid ${COLORS.border}`,
+        borderRadius: '10px',
         padding: '20px',
         flex: '1 1 200px',
         minWidth: '160px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
     };
 
     const sectionStyle = {
         background: 'white',
-        border: '1px solid var(--border-default, #e5e7eb)',
-        borderRadius: '12px',
+        border: `1px solid ${COLORS.border}`,
+        borderRadius: '10px',
         padding: '24px',
-        marginBottom: '20px',
+        marginBottom: '24px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
     };
 
     return (
@@ -545,14 +550,14 @@ export default function ShippingAnalytics({ shippings }) {
             </div>
 
             {/* Section 1: Summary cards */}
-            <div style={{ display: 'flex', gap: '16px', marginBottom: '20px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '16px', marginBottom: '24px', flexWrap: 'wrap' }}>
                 <div style={cardStyle}>
-                    <div style={{ fontSize: '12px', color: '#6B7280', fontWeight: 500, marginBottom: '4px' }}>Total Envios</div>
-                    <div style={{ fontSize: '28px', fontWeight: 700, color: '#111827' }}>{summary.total}</div>
+                    <div style={{ fontSize: '12px', color: COLORS.textMuted, fontWeight: 500, marginBottom: '4px' }}>Total Envios</div>
+                    <div style={{ fontSize: '28px', fontWeight: 700, color: COLORS.text }}>{summary.total}</div>
                     {summary.variacao !== null && (
                         <div style={{
                             fontSize: '12px',
-                            color: summary.variacao >= 0 ? COLORS.green : COLORS.red,
+                            color: COLORS.textMuted,
                             fontWeight: 500,
                             marginTop: '4px',
                         }}>
@@ -561,23 +566,23 @@ export default function ShippingAnalytics({ shippings }) {
                     )}
                 </div>
                 <div style={cardStyle}>
-                    <div style={{ fontSize: '12px', color: '#6B7280', fontWeight: 500, marginBottom: '4px' }}>Via Transportadora</div>
-                    <div style={{ fontSize: '28px', fontWeight: 700, color: COLORS.blue }}>{summary.viaTransp}</div>
-                    <div style={{ fontSize: '12px', color: '#9CA3AF', marginTop: '4px' }}>
+                    <div style={{ fontSize: '12px', color: COLORS.textMuted, fontWeight: 500, marginBottom: '4px' }}>Via Transportadora</div>
+                    <div style={{ fontSize: '28px', fontWeight: 700, color: COLORS.text }}>{summary.viaTransp}</div>
+                    <div style={{ fontSize: '12px', color: COLORS.secondary, marginTop: '4px' }}>
                         {summary.total > 0 ? Math.round((summary.viaTransp / summary.total) * 100) : 0}% do total
                     </div>
                 </div>
                 <div style={cardStyle}>
-                    <div style={{ fontSize: '12px', color: '#6B7280', fontWeight: 500, marginBottom: '4px' }}>Entrega Local</div>
-                    <div style={{ fontSize: '28px', fontWeight: 700, color: COLORS.green }}>{summary.entregaLocal}</div>
-                    <div style={{ fontSize: '12px', color: '#9CA3AF', marginTop: '4px' }}>
+                    <div style={{ fontSize: '12px', color: COLORS.textMuted, fontWeight: 500, marginBottom: '4px' }}>Entrega Local</div>
+                    <div style={{ fontSize: '28px', fontWeight: 700, color: COLORS.text }}>{summary.entregaLocal}</div>
+                    <div style={{ fontSize: '12px', color: COLORS.secondary, marginTop: '4px' }}>
                         {summary.total > 0 ? Math.round((summary.entregaLocal / summary.total) * 100) : 0}% do total
                     </div>
                 </div>
                 <div style={cardStyle}>
-                    <div style={{ fontSize: '12px', color: '#6B7280', fontWeight: 500, marginBottom: '4px' }}>Média/Dia</div>
-                    <div style={{ fontSize: '28px', fontWeight: 700, color: '#111827' }}>{summary.mediaDia}</div>
-                    <div style={{ fontSize: '12px', color: '#9CA3AF', marginTop: '4px' }}>
+                    <div style={{ fontSize: '12px', color: COLORS.textMuted, fontWeight: 500, marginBottom: '4px' }}>Média/Dia</div>
+                    <div style={{ fontSize: '28px', fontWeight: 700, color: COLORS.text }}>{summary.mediaDia}</div>
+                    <div style={{ fontSize: '12px', color: COLORS.secondary, marginTop: '4px' }}>
                         envios por dia
                     </div>
                 </div>
@@ -585,14 +590,14 @@ export default function ShippingAnalytics({ shippings }) {
 
             {/* Section 2: Daily volume chart */}
             <div style={sectionStyle}>
-                <h3 style={{ margin: '0 0 16px', fontSize: '15px', fontWeight: 600, color: '#111827' }}>
+                <h3 style={{ margin: '0 0 16px', fontSize: '14px', fontWeight: 600, color: COLORS.text }}>
                     Volume {dailyData.groupByWeek ? 'Semanal' : 'Diário'}
                 </h3>
                 <div style={{ height: '300px', position: 'relative' }}>
                     {dailyData.labels.length > 0 ? (
                         <canvas ref={dailyChartRef} />
                     ) : (
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#9CA3AF' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: COLORS.secondary }}>
                             Nenhum envio no período selecionado
                         </div>
                     )}
@@ -600,17 +605,17 @@ export default function ShippingAnalytics({ shippings }) {
             </div>
 
             {/* Section 3 + 5: Carrier ranking + Status (side by side on desktop) */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '20px', marginBottom: '20px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '24px', marginBottom: '24px' }}>
                 {/* Carrier ranking */}
                 <div style={sectionStyle}>
-                    <h3 style={{ margin: '0 0 16px', fontSize: '15px', fontWeight: 600, color: '#111827' }}>
+                    <h3 style={{ margin: '0 0 16px', fontSize: '14px', fontWeight: 600, color: COLORS.text }}>
                         Ranking de Transportadoras
                     </h3>
                     <div style={{ height: Math.max(200, carrierData.labels.length * 40 + 40), position: 'relative' }}>
                         {carrierData.labels.length > 0 ? (
                             <canvas ref={carrierChartRef} />
                         ) : (
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#9CA3AF' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: COLORS.secondary }}>
                                 Sem dados
                             </div>
                         )}
@@ -619,14 +624,14 @@ export default function ShippingAnalytics({ shippings }) {
 
                 {/* Status breakdown */}
                 <div style={sectionStyle}>
-                    <h3 style={{ margin: '0 0 16px', fontSize: '15px', fontWeight: 600, color: '#111827' }}>
+                    <h3 style={{ margin: '0 0 16px', fontSize: '14px', fontWeight: 600, color: COLORS.text }}>
                         Status dos Envios
                     </h3>
                     <div style={{ height: '280px', position: 'relative' }}>
                         {statusData.length > 0 ? (
                             <canvas ref={statusChartRef} />
                         ) : (
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#9CA3AF' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: COLORS.secondary }}>
                                 Sem dados
                             </div>
                         )}
@@ -641,11 +646,11 @@ export default function ShippingAnalytics({ shippings }) {
                                 padding: '4px 10px',
                                 borderRadius: '6px',
                                 fontSize: '12px',
-                                fontWeight: 600,
-                                background: s.color + '18',
-                                color: s.color,
+                                fontWeight: 500,
+                                background: COLORS.gridLine,
+                                color: COLORS.primary,
                             }}>
-                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: s.color }} />
+                                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: s.color }} />
                                 {s.label}: {s.count}
                             </span>
                         ))}
@@ -655,7 +660,7 @@ export default function ShippingAnalytics({ shippings }) {
 
             {/* Section 4: Volume by HUB */}
             <div style={sectionStyle}>
-                <h3 style={{ margin: '0 0 16px', fontSize: '15px', fontWeight: 600, color: '#111827' }}>
+                <h3 style={{ margin: '0 0 16px', fontSize: '14px', fontWeight: 600, color: COLORS.text }}>
                     Volume por HUB
                 </h3>
                 {hubData.length > 0 ? (
@@ -673,28 +678,28 @@ export default function ShippingAnalytics({ shippings }) {
                             <tbody>
                                 {hubData.map(h => (
                                     <tr key={h.hub}>
-                                        <td style={{ fontWeight: 600 }}>{h.hub}</td>
-                                        <td style={{ textAlign: 'center' }}>{h.total}</td>
-                                        <td style={{ textAlign: 'center' }}>{h.local}</td>
-                                        <td style={{ textAlign: 'center' }}>{h.transp}</td>
+                                        <td style={{ fontWeight: 600, color: COLORS.primary }}>{h.hub}</td>
+                                        <td style={{ textAlign: 'center', color: COLORS.primary }}>{h.total}</td>
+                                        <td style={{ textAlign: 'center', color: COLORS.textMuted }}>{h.local}</td>
+                                        <td style={{ textAlign: 'center', color: COLORS.textMuted }}>{h.transp}</td>
                                         <td>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                 <div style={{
                                                     flex: 1,
-                                                    height: '8px',
-                                                    background: '#f3f4f6',
-                                                    borderRadius: '4px',
+                                                    height: '6px',
+                                                    background: COLORS.gridLine,
+                                                    borderRadius: '3px',
                                                     overflow: 'hidden',
                                                 }}>
                                                     <div style={{
                                                         width: `${h.pctLocal}%`,
                                                         height: '100%',
-                                                        background: COLORS.green,
-                                                        borderRadius: '4px',
+                                                        background: COLORS.primary,
+                                                        borderRadius: '3px',
                                                         transition: 'width 0.3s',
                                                     }} />
                                                 </div>
-                                                <span style={{ fontSize: '12px', fontWeight: 600, color: '#6B7280', minWidth: '36px' }}>
+                                                <span style={{ fontSize: '12px', fontWeight: 500, color: COLORS.textMuted, minWidth: '36px' }}>
                                                     {h.pctLocal}%
                                                 </span>
                                             </div>
@@ -705,13 +710,13 @@ export default function ShippingAnalytics({ shippings }) {
                         </table>
                     </div>
                 ) : (
-                    <div style={{ textAlign: 'center', color: '#9CA3AF', padding: '24px' }}>Sem dados no período</div>
+                    <div style={{ textAlign: 'center', color: COLORS.secondary, padding: '24px' }}>Sem dados no período</div>
                 )}
             </div>
 
             {/* Section 6: HUB × Carrier matrix */}
             <div style={sectionStyle}>
-                <h3 style={{ margin: '0 0 16px', fontSize: '15px', fontWeight: 600, color: '#111827' }}>
+                <h3 style={{ margin: '0 0 16px', fontSize: '14px', fontWeight: 600, color: COLORS.text }}>
                     Desempenho por HUB × Transportadora
                 </h3>
                 {matrixData.hubs.length > 0 ? (
@@ -731,13 +736,13 @@ export default function ShippingAnalytics({ shippings }) {
                                     const hubTotal = Object.values(matrixData.data[hub]).reduce((s, v) => s + v, 0);
                                     return (
                                         <tr key={hub}>
-                                            <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{hub}</td>
+                                            <td style={{ fontWeight: 600, whiteSpace: 'nowrap', color: COLORS.primary }}>{hub}</td>
                                             {matrixData.carriers.map(c => (
-                                                <td key={c} style={{ textAlign: 'center' }}>
+                                                <td key={c} style={{ textAlign: 'center', color: matrixData.data[hub][c] ? COLORS.primary : COLORS.secondary }}>
                                                     {matrixData.data[hub][c] || '-'}
                                                 </td>
                                             ))}
-                                            <td style={{ textAlign: 'center', fontWeight: 700 }}>{hubTotal}</td>
+                                            <td style={{ textAlign: 'center', fontWeight: 600, color: COLORS.text }}>{hubTotal}</td>
                                         </tr>
                                     );
                                 })}
@@ -745,7 +750,7 @@ export default function ShippingAnalytics({ shippings }) {
                         </table>
                     </div>
                 ) : (
-                    <div style={{ textAlign: 'center', color: '#9CA3AF', padding: '24px' }}>Sem dados no período</div>
+                    <div style={{ textAlign: 'center', color: COLORS.secondary, padding: '24px' }}>Sem dados no período</div>
                 )}
             </div>
         </div>
