@@ -7,7 +7,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Icon } from '@/utils/icons';
 import PeriodFilter, { filterByPeriod } from '@/components/ui/PeriodFilter';
-import { fetchTrackingInfo, buscarRastreioPorNF } from '@/services/trackingService';
+import { fetchTrackingInfo, buscarRastreioPorNF, buscarRastreiosLoteME } from '@/services/trackingService';
 import { supabaseClient, SUPABASE_URL } from '@/config/supabase';
 import {
     buildClientShippingMessage,
@@ -71,6 +71,10 @@ export default function ShippingList({
     const [editSignedUrls, setEditSignedUrls] = useState({});
     const [uploadingEditFoto, setUploadingEditFoto] = useState(false);
     const editFotoInputRef = useRef(null);
+    // Batch ME search state
+    const [batchMEActive, setBatchMEActive] = useState(false);
+    const [batchMEProgress, setBatchMEProgress] = useState(null); // { current, total, vinculados, naoEncontrados, erros, nfAtual }
+    const batchMECancelRef = useRef(false);
 
     // Load signed URLs when editing shipping has photos
     useEffect(() => {
@@ -457,6 +461,43 @@ export default function ShippingList({
         }
     };
 
+    // Batch ME search — find all pending NFs and link them in Melhor Envio
+    const vincularRastreiosME = async () => {
+        const pendentes = shippings.filter(s =>
+            s.nfNumero &&
+            !s.entregaLocal &&
+            !s.melhorEnvioId &&
+            !s.codigoRastreio &&
+            s.status !== 'ENTREGUE' &&
+            s.status !== 'DEVOLVIDO'
+        );
+        if (pendentes.length === 0) {
+            setError('Nenhuma NF pendente de vinculação encontrada.');
+            setTimeout(() => setError(''), 5000);
+            return;
+        }
+        setBatchMEActive(true);
+        batchMECancelRef.current = false;
+        setBatchMEProgress({ current: 0, total: pendentes.length, vinculados: 0, naoEncontrados: 0, erros: 0, nfAtual: pendentes[0].nfNumero });
+        try {
+            const result = await buscarRastreiosLoteME(pendentes, {
+                batchSize: 5,
+                delayMs: 3000,
+                onProgress: (p) => setBatchMEProgress(p),
+                shouldCancel: () => batchMECancelRef.current,
+            });
+            await onRefresh?.();
+            setSuccess(`Vinculação concluída — Vinculados: ${result.vinculados} | Não encontrados: ${result.naoEncontrados} | Erros: ${result.erros}`);
+            setTimeout(() => setSuccess(''), 10000);
+        } catch (err) {
+            setError('Erro na vinculação em lote: ' + err.message);
+            setTimeout(() => setError(''), 8000);
+        } finally {
+            setBatchMEActive(false);
+            setBatchMEProgress(null);
+        }
+    };
+
     // Gerar link de rastreio baseado na transportadora ou código
     const gerarLinkRastreio = (transportadora, codigo) => {
         if (!codigo) return '';
@@ -511,7 +552,55 @@ export default function ShippingList({
                         {atualizandoRastreio ? 'Atualizando...' : 'Atualizar Rastreios'}
                     </button>
                 )}
+                {canEdit && !isDevolucao && (
+                    <button
+                        className="btn btn-secondary"
+                        onClick={vincularRastreiosME}
+                        disabled={batchMEActive || atualizandoRastreio}
+                        style={{whiteSpace: 'nowrap'}}
+                    >
+                        {batchMEActive ? 'Vinculando...' : 'Vincular Rastreios ME'}
+                    </button>
+                )}
             </div>
+
+            {/* Batch ME progress modal */}
+            {batchMEActive && batchMEProgress && (
+                <div style={{
+                    marginBottom: '16px', padding: '16px', background: '#F9FAFB',
+                    border: '1px solid #E5E7EB', borderRadius: '8px',
+                }}>
+                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
+                        <span style={{fontWeight: 600, fontSize: '14px', color: '#111827'}}>
+                            Vinculando rastreios no Melhor Envio...
+                        </span>
+                        <button
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => { batchMECancelRef.current = true; }}
+                        >
+                            Parar
+                        </button>
+                    </div>
+                    <div style={{fontSize: '13px', color: '#6B7280', marginBottom: '8px'}}>
+                        Processando NF {batchMEProgress.nfAtual} ({batchMEProgress.current} de {batchMEProgress.total})
+                    </div>
+                    <div style={{
+                        width: '100%', height: '8px', background: '#E5E7EB',
+                        borderRadius: '4px', overflow: 'hidden', marginBottom: '8px',
+                    }}>
+                        <div style={{
+                            width: `${Math.round((batchMEProgress.current / batchMEProgress.total) * 100)}%`,
+                            height: '100%', background: '#374151', borderRadius: '4px',
+                            transition: 'width 0.3s ease',
+                        }} />
+                    </div>
+                    <div style={{display: 'flex', gap: '16px', fontSize: '13px'}}>
+                        <span style={{color: '#059669'}}>Vinculados: {batchMEProgress.vinculados}</span>
+                        <span style={{color: '#6B7280'}}>Não encontrados: {batchMEProgress.naoEncontrados}</span>
+                        <span style={{color: '#DC2626'}}>Erros: {batchMEProgress.erros}</span>
+                    </div>
+                </div>
+            )}
 
             <div className="filter-tabs" style={{marginBottom: '12px'}}>
                 <button className={`filter-tab ${statusFilter === 'all' ? 'active' : ''}`} onClick={() => setStatusFilter('all')}>

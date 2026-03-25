@@ -147,3 +147,79 @@ export async function buscarRastreioPorNF(nfNumero, clienteNome) {
 
   return null;
 }
+
+/**
+ * Search Melhor Envio for tracking data by multiple NF numbers (batch).
+ * Sends batches of up to batchSize NFs at a time with delay between batches.
+ * The Edge Function auto-saves found data (melhor_envio_id, codigo_rastreio, etc.) to DB.
+ *
+ * @param {Array<{id, nfNumero, cliente}>} pendentes - Shippings to search
+ * @param {Object} opts - Options
+ * @param {number} [opts.batchSize=5] - NFs per batch
+ * @param {number} [opts.delayMs=3000] - Delay between batches in ms
+ * @param {function} [opts.onProgress] - Callback({ current, total, vinculados, naoEncontrados, erros, nfAtual })
+ * @param {function} [opts.shouldCancel] - Returns true to abort
+ * @returns {Promise<{vinculados, naoEncontrados, erros}>}
+ */
+export async function buscarRastreiosLoteME(pendentes, { batchSize = 5, delayMs = 3000, onProgress, shouldCancel } = {}) {
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  const token = session?.access_token;
+  if (!token) throw new Error('Sessao expirada. Faca login novamente.');
+
+  let vinculados = 0, naoEncontrados = 0, erros = 0;
+
+  for (let i = 0; i < pendentes.length; i += batchSize) {
+    if (shouldCancel?.()) break;
+
+    const batch = pendentes.slice(i, i + batchSize);
+    const nfs = batch.map(s => s.nfNumero);
+    const clientes = {};
+    batch.forEach(s => { clientes[s.nfNumero] = s.cliente; });
+
+    const nfAtual = nfs[0];
+
+    try {
+      const response = await fetch(`${FUNCTIONS_URL}/rastrear-envio`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ buscarPorNF: nfs, clientes }),
+      });
+
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        for (const nf of nfs) {
+          const info = result.data[nf];
+          if (info?.encontrado) {
+            vinculados++;
+          } else {
+            naoEncontrados++;
+          }
+        }
+      } else {
+        erros += batch.length;
+      }
+    } catch (err) {
+      console.error('[ME-lote] Erro no batch:', err);
+      erros += batch.length;
+    }
+
+    onProgress?.({
+      current: Math.min(i + batchSize, pendentes.length),
+      total: pendentes.length,
+      vinculados,
+      naoEncontrados,
+      erros,
+      nfAtual,
+    });
+
+    if (i + batchSize < pendentes.length && !shouldCancel?.()) {
+      await new Promise(r => setTimeout(r, delayMs));
+    }
+  }
+
+  return { vinculados, naoEncontrados, erros };
+}
