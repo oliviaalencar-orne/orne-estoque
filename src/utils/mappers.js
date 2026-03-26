@@ -72,6 +72,8 @@ export const mapShippingFromDB = (row) => ({
   entradaCriada: row.entrada_criada || false,
   motivoDevolucao: row.motivo_devolucao || '',
   hubDestino: row.hub_destino || '',
+  tinyNfId: row.tiny_nf_id || null,
+  chaveAcesso: row.chave_acesso || '',
 });
 
 export const mapSeparationFromDB = (row) => ({

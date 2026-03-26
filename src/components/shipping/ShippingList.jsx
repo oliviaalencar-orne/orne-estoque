@@ -17,7 +17,6 @@ import {
 import { getStatusLabel, getStatusColor } from '@/utils/statusLabels';
 import { criarEntradasDevolucao } from '@/utils/devolucaoEntries';
 import { getTransportadoraReal } from '@/utils/transportadora';
-import { downloadDANFE, downloadDANFEsEmLote } from '@/services/danfeService';
 
 // Resize image helper
 function resizeImage(file, maxWidth = 1200) {
@@ -76,11 +75,12 @@ export default function ShippingList({
     const [batchMEActive, setBatchMEActive] = useState(false);
     const [batchMEProgress, setBatchMEProgress] = useState(null); // { current, total, vinculados, naoEncontrados, erros, nfAtual }
     const batchMECancelRef = useRef(false);
-    // DANFE download state
-    const [danfeLoading, setDanfeLoading] = useState(null); // shipping id being downloaded
+    // DANFE state
+    const [danfeLoading, setDanfeLoading] = useState(null); // nfNumero being fetched
     const [selectedForDanfe, setSelectedForDanfe] = useState(new Set());
-    const [batchDanfeActive, setBatchDanfeActive] = useState(false);
-    const [batchDanfeProgress, setBatchDanfeProgress] = useState(null); // { current, total, generated }
+    const [danfeLinksModal, setDanfeLinksModal] = useState(null); // array of { nfNumero, cliente, chaveAcesso }
+    const [batchDanfeLoading, setBatchDanfeLoading] = useState(false);
+    const danfePreloadedRef = useRef(false);
 
     // Load signed URLs when editing shipping has photos
     useEffect(() => {
@@ -504,18 +504,51 @@ export default function ShippingList({
         }
     };
 
-    // ===== DANFE Download =====
-    const handleDownloadDANFE = async (nfNumero) => {
-        if (!nfNumero) return;
-        setDanfeLoading(nfNumero);
+    // ===== DANFE via consultadanfe.com =====
+    // Pre-load chave_acesso for shippings that don't have it
+    useEffect(() => {
+        if (danfePreloadedRef.current || !shippings.length) return;
+        const semChave = shippings.filter(s =>
+            !s.chaveAcesso && !s.entregaLocal && s.nfNumero
+        );
+        if (semChave.length === 0 || semChave.length > 20) {
+            danfePreloadedRef.current = true;
+            return;
+        }
+        danfePreloadedRef.current = true;
+        supabaseClient.functions.invoke('tiny-download-nf', {
+            body: { nfNumeros: semChave.map(s => s.nfNumero) },
+        }).then(() => onRefresh?.()).catch(() => {});
+    }, [shippings.length]);
+
+    const handleOpenDANFE = async (shipping) => {
+        if (!shipping.nfNumero) return;
+        // If chave_acesso already available, open directly
+        if (shipping.chaveAcesso) {
+            window.open(`https://consultadanfe.com/?chave=${shipping.chaveAcesso}`, '_blank');
+            return;
+        }
+        // Fetch chave via Edge Function
+        setDanfeLoading(shipping.nfNumero);
         try {
-            const result = await downloadDANFE(nfNumero);
-            if (!result.success) {
-                setError(result.error);
+            const { data, error: fnError } = await supabaseClient.functions.invoke('tiny-download-nf', {
+                body: { nfNumeros: [shipping.nfNumero] },
+            });
+            if (fnError || !data?.success) {
+                setError('Erro ao buscar NF no Tiny');
                 setTimeout(() => setError(''), 6000);
+                return;
             }
+            const result = data.data?.[shipping.nfNumero];
+            if (!result?.success || !result?.chaveAcesso) {
+                setError(`NF ${shipping.nfNumero}: não encontrada no Tiny ou não autorizada`);
+                setTimeout(() => setError(''), 6000);
+                return;
+            }
+            await onRefresh?.();
+            window.open(`https://consultadanfe.com/?chave=${result.chaveAcesso}`, '_blank');
         } catch (err) {
-            setError('Erro ao baixar DANFE: ' + err.message);
+            setError('Erro ao buscar DANFE: ' + err.message);
             setTimeout(() => setError(''), 6000);
         } finally {
             setDanfeLoading(null);
@@ -532,41 +565,70 @@ export default function ShippingList({
     };
 
     const toggleDanfeSelectAll = () => {
-        if (selectedForDanfe.size === filteredShippings.length) {
+        const withNF = filteredShippings.filter(s => s.nfNumero && !s.entregaLocal);
+        if (selectedForDanfe.size === withNF.length) {
             setSelectedForDanfe(new Set());
         } else {
-            setSelectedForDanfe(new Set(filteredShippings.map((s) => s.nfNumero).filter(Boolean)));
+            setSelectedForDanfe(new Set(withNF.map(s => s.nfNumero)));
         }
     };
 
     const handleBatchDANFE = async () => {
         const nfs = [...selectedForDanfe].filter(Boolean);
         if (nfs.length === 0) return;
-        if (nfs.length > 20) {
-            setError('Máximo 20 NFs por vez. Selecione menos itens.');
-            setTimeout(() => setError(''), 6000);
-            return;
-        }
-        setBatchDanfeActive(true);
-        setBatchDanfeProgress({ current: 0, total: nfs.length, generated: 0 });
+
+        setBatchDanfeLoading(true);
         try {
-            const result = await downloadDANFEsEmLote(nfs, (current, total, generated) => {
-                setBatchDanfeProgress({ current, total, generated });
-            });
-            if (result.errors.length > 0) {
-                setError(`DANFEs geradas: ${result.generated} | Erros: ${result.errors.length} — ${result.errors[0]}`);
-                setTimeout(() => setError(''), 8000);
-            } else {
-                setSuccess(`${result.generated} DANFE${result.generated !== 1 ? 's' : ''} baixada${result.generated !== 1 ? 's' : ''} com sucesso`);
-                setTimeout(() => setSuccess(''), 5000);
+            // Separate shippings with and without chave
+            const selected = shippings.filter(s => nfs.includes(s.nfNumero));
+            const semChave = selected.filter(s => !s.chaveAcesso);
+
+            let fetchedChaves = {};
+            if (semChave.length > 0) {
+                const batchNFs = semChave.map(s => s.nfNumero).slice(0, 20);
+                const { data } = await supabaseClient.functions.invoke('tiny-download-nf', {
+                    body: { nfNumeros: batchNFs },
+                });
+                if (data?.success && data.data) {
+                    for (const [nf, result] of Object.entries(data.data)) {
+                        if (result?.success && result?.chaveAcesso) {
+                            fetchedChaves[nf] = result.chaveAcesso;
+                        }
+                    }
+                }
+                await onRefresh?.();
             }
-            setSelectedForDanfe(new Set());
+
+            // Build links list
+            const links = [];
+            for (const s of selected) {
+                const chave = s.chaveAcesso || fetchedChaves[s.nfNumero];
+                if (chave) {
+                    links.push({ nfNumero: s.nfNumero, cliente: s.cliente, chaveAcesso: chave });
+                }
+            }
+
+            if (links.length === 0) {
+                setError('Nenhuma DANFE encontrada para as NFs selecionadas');
+                setTimeout(() => setError(''), 6000);
+                return;
+            }
+
+            // If 3 or fewer, open directly
+            if (links.length <= 3) {
+                links.forEach(l => {
+                    window.open(`https://consultadanfe.com/?chave=${l.chaveAcesso}`, '_blank');
+                });
+                setSelectedForDanfe(new Set());
+            } else {
+                // Show modal with links
+                setDanfeLinksModal(links);
+            }
         } catch (err) {
-            setError('Erro ao gerar DANFEs: ' + err.message);
+            setError('Erro ao buscar DANFEs: ' + err.message);
             setTimeout(() => setError(''), 6000);
         } finally {
-            setBatchDanfeActive(false);
-            setBatchDanfeProgress(null);
+            setBatchDanfeLoading(false);
         }
     };
 
@@ -674,33 +736,8 @@ export default function ShippingList({
                 </div>
             )}
 
-            {/* Batch DANFE progress */}
-            {batchDanfeActive && batchDanfeProgress && (
-                <div style={{
-                    marginBottom: '16px', padding: '16px', background: '#F9FAFB',
-                    border: '1px solid #E5E7EB', borderRadius: '8px',
-                }}>
-                    <div style={{fontWeight: 600, fontSize: '14px', color: '#111827', marginBottom: '8px'}}>
-                        Gerando DANFEs...
-                    </div>
-                    <div style={{fontSize: '13px', color: '#6B7280', marginBottom: '8px'}}>
-                        Processando {batchDanfeProgress.current} de {batchDanfeProgress.total} — {batchDanfeProgress.generated} PDF{batchDanfeProgress.generated !== 1 ? 's' : ''} gerado{batchDanfeProgress.generated !== 1 ? 's' : ''}
-                    </div>
-                    <div style={{
-                        width: '100%', height: '8px', background: '#E5E7EB',
-                        borderRadius: '4px', overflow: 'hidden',
-                    }}>
-                        <div style={{
-                            width: `${Math.round((batchDanfeProgress.current / batchDanfeProgress.total) * 100)}%`,
-                            height: '100%', background: '#374151', borderRadius: '4px',
-                            transition: 'width 0.3s ease',
-                        }} />
-                    </div>
-                </div>
-            )}
-
             {/* Batch DANFE selection bar */}
-            {selectedForDanfe.size > 0 && !batchDanfeActive && canEdit && (
+            {selectedForDanfe.size > 0 && (
                 <div style={{
                     marginBottom: '12px', padding: '10px 16px', background: '#F3F4F6',
                     border: '1px solid #E5E7EB', borderRadius: '8px',
@@ -712,9 +749,10 @@ export default function ShippingList({
                     <button
                         className="btn btn-primary btn-sm"
                         onClick={handleBatchDANFE}
+                        disabled={batchDanfeLoading}
                         style={{fontSize: '12px'}}
                     >
-                        Baixar DANFE{selectedForDanfe.size !== 1 ? 's' : ''}
+                        {batchDanfeLoading ? 'Buscando...' : `Abrir DANFE${selectedForDanfe.size !== 1 ? 's' : ''}`}
                     </button>
                     <button
                         className="btn btn-secondary btn-sm"
@@ -763,17 +801,15 @@ export default function ShippingList({
                     <table className="table">
                         <thead>
                             <tr>
-                                {canEdit && (
-                                    <th style={{width: '32px', padding: '8px 4px'}}>
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedForDanfe.size > 0 && selectedForDanfe.size === filteredShippings.filter(s => s.nfNumero).length}
-                                            onChange={toggleDanfeSelectAll}
-                                            title="Selecionar todos para DANFE"
-                                            style={{cursor: 'pointer'}}
-                                        />
-                                    </th>
-                                )}
+                                <th style={{width: '32px', padding: '8px 4px'}}>
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedForDanfe.size > 0 && selectedForDanfe.size === filteredShippings.filter(s => s.nfNumero && !s.entregaLocal).length}
+                                        onChange={toggleDanfeSelectAll}
+                                        title="Selecionar todos para DANFE"
+                                        style={{cursor: 'pointer'}}
+                                    />
+                                </th>
                                 <th>NF</th>
                                 <th>Cliente</th>
                                 <th>{isDevolucao ? 'HUB Destino' : 'Origem'}</th>
@@ -787,18 +823,16 @@ export default function ShippingList({
                         <tbody>
                             {filteredShippings.map(s => (
                                 <tr key={s.id}>
-                                    {canEdit && (
-                                        <td style={{padding: '8px 4px'}}>
-                                            {s.nfNumero && (
-                                                <input
-                                                    type="checkbox"
-                                                    checked={selectedForDanfe.has(s.nfNumero)}
-                                                    onChange={() => toggleDanfeSelect(s.nfNumero)}
-                                                    style={{cursor: 'pointer'}}
-                                                />
-                                            )}
-                                        </td>
-                                    )}
+                                    <td style={{padding: '8px 4px'}}>
+                                        {s.nfNumero && !s.entregaLocal && (
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedForDanfe.has(s.nfNumero)}
+                                                onChange={() => toggleDanfeSelect(s.nfNumero)}
+                                                style={{cursor: 'pointer'}}
+                                            />
+                                        )}
+                                    </td>
                                     <td>
                                         <strong>{s.nfNumero}</strong>
                                         <div style={{fontSize: '10px', color: 'var(--text-muted)'}}>{formatDate(s.date)}</div>
@@ -1045,14 +1079,14 @@ export default function ShippingList({
                                             >
                                                 <Icon name="whatsapp" size={14} style={{color: '#25D366'}} />
                                             </button>
-                                            {/* DANFE download — canEdit */}
-                                            {canEdit && s.nfNumero && (
+                                            {/* DANFE — all roles, hidden for entrega local */}
+                                            {!s.entregaLocal && s.nfNumero && (
                                                 <button
                                                     className="btn btn-secondary btn-sm"
-                                                    onClick={() => handleDownloadDANFE(s.nfNumero)}
+                                                    onClick={() => handleOpenDANFE(s)}
                                                     disabled={danfeLoading === s.nfNumero}
-                                                    title="Baixar DANFE (PDF)"
-                                                    style={{fontSize: '10px', padding: '4px 8px'}}
+                                                    title="Abrir DANFE"
+                                                    style={{fontSize: '10px', padding: '4px 8px', color: s.chaveAcesso ? '#374151' : '#D1D5DB'}}
                                                 >
                                                     {danfeLoading === s.nfNumero ? (
                                                         <span style={{display: 'inline-block', width: '14px', height: '14px', border: '2px solid #d1d5db', borderTopColor: '#374151', borderRadius: '50%', animation: 'spin 0.6s linear infinite'}} />
@@ -1060,8 +1094,8 @@ export default function ShippingList({
                                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                                                             <polyline points="14 2 14 8 20 8" />
-                                                            <line x1="12" y1="18" x2="12" y2="12" />
-                                                            <polyline points="9 15 12 18 15 15" />
+                                                            <line x1="16" y1="13" x2="8" y2="13" />
+                                                            <line x1="16" y1="17" x2="8" y2="17" />
                                                         </svg>
                                                     )}
                                                 </button>
@@ -1463,6 +1497,45 @@ export default function ShippingList({
                                 <button className="btn btn-secondary" onClick={() => setComprovanteModal(null)}>Fechar</button>
                             </>
                         )}
+                    </div>
+                </div>
+            )}
+            {/* DANFE Links Modal — for batch > 3 */}
+            {danfeLinksModal && (
+                <div className="modal-overlay">
+                    <div className="modal-content" style={{maxWidth: '500px'}}>
+                        <h2 className="modal-title">DANFEs disponíveis</h2>
+                        <p className="modal-subtitle">Clique em cada link para abrir a DANFE em nova aba</p>
+                        <div style={{maxHeight: '400px', overflowY: 'auto', margin: '16px 0'}}>
+                            {danfeLinksModal.map((l, i) => (
+                                <div key={i} style={{
+                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                    padding: '10px 12px', borderBottom: '1px solid #F3F4F6',
+                                }}>
+                                    <div>
+                                        <strong style={{fontSize: '13px'}}>NF {l.nfNumero}</strong>
+                                        <span style={{fontSize: '12px', color: '#6B7280', marginLeft: '8px'}}>{l.cliente}</span>
+                                    </div>
+                                    <a
+                                        href={`https://consultadanfe.com/?chave=${l.chaveAcesso}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="btn btn-primary btn-sm"
+                                        style={{fontSize: '11px', textDecoration: 'none', whiteSpace: 'nowrap'}}
+                                    >
+                                        Abrir DANFE ↗
+                                    </a>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="btn-group">
+                            <button
+                                className="btn btn-secondary"
+                                onClick={() => { setDanfeLinksModal(null); setSelectedForDanfe(new Set()); }}
+                            >
+                                Fechar
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
