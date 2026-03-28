@@ -44,9 +44,7 @@
             }
 
             try {
-                const redirectUri = (window.opener && window.opener.localStorage)
-                    ? window.opener.localStorage.getItem('tiny_redirect_uri')
-                    : (localStorage.getItem('tiny_redirect_uri') || 'https://orne-estoque.vercel.app/tiny-callback');
+                const redirectUri = 'https://orne-estoque.vercel.app/tiny-callback';
 
                 const resp = await fetch(SUPABASE_URL + '/functions/v1/tiny-auth', {
                     method: 'POST',
