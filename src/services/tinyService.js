@@ -81,6 +81,9 @@ export function normalizeTinyError(msg) {
   if (msg.match(/401|nao autorizado/i) || msg.match(/token.*expir/i) || msg.match(/reconecte/i)) {
     return 'Sessao Tiny expirada. Va na aba Conexao e clique "Autorizar via OAuth2" para reconectar.';
   }
+  if (msg.match(/409/i) || msg.match(/em andamento/i)) {
+    return 'Já existe uma sincronização em andamento. Aguarde a conclusão antes de iniciar outra.';
+  }
   if (msg.match(/429/i)) {
     return 'Limite de requisicoes atingido. Aguarde alguns minutos e tente novamente.';
   }

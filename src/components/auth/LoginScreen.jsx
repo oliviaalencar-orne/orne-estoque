@@ -52,7 +52,8 @@ export default function LoginScreen({ loading }) {
         await new Promise((r) => setTimeout(r, 1000));
         const { data: { user: newUser } } = await supabaseClient.auth.getUser();
         if (newUser) {
-          await supabaseClient.from('user_profiles').update({ nome: nome.trim() }).eq('id', newUser.id);
+          const { error: profileError } = await supabaseClient.from('user_profiles').update({ nome: nome.trim() }).eq('id', newUser.id);
+          if (profileError) console.error('Erro ao atualizar perfil:', profileError);
         }
 
         // Sign out so they see the success message

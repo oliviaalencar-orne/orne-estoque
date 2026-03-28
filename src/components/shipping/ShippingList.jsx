@@ -19,6 +19,18 @@ import { criarEntradasDevolucao } from '@/utils/devolucaoEntries';
 import { getTransportadoraReal } from '@/utils/transportadora';
 
 // Resize image helper
+const MAX_IMAGE_SIZE = 20 * 1024 * 1024; // 20MB before resize
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
+
+function validateImageFile(file) {
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type) && !file.name.match(/\.(jpg|jpeg|png|webp|heic)$/i)) {
+        throw new Error(`Tipo de arquivo não permitido: ${file.type || file.name}`);
+    }
+    if (file.size > MAX_IMAGE_SIZE) {
+        throw new Error(`Arquivo muito grande (${(file.size / 1024 / 1024).toFixed(1)}MB). Máximo: 20MB.`);
+    }
+}
+
 function resizeImage(file, maxWidth = 1200) {
     return new Promise((resolve) => {
         const reader = new FileReader();
@@ -111,8 +123,9 @@ export default function ShippingList({
         const newUrls = { ...editSignedUrls };
         for (const file of files) {
             try {
+                validateImageFile(file);
                 const resized = await resizeImage(file);
-                const path = `comprovantes/${editingShipping.id}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
+                const path = `comprovantes/${editingShipping.id}/${Date.now()}_${Math.random().toString(36).substring(2, 8)}.jpg`;
                 const { data, error: upErr } = await supabaseClient.storage
                     .from('comprovantes').upload(path, resized, { contentType: resized.type, upsert: false });
                 if (upErr) throw upErr;
@@ -170,8 +183,9 @@ export default function ShippingList({
         const newUrls = { ...signedUrls };
         for (const file of files) {
             try {
+                validateImageFile(file);
                 const resized = await resizeImage(file);
-                const path = `comprovantes/${comprovanteModal.id}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
+                const path = `comprovantes/${comprovanteModal.id}/${Date.now()}_${Math.random().toString(36).substring(2, 8)}.jpg`;
                 const { data, error: upErr } = await supabaseClient.storage
                     .from('comprovantes').upload(path, resized, { contentType: resized.type, upsert: false });
                 if (upErr) throw upErr;
@@ -456,7 +470,7 @@ export default function ShippingList({
             } else {
                 const debugInfo = result?.debug ? '\nDebug:\n' + result.debug.join('\n') : '';
                 const msg = (result?.motivo || 'NF não encontrada no Melhor Envio') + debugInfo;
-                console.log(`[ME] NF ${shipping.nfNumero} não encontrada.`, result?.debug || []);
+                // NF não encontrada no ME
                 setError(msg);
                 setTimeout(() => setError(''), 12000);
             }

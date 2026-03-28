@@ -206,7 +206,8 @@ export default function App() {
       // ═══ EQUIPE/OPERADOR MODE: 2 realtime channels (shippings + separations) ═══
 
       // Categories — fetch once, no realtime
-      supabaseClient.from('categories').select('*').then(({ data }) => {
+      supabaseClient.from('categories').select('*').then(({ data, error }) => {
+        if (error) { console.error('Erro ao buscar categorias:', error); return; }
         if (data && data.length > 0) setCategories(data);
         else setCategories(DEFAULT_CATEGORIES);
       });
@@ -235,12 +236,14 @@ export default function App() {
       );
 
       // Locais — fetch once, no realtime
-      supabaseClient.from('locais_origem').select('name').order('id').then(({ data }) => {
+      supabaseClient.from('locais_origem').select('name').order('id').then(({ data, error }) => {
+        if (error) { console.error('Erro ao buscar locais:', error); return; }
         if (data && data.length > 0) setLocaisOrigem(data.map((d) => d.name));
       });
 
       // Hubs — fetch once, no realtime
-      supabaseClient.from('hubs').select('*').order('name').then(({ data }) => {
+      supabaseClient.from('hubs').select('*').order('name').then(({ data, error }) => {
+        if (error) { console.error('Erro ao buscar hubs:', error); return; }
         if (data) setHubs(data);
       });
 
@@ -253,7 +256,9 @@ export default function App() {
         setupSupabaseCollection('categories', (cats) => {
           if (cats.length === 0) {
             DEFAULT_CATEGORIES.forEach((cat) => {
-              supabaseClient.from('categories').upsert(cat);
+              supabaseClient.from('categories').upsert(cat).then(({ error }) => {
+                if (error) console.error('Erro ao inserir categoria default:', error);
+              });
             });
             setCategories(DEFAULT_CATEGORIES);
           } else {

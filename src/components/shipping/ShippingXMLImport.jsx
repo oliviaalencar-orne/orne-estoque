@@ -135,9 +135,16 @@ export const processarXML = (file, stock, locaisOrigem) => {
 export default function ShippingXMLImport({ stock, nfFile, setNfFile, onSetForm, onSetNfData, onSetActiveView, onSetSuccess, onSetError, locaisOrigem }) {
 
     // Importar NF (PDF ou XML)
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
     const handleFileUpload = (e) => {
         const file = e.target.files[0];
         if (!file) return;
+
+        if (file.size > MAX_FILE_SIZE) {
+            onSetError(`Arquivo muito grande (${(file.size / 1024 / 1024).toFixed(1)}MB). Máximo: 10MB.`);
+            return;
+        }
 
         setNfFile(file);
         onSetError('');
@@ -193,8 +200,7 @@ export default function ShippingXMLImport({ stock, nfFile, setNfFile, onSetForm,
                             const eanNormalizado = (cEAN && cEAN !== 'SEM GTIN') ? cEAN.trim().replace(/[^0-9]/g, '') : '';
                             const nomeNormalizado = xProd.trim().toLowerCase();
 
-                            console.log('Buscando produto:', { skuNF, skuNormalizado, eanNormalizado, nomeNormalizado });
-                            console.log('Produtos no estoque:', stock.map(p => ({ sku: p.sku, name: p.name })));
+                            // Busca produto no estoque por SKU/EAN/nome
 
                             const produtoEncontrado = stock.find(p => {
                                 const pSku = (p.sku || '').trim();
@@ -203,31 +209,26 @@ export default function ShippingXMLImport({ stock, nfFile, setNfFile, onSetForm,
                                 const pNome = (p.name || '').trim().toLowerCase();
 
                                 if (pSku.toLowerCase() === skuNF.toLowerCase()) {
-                                    console.log('Match exato SKU:', pSku, '=', skuNF);
+
                                     return true;
                                 }
                                 if (pSkuNorm && skuNormalizado && pSkuNorm === skuNormalizado) {
-                                    console.log('Match normalizado SKU:', pSkuNorm, '=', skuNormalizado);
+
                                     return true;
                                 }
                                 if (pEan && eanNormalizado && pEan === eanNormalizado) {
-                                    console.log('Match EAN:', pEan, '=', eanNormalizado);
+
                                     return true;
                                 }
                                 if (pSkuNorm.length >= 5 && skuNormalizado.length >= 5) {
                                     if (pSkuNorm.includes(skuNormalizado) || skuNormalizado.includes(pSkuNorm)) {
-                                        console.log('Match parcial SKU:', pSkuNorm, 'contém/está em', skuNormalizado);
+
                                         return true;
                                     }
                                 }
                                 return false;
                             });
 
-                            if (produtoEncontrado) {
-                                console.log('OK: Produto encontrado:', produtoEncontrado.name);
-                            } else {
-                                console.log('ERRO: Produto NÃO encontrado para SKU:', skuNF);
-                            }
 
                             produtos.push({
                                 sku: cProd,
@@ -244,7 +245,6 @@ export default function ShippingXMLImport({ stock, nfFile, setNfFile, onSetForm,
                     const vinculados = produtos.filter(p => p.autoVinculado).length;
                     const naoVinculados = produtos.length - vinculados;
 
-                    console.log('NF Importada:', { nNF, xNome, destino, produtos });
 
                     onSetForm(prevForm => ({
                         ...prevForm,
@@ -294,7 +294,6 @@ export default function ShippingXMLImport({ stock, nfFile, setNfFile, onSetForm,
                         fullText += pageText + '\n';
                     }
 
-                    console.log('Texto extraído do PDF:', fullText);
 
                     // ========== NÚMERO DA NF ==========
                     let nNF = '';
@@ -358,42 +357,21 @@ export default function ShippingXMLImport({ stock, nfFile, setNfFile, onSetForm,
                     // ========== PRODUTOS ==========
                     const produtos = [];
 
-                    console.log('Produtos no estoque para busca:', stock.map(p => ({ sku: p.sku, name: p.name })));
-
                     const encontrarProdutoEstoque = (sku, nome) => {
                         const skuOriginal = (sku || '').trim();
                         const skuNorm = skuOriginal.toLowerCase().replace(/[^a-z0-9]/g, '');
-                        const nomeNorm = (nome || '').trim().toLowerCase();
 
-                        console.log('Buscando no estoque:', { skuOriginal, skuNorm, nomeNorm });
-
-                        const encontrado = stock.find(p => {
+                        return stock.find(p => {
                             const pSkuOriginal = (p.sku || '').trim();
                             const pSku = pSkuOriginal.toLowerCase().replace(/[^a-z0-9]/g, '');
-                            const pNome = (p.name || '').trim().toLowerCase();
 
-                            if (pSkuOriginal.toLowerCase() === skuOriginal.toLowerCase()) {
-                                console.log('OK: Match exato SKU:', pSkuOriginal);
-                                return true;
-                            }
-                            if (pSku && skuNorm && pSku === skuNorm) {
-                                console.log('OK: Match normalizado:', pSku, '=', skuNorm);
-                                return true;
-                            }
+                            if (pSkuOriginal.toLowerCase() === skuOriginal.toLowerCase()) return true;
+                            if (pSku && skuNorm && pSku === skuNorm) return true;
                             if (pSku.length >= 5 && skuNorm.length >= 5) {
-                                if (pSku.includes(skuNorm) || skuNorm.includes(pSku)) {
-                                    console.log('OK: Match parcial:', pSku, 'vs', skuNorm);
-                                    return true;
-                                }
+                                if (pSku.includes(skuNorm) || skuNorm.includes(pSku)) return true;
                             }
                             return false;
                         });
-
-                        if (!encontrado) {
-                            console.log('ERRO: Nenhum match para:', skuOriginal);
-                        }
-
-                        return encontrado;
                     };
 
                     const prodPattern = /([A-Z0-9]{6,15})\s+([A-Za-záéíóúâêôãõçÁÉÍÓÚÂÊÔÃÕÇ0-9\s\-\.]+?)\s+(\d{8})\s+(\d{4})\s+(\d\.\d{3})\s+(UN|PC|PÇ|KG|CX|PCT|M2|M|LT)\s+(\d+[,.]?\d*)/gi;
@@ -435,8 +413,6 @@ export default function ShippingXMLImport({ stock, nfFile, setNfFile, onSetForm,
                             });
                         }
                     }
-
-                    console.log('Dados extraídos:', { nNF, xNome, destino, produtos });
 
                     onSetForm(prevForm => ({
                         ...prevForm,

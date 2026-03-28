@@ -7,7 +7,7 @@
 /**
  * Generate a random 9-char alphanumeric ID.
  */
-export const generateId = () => Math.random().toString(36).substr(2, 9);
+export const generateId = () => Math.random().toString(36).substring(2, 11);
 
 /**
  * Handle Tiny ERP OAuth callback in popup window.

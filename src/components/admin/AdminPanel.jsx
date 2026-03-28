@@ -28,7 +28,11 @@ export default function AdminPanel({ currentUserId }) {
 
   const updateUser = async (userId, updates) => {
     setActionLoading(userId);
-    await supabaseClient.from('user_profiles').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', userId);
+    const { error } = await supabaseClient.from('user_profiles').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', userId);
+    if (error) {
+      console.error('Erro ao atualizar usuário:', error);
+      alert('Erro ao atualizar usuário: ' + error.message);
+    }
     await loadUsers();
     setActionLoading(null);
   };

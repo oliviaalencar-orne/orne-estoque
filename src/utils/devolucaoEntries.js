@@ -54,7 +54,7 @@ export async function criarEntradasDevolucao(shipping, onAddEntry) {
       .limit(1);
 
     if (existing && existing.length > 0) {
-      console.log(`[devolucao] Entrada já existe para SKU ${sku} NF ${nfDev}, pulando`);
+      // Entrada já existe para este SKU/NF, pulando
       skipped++;
       continue;
     }

@@ -54,7 +54,8 @@ export function setupSupabaseCollection(tableName, setState, options = {}) {
     if (changes.length > 20) {
       let refetchQuery = supabaseClient.from(tableName).select(selectFields || '*');
       if (dbFilter) refetchQuery = dbFilter(refetchQuery);
-      refetchQuery.then(({ data }) => {
+      refetchQuery.then(({ data, error }) => {
+        if (error) { console.error('Erro ao refetch ' + tableName + ':', error); return; }
         if (!data) return;
         const items = transform ? data.map(transform) : data;
         const filtered = filter ? items.filter(filter) : items;
