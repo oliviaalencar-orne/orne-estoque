@@ -206,13 +206,29 @@ export default function TinyERPPage({ user, onDataChanged, products, entries, ex
         }
     };
 
-    // Listen for OAuth callback from popup (tiny-callback.html exchanges the code and posts success)
+    // Listen for OAuth callback from popup (tiny-callback.html sends the code via postMessage)
     useEffect(() => {
         const handleMessage = async (event) => {
-            if (event.data?.type === 'tiny_oauth_callback') {
-                // The callback page already exchanged the code — just refresh status
-                await loadStatus();
-                setTestResult({ success: true, message: 'Conectado com sucesso!' });
+            if (event.data?.type === 'tiny_oauth_callback' && event.data?.code) {
+                setLoading(true);
+                try {
+                    const redirectUri = localStorage.getItem('tiny_redirect_uri') || 'https://orne-estoque.vercel.app/tiny-callback';
+                    const data = await callFunction('tiny-auth', {
+                        action: 'exchange_code',
+                        code: event.data.code,
+                        redirect_uri: redirectUri,
+                    });
+                    if (data.success) {
+                        await loadStatus();
+                        setTestResult({ success: true, message: 'Conectado com sucesso!' });
+                    } else {
+                        setTestResult({ success: false, message: data.error || 'Falha na autorizacao' });
+                    }
+                } catch (e) {
+                    setTestResult({ success: false, message: e.message });
+                } finally {
+                    setLoading(false);
+                }
             }
         };
         window.addEventListener('message', handleMessage);

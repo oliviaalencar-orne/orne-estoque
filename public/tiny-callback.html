@@ -7,74 +7,39 @@
     <style>
         body { font-family: 'Inter', sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #f9fafb; }
         .card { text-align: center; padding: 40px; background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); max-width: 400px; }
-        .spinner { width: 32px; height: 32px; border: 3px solid #e5e7eb; border-top-color: #374151; border-radius: 50%; animation: spin 0.6s linear infinite; margin: 0 auto 16px; }
-        @keyframes spin { to { transform: rotate(360deg); } }
         .success { color: #059669; font-weight: 600; }
         .error { color: #dc2626; font-weight: 600; }
         p { color: #6b7280; font-size: 14px; margin-top: 8px; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <div id="loading">
-            <div class="spinner"></div>
-            <div>Trocando codigo de autorizacao...</div>
-        </div>
-        <div id="result" style="display:none"></div>
+    <div class="card" id="msg">
+        <div class="success">Autorizado!</div>
+        <p>Enviando para o sistema...</p>
     </div>
     <script>
-        (async function() {
-            const SUPABASE_URL = 'https://ppslljqxsdsdmwfiayok.supabase.co';
-            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBwc2xsanF4c2RzZG13ZmlheW9rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA2NDUzNjQsImV4cCI6MjA4NjIyMTM2NH0.-7oJxDaw2nwc2uN410OGwavefzjZ-AjfmkK8QxpB7cM';
-
-            const params = new URLSearchParams(window.location.search);
-            const code = params.get('code');
-            const loading = document.getElementById('loading');
-            const result = document.getElementById('result');
-
-            function showResult(html) {
-                loading.style.display = 'none';
-                result.style.display = 'block';
-                result.innerHTML = html;
-            }
+        (function() {
+            var params = new URLSearchParams(window.location.search);
+            var code = params.get('code');
+            var msg = document.getElementById('msg');
 
             if (!code) {
-                showResult('<div class="error">Nenhum codigo recebido</div><p>Feche esta janela e tente novamente.</p>');
+                msg.innerHTML = '<div class="error">Nenhum codigo recebido.</div><p>Feche esta janela e tente novamente.</p>';
                 return;
             }
 
-            try {
-                const redirectUri = 'https://orne-estoque.vercel.app/tiny-callback';
-
-                const resp = await fetch(SUPABASE_URL + '/functions/v1/tiny-auth', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-                        'apikey': SUPABASE_ANON_KEY,
-                    },
-                    body: JSON.stringify({
-                        action: 'exchange_code',
-                        code: code,
-                        redirect_uri: redirectUri,
-                    }),
-                });
-
-                const data = await resp.json();
-
-                if (data.success) {
-                    showResult('<div class="success">Conectado com sucesso!</div><p>Esta janela vai fechar automaticamente...</p>');
-                    // Notify opener to refresh status
-                    try { window.opener?.postMessage({ type: 'tiny_oauth_callback', success: true }, '*'); } catch(e) {}
-                    setTimeout(function() {
-                        try { window.close(); } catch(e) {}
-                    }, 1500);
-                } else {
-                    showResult('<div class="error">Erro: ' + (data.error || 'Falha na autorizacao') + '</div><p>Feche esta janela e tente novamente.</p>');
-                }
-            } catch (e) {
-                showResult('<div class="error">Erro de conexao: ' + e.message + '</div><p>Feche esta janela e tente novamente.</p>');
+            // Send code to the main window (which has authenticated Supabase session)
+            if (window.opener) {
+                try {
+                    window.opener.postMessage({ type: 'tiny_oauth_callback', code: code }, '*');
+                    msg.innerHTML = '<div class="success">Autorizado!</div><p>Fechando...</p>';
+                    setTimeout(function() { window.close(); }, 1000);
+                    return;
+                } catch(e) {}
             }
+
+            // Fallback: no opener (popup blocker redirected in same tab)
+            msg.innerHTML = '<div class="success">Autorizado!</div><p>Volte para a aba do sistema e clique em Reconectar OAuth2 novamente.</p>';
         })();
     </script>
 </body>
