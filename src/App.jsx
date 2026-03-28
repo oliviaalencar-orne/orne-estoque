@@ -314,29 +314,6 @@ export default function App() {
     return refetchData(setEntries, setExits);
   }, [refetchData, setEntries, setExits]);
 
-  // ── Tiny OAuth callback: handle in popup before auth gates ───────────
-  useEffect(() => {
-    if (window.location.pathname !== '/tiny-callback') return;
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get('code');
-    if (!code) return;
-    // If opened as popup, post message and close
-    if (window.opener) {
-      window.opener.postMessage({ type: 'tiny_oauth_callback', code }, '*');
-      window.close();
-      return;
-    }
-    // Fallback: exchange code directly (if popup blocker redirected in same tab)
-    const redirectUri = localStorage.getItem('tiny_redirect_uri') || 'https://orne-estoque.vercel.app/tiny-callback';
-    supabaseClient.functions.invoke('tiny-auth', {
-      body: { action: 'exchange_code', code, redirect_uri: redirectUri },
-    }).then(() => {
-      window.location.href = '/';
-    }).catch(() => {
-      window.location.href = '/';
-    });
-  }, []);
-
   // ── Conditional rendering: auth gates ─────────────────────────────────
   if (!user) return <LoginScreen loading={loading} />;
   if (profileLoading) return <LoginScreen loading={true} />;

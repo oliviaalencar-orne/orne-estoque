@@ -206,42 +206,16 @@ export default function TinyERPPage({ user, onDataChanged, products, entries, ex
         }
     };
 
-    // Listen for OAuth callback
+    // Listen for OAuth callback from popup (tiny-callback.html exchanges the code and posts success)
     useEffect(() => {
         const handleMessage = async (event) => {
-            if (event.data?.type === 'tiny_oauth_callback' && event.data?.code) {
-                const redirectUri = localStorage.getItem('tiny_redirect_uri');
-                setLoading(true);
-                try {
-                    const data = await callFunction('tiny-auth', {
-                        action: 'exchange_code',
-                        code: event.data.code,
-                        redirect_uri: redirectUri,
-                    });
-                    if (data.success) {
-                        await loadStatus();
-                        setTestResult({ success: true, message: 'Conectado com sucesso!' });
-                    } else {
-                        setTestResult({ success: false, message: data.error || 'Falha na autorizacao' });
-                    }
-                } catch (e) {
-                    setTestResult({ success: false, message: e.message });
-                } finally {
-                    setLoading(false);
-                }
+            if (event.data?.type === 'tiny_oauth_callback') {
+                // The callback page already exchanged the code — just refresh status
+                await loadStatus();
+                setTestResult({ success: true, message: 'Conectado com sucesso!' });
             }
         };
-
         window.addEventListener('message', handleMessage);
-
-        // Also check URL params (in case callback came to this window)
-        const params = new URLSearchParams(window.location.search);
-        const code = params.get('code');
-        if (code && window.location.pathname === '/tiny-callback') {
-            window.opener?.postMessage({ type: 'tiny_oauth_callback', code }, '*');
-            window.close();
-        }
-
         return () => window.removeEventListener('message', handleMessage);
     }, []);
 

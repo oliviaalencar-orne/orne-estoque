@@ -22,7 +22,7 @@
   "rewrites": [
     {
       "source": "/tiny-callback",
-      "destination": "/index.html"
+      "destination": "/tiny-callback.html"
     }
   ],
   "headers": [
