@@ -123,6 +123,13 @@ export default function TinyERPPage({ user, onDataChanged, products, entries, ex
         })();
     }, []);
 
+    // Re-check status when window regains focus (after OAuth redirect in popup)
+    useEffect(() => {
+        const handleFocus = () => { loadStatus(); };
+        window.addEventListener('focus', handleFocus);
+        return () => window.removeEventListener('focus', handleFocus);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
     const loadStatus = async () => {
         try {
             // Se ja tem cache, nao mostra loading (refresh silencioso)

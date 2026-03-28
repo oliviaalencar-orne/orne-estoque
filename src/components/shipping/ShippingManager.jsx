@@ -355,6 +355,7 @@ export default function ShippingManager({
             });
             setNfFile(null);
             setNfData(null);
+            await onRefreshShippings?.();
             setActiveView('list');
             setTimeout(() => setSuccess(''), 3000);
         } catch (err) {
@@ -445,6 +446,7 @@ export default function ShippingManager({
         setBatchDespachos([]);
         setBatchFiles([]);
         setSuccess(`${salvos} despacho(s) registrado(s)${erros > 0 ? `, ${erros} erro(s)` : ''}!`);
+        await onRefreshShippings?.();
         setActiveView('list');
         setTimeout(() => setSuccess(''), 5000);
     };

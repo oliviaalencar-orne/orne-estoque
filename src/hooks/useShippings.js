@@ -61,13 +61,12 @@ export function useShippings(user, isStockAdmin, isOperador) {
         alert('Erro ao criar despacho: ' + error.message);
         return;
       }
-      return {
-        ...shipping,
-        id: newShipping.id,
-        date: newShipping.date,
-        userId: user.email,
-        status: newShipping.status,
-      };
+      const created = mapShippingFromDB(newShipping);
+      setShippings((prev) => {
+        if (prev.find((s) => s.id === created.id)) return prev;
+        return [...prev, created];
+      });
+      return created;
     },
     [user, isStockAdmin]
   );
@@ -110,7 +109,11 @@ export function useShippings(user, isStockAdmin, isOperador) {
       if (error) {
         console.error('Erro ao atualizar despacho:', error);
         alert('Erro ao atualizar despacho: ' + error.message);
+        return;
       }
+      setShippings((prev) =>
+        prev.map((s) => (s.id === shippingId ? { ...s, ...data } : s))
+      );
     },
     [isStockAdmin, isOperador]
   );
@@ -125,7 +128,9 @@ export function useShippings(user, isStockAdmin, isOperador) {
       if (error) {
         console.error('Erro ao excluir despacho:', error);
         alert('Erro ao excluir despacho: ' + error.message);
+        return;
       }
+      setShippings((prev) => prev.filter((s) => s.id !== shippingId));
     },
     [isStockAdmin]
   );

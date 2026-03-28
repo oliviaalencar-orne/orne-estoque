@@ -80,7 +80,11 @@ export function useExits(user, isStockAdmin) {
       if (error) {
         console.error('Erro ao atualizar saída:', error);
         alert('Erro ao atualizar saída: ' + error.message);
+        return;
       }
+      setExits((prev) =>
+        prev.map((e) => (e.id === exitId ? { ...e, ...data } : e))
+      );
     },
     [isStockAdmin]
   );
@@ -95,7 +99,9 @@ export function useExits(user, isStockAdmin) {
       if (error) {
         console.error('Erro ao excluir saída:', error);
         alert('Erro ao excluir saída: ' + error.message);
+        return;
       }
+      setExits((prev) => prev.filter((e) => e.id !== exitId));
     },
     [isStockAdmin]
   );

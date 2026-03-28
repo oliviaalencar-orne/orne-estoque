@@ -49,6 +49,10 @@ export function useCategories(isStockAdmin) {
         alert('Erro ao salvar categoria: ' + error.message);
         return;
       }
+      setCategories((prev) => {
+        if (prev.find((c) => c.id === newCategory.id)) return prev;
+        return [...prev, newCategory];
+      });
       return newCategory;
     },
     [isStockAdmin]
@@ -64,7 +68,11 @@ export function useCategories(isStockAdmin) {
       if (error) {
         console.error('Erro ao atualizar categoria:', error);
         alert('Erro ao atualizar categoria: ' + error.message);
+        return;
       }
+      setCategories((prev) =>
+        prev.map((c) => (c.id === categoryId ? { ...c, ...data } : c))
+      );
     },
     [isStockAdmin]
   );
@@ -79,7 +87,9 @@ export function useCategories(isStockAdmin) {
       if (error) {
         console.error('Erro ao excluir categoria:', error);
         alert('Erro ao excluir categoria: ' + error.message);
+        return;
       }
+      setCategories((prev) => prev.filter((c) => c.id !== categoryId));
     },
     [isStockAdmin]
   );

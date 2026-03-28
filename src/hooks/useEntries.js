@@ -98,7 +98,11 @@ export function useEntries(user, isStockAdmin, setProducts) {
       if (error) {
         console.error('Erro ao atualizar entrada:', error);
         alert('Erro ao atualizar entrada: ' + error.message);
+        return;
       }
+      setEntries((prev) =>
+        prev.map((e) => (e.id === entryId ? { ...e, ...data } : e))
+      );
     },
     [isStockAdmin]
   );
@@ -113,7 +117,9 @@ export function useEntries(user, isStockAdmin, setProducts) {
       if (error) {
         console.error('Erro ao excluir entrada:', error);
         alert('Erro ao excluir entrada: ' + error.message);
+        return;
       }
+      setEntries((prev) => prev.filter((e) => e.id !== entryId));
     },
     [isStockAdmin]
   );

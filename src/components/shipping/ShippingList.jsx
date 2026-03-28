@@ -429,6 +429,7 @@ export default function ShippingList({
             } catch (err) {
                 console.error('[devolucao] Erro ao criar entradas:', err);
             }
+            await onRefresh?.();
         }
     };
 
