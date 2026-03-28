@@ -29,12 +29,15 @@ export function useLocaisOrigem(isStockAdmin) {
       .from('locais_origem')
       .select('name')
       .order('id')
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) { console.error('Erro ao buscar locais_origem:', error); return; }
         if (data && data.length > 0) {
           setLocaisOrigem(data.map((d) => d.name));
         } else {
           DEFAULT_LOCAIS.forEach((name) =>
-            supabaseClient.from('locais_origem').insert({ name })
+            supabaseClient.from('locais_origem').insert({ name }).then(({ error }) => {
+              if (error) console.error('Erro ao inserir local default:', error);
+            })
           );
           setLocaisOrigem(DEFAULT_LOCAIS);
         }
@@ -50,7 +53,8 @@ export function useLocaisOrigem(isStockAdmin) {
             .from('locais_origem')
             .select('name')
             .order('id')
-            .then(({ data }) => {
+            .then(({ data, error }) => {
+              if (error) { console.error('Erro ao refetch locais_origem:', error); return; }
               if (data) setLocaisOrigem(data.map((d) => d.name));
             });
         }

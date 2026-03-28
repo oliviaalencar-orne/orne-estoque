@@ -13,7 +13,8 @@ export function useHubs(isStockAdmin) {
       .from('hubs')
       .select('*')
       .order('name')
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) { console.error('Erro ao buscar hubs:', error); }
         if (data) setHubs(data);
         setHubsLoading(false);
       });
@@ -28,7 +29,8 @@ export function useHubs(isStockAdmin) {
             .from('hubs')
             .select('*')
             .order('name')
-            .then(({ data }) => {
+            .then(({ data, error }) => {
+              if (error) { console.error('Erro ao refetch hubs:', error); return; }
               if (data) setHubs(data);
             });
         }

@@ -23,10 +23,19 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: false,
-    // Copy index-legacy.html to dist so it's accessible during migration
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
+      },
+      output: {
+        manualChunks: {
+          // Separate heavy vendor libraries into their own chunks
+          'vendor-react': ['react', 'react-dom'],
+          'vendor-supabase': ['@supabase/supabase-js'],
+          'vendor-xlsx': ['xlsx'],
+          'vendor-pdf': ['pdfjs-dist'],
+          'vendor-charts': ['react-chartjs-2', 'chart.js'],
+        },
       },
     },
   },

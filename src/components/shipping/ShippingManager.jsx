@@ -96,13 +96,10 @@ export default function ShippingManager({
                 if (result.transportadora) updateData.transportadora = result.transportadora;
                 if (Object.keys(updateData).length > 0) {
                     onUpdate(shippingId, updateData);
-                    console.log(`[auto-ME] NF ${nfNumero}: encontrado rastreio ${result.codigo_rastreio} (${result.transportadora})`);
                 }
-            } else {
-                console.log(`[auto-ME] NF ${nfNumero}: não encontrado no ME`);
             }
-        }).catch(err => {
-            console.log(`[auto-ME] NF ${nfNumero}: erro ${err.message}`);
+        }).catch(() => {
+            // Auto-ME search failed silently
         });
     };
 
@@ -165,6 +162,9 @@ export default function ShippingManager({
                             }
                         } catch (exitErr) {
                             console.error('Erro exit batch:', prod.produtoEstoque.sku, exitErr);
+                            if (exitErr.message?.includes('Estoque insuficiente')) {
+                                alert(`⚠️ ${exitErr.message}`);
+                            }
                         }
                     }
                 }
@@ -315,6 +315,9 @@ export default function ShippingManager({
                             }
                         } catch (exitErr) {
                             console.error('Erro exit:', prod.produtoEstoque.sku, exitErr);
+                            if (exitErr.message?.includes('Estoque insuficiente')) {
+                                alert(`⚠️ ${exitErr.message}`);
+                            }
                         }
                     }
                 }
@@ -329,14 +332,21 @@ export default function ShippingManager({
                 // Fallback: shipping sem ID retornado — criar exits sem linkage
                 for (const prod of form.produtos) {
                     if (prod.produtoEstoque && prod.baixarEstoque) {
-                        await onAddExit({
-                            type: 'VENDA',
-                            sku: prod.produtoEstoque.sku,
-                            quantity: prod.quantidade,
-                            client: form.cliente,
-                            nf: form.nfNumero,
-                            nfOrigem: prod.nfOrigem || null,
-                        });
+                        try {
+                            await onAddExit({
+                                type: 'VENDA',
+                                sku: prod.produtoEstoque.sku,
+                                quantity: prod.quantidade,
+                                client: form.cliente,
+                                nf: form.nfNumero,
+                                nfOrigem: prod.nfOrigem || null,
+                            });
+                        } catch (exitErr) {
+                            console.error('Erro exit fallback:', prod.produtoEstoque.sku, exitErr);
+                            if (exitErr.message?.includes('Estoque insuficiente')) {
+                                alert(`⚠️ ${exitErr.message}`);
+                            }
+                        }
                     }
                 }
             }
@@ -425,6 +435,9 @@ export default function ShippingManager({
                             }
                         } catch (exitErr) {
                             console.error('Erro ao registrar saída de estoque:', prod.produtoEstoque.sku, exitErr);
+                            if (exitErr.message?.includes('Estoque insuficiente')) {
+                                alert(`⚠️ ${exitErr.message}`);
+                            }
                         }
                     }
                 }

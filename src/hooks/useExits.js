@@ -23,6 +23,7 @@ export function useExits(user, isStockAdmin) {
 
   /**
    * Add exit and RETURN the created exit record.
+   * Uses RPC safe_create_exit for atomic stock validation + insert (prevents race conditions).
    * This is critical — ShippingManager uses the return value for exitId in JSONB.
    */
   const addExit = useCallback(
@@ -31,22 +32,26 @@ export function useExits(user, isStockAdmin) {
         alert('Sem permissão para esta ação');
         return null;
       }
-      const newRecord = {
-        type: exit.type,
-        sku: exit.sku,
-        quantity: exit.quantity,
-        client: exit.client || '',
-        nf: exit.nf || '',
-        nf_origem: exit.nfOrigem || null,
-        date: new Date().toISOString(),
-        user_id: user.email,
-      };
+      // Use atomic RPC: validates stock availability with advisory lock before inserting
       const { data, error } = await supabaseClient
-        .from('exits')
-        .insert(newRecord)
-        .select()
+        .rpc('safe_create_exit', {
+          p_type: exit.type,
+          p_sku: exit.sku,
+          p_quantity: exit.quantity,
+          p_client: exit.client || '',
+          p_nf: exit.nf || '',
+          p_nf_origem: exit.nfOrigem || null,
+          p_user_id: user.email,
+        })
         .single();
-      if (error) throw error;
+
+      if (error) {
+        // Surface stock-insufficient errors clearly to the user
+        if (error.message && error.message.includes('Estoque insuficiente')) {
+          throw new Error(error.message);
+        }
+        throw error;
+      }
 
       // Update state IMMEDIATELY without waiting for Realtime
       if (data) {

@@ -197,20 +197,17 @@ export function useProducts(user, isStockAdmin) {
         }
         return { inserted, isEntry: true };
       } else {
-        const newRecord = {
-          type: data.type,
-          sku: data.sku,
-          quantity: data.quantity,
-          client: data.client || '',
-          nf: data.nf || '',
-          nf_origem: data.nfOrigem || null,
-          date: new Date().toISOString(),
-          user_id: user.email,
-        };
+        // Use atomic RPC to validate stock before inserting exit
         const { data: inserted, error } = await supabaseClient
-          .from('exits')
-          .insert(newRecord)
-          .select()
+          .rpc('safe_create_exit', {
+            p_type: data.type,
+            p_sku: data.sku,
+            p_quantity: data.quantity,
+            p_client: data.client || '',
+            p_nf: data.nf || '',
+            p_nf_origem: data.nfOrigem || null,
+            p_user_id: user.email,
+          })
           .single();
         if (error) {
           console.error('Erro ao importar saída:', error);

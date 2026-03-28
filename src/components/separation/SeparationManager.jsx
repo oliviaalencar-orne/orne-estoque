@@ -294,7 +294,8 @@ export default function SeparationManager({
           const hasExit = produtosComExit.some(p => p.exitId);
           if (hasExit) {
             try {
-              await supabaseClient.from('shippings').update({ produtos: produtosComExit }).eq('id', shippingId);
+              const { error: updErr } = await supabaseClient.from('shippings').update({ produtos: produtosComExit }).eq('id', shippingId);
+              if (updErr) console.error('Erro ao atualizar produtos do despacho:', updErr);
             } catch (updateErr) {
               console.error('Erro ao atualizar produtos do despacho:', updateErr);
             }

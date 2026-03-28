@@ -28,6 +28,24 @@ export function useShippings(user, isStockAdmin, isOperador) {
         alert('Sem permissão para esta ação');
         return;
       }
+      // Check for duplicate NF number (same NF + same tipo = duplicate)
+      const nfNum = shipping.nfNumero || '';
+      const tipo = shipping.tipo || 'despacho';
+      if (nfNum) {
+        const { data: existing } = await supabaseClient
+          .from('shippings')
+          .select('id, nf_numero')
+          .eq('nf_numero', nfNum)
+          .eq('tipo', tipo)
+          .limit(1);
+        if (existing && existing.length > 0) {
+          const confirmar = window.confirm(
+            `⚠️ Já existe um ${tipo === 'devolucao' ? 'devolução' : 'despacho'} com NF "${nfNum}". Deseja criar mesmo assim?`
+          );
+          if (!confirmar) return null;
+        }
+      }
+
       const newShipping = {
         id: shipping.id || generateId(),
         nf_numero: shipping.nfNumero || '',

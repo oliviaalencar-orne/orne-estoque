@@ -12,6 +12,18 @@ import { supabaseClient } from '@/config/supabase';
 import CategorySelectInline from '@/components/ui/CategorySelectInline';
 
 // Resize image to max 1200px width before upload
+const MAX_IMAGE_SIZE = 20 * 1024 * 1024; // 20MB before resize
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
+
+function validateImageFile(file) {
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type) && !file.name.match(/\.(jpg|jpeg|png|webp|heic)$/i)) {
+        throw new Error(`Tipo não permitido: ${file.type || file.name}`);
+    }
+    if (file.size > MAX_IMAGE_SIZE) {
+        throw new Error(`Arquivo muito grande (${(file.size / 1024 / 1024).toFixed(1)}MB). Máximo: 20MB.`);
+    }
+}
+
 function resizeImage(file, maxWidth = 1200) {
     return new Promise((resolve) => {
         const reader = new FileReader();
@@ -71,8 +83,9 @@ export default function ShippingForm({
         const newFotos = [...currentFotos];
         for (const file of files) {
             try {
+                validateImageFile(file);
                 const resized = await resizeImage(file);
-                const path = `comprovantes/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
+                const path = `comprovantes/${Date.now()}_${Math.random().toString(36).substring(2, 8)}.jpg`;
                 const { data, error: upErr } = await supabaseClient.storage
                     .from('comprovantes')
                     .upload(path, resized, { contentType: resized.type, upsert: false });
@@ -109,9 +122,7 @@ export default function ShippingForm({
         };
         setForm({...form, produtos: newProdutos});
 
-        if (produtoEstoque) {
-            console.log('Produto vinculado manualmente:', produtoEstoque.name);
-        }
+        // Produto vinculado manualmente
     };
 
     // Abrir modal para cadastrar novo produto
