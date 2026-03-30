@@ -18,6 +18,7 @@ import { getStatusLabel, getStatusColor } from '@/utils/statusLabels';
 import { criarEntradasDevolucao } from '@/utils/devolucaoEntries';
 import { getTransportadoraReal } from '@/utils/transportadora';
 
+
 // Resize image helper
 const MAX_IMAGE_SIZE = 20 * 1024 * 1024; // 20MB before resize
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
@@ -87,12 +88,8 @@ export default function ShippingList({
     const [batchMEActive, setBatchMEActive] = useState(false);
     const [batchMEProgress, setBatchMEProgress] = useState(null); // { current, total, vinculados, naoEncontrados, erros, nfAtual }
     const batchMECancelRef = useRef(false);
-    // DANFE state
-    const [danfeLoading, setDanfeLoading] = useState(null); // nfNumero being fetched
-    const [selectedForDanfe, setSelectedForDanfe] = useState(new Set());
-    const [danfeLinksModal, setDanfeLinksModal] = useState(null); // array of { nfNumero, cliente, chaveAcesso }
-    const [batchDanfeLoading, setBatchDanfeLoading] = useState(false);
-    const danfePreloadedRef = useRef(false);
+
+
 
     // Load signed URLs when editing shipping has photos
     useEffect(() => {
@@ -519,134 +516,6 @@ export default function ShippingList({
         }
     };
 
-    // ===== DANFE via consultadanfe.com =====
-    // Pre-load chave_acesso for shippings that don't have it
-    useEffect(() => {
-        if (danfePreloadedRef.current || !shippings.length) return;
-        const semChave = shippings.filter(s =>
-            !s.chaveAcesso && !s.entregaLocal && s.nfNumero
-        );
-        if (semChave.length === 0 || semChave.length > 20) {
-            danfePreloadedRef.current = true;
-            return;
-        }
-        danfePreloadedRef.current = true;
-        supabaseClient.functions.invoke('tiny-download-nf', {
-            body: { nfNumeros: semChave.map(s => s.nfNumero) },
-        }).then(() => onRefresh?.()).catch(() => {});
-    }, [shippings.length]);
-
-    const handleOpenDANFE = async (shipping) => {
-        if (!shipping.nfNumero) return;
-        // If chave_acesso already available, open directly
-        if (shipping.chaveAcesso) {
-            window.open(`https://consultadanfe.com/?chave=${shipping.chaveAcesso}`, '_blank');
-            return;
-        }
-        // Fetch chave via Edge Function
-        setDanfeLoading(shipping.nfNumero);
-        try {
-            const { data, error: fnError } = await supabaseClient.functions.invoke('tiny-download-nf', {
-                body: { nfNumeros: [shipping.nfNumero] },
-            });
-            if (fnError || !data?.success) {
-                setError('Erro ao buscar NF no Tiny');
-                setTimeout(() => setError(''), 6000);
-                return;
-            }
-            const result = data.data?.[shipping.nfNumero];
-            if (!result?.success || !result?.chaveAcesso) {
-                setError(`NF ${shipping.nfNumero}: não encontrada no Tiny ou não autorizada`);
-                setTimeout(() => setError(''), 6000);
-                return;
-            }
-            await onRefresh?.();
-            window.open(`https://consultadanfe.com/?chave=${result.chaveAcesso}`, '_blank');
-        } catch (err) {
-            setError('Erro ao buscar DANFE: ' + err.message);
-            setTimeout(() => setError(''), 6000);
-        } finally {
-            setDanfeLoading(null);
-        }
-    };
-
-    const toggleDanfeSelect = (nfNumero) => {
-        setSelectedForDanfe((prev) => {
-            const next = new Set(prev);
-            if (next.has(nfNumero)) next.delete(nfNumero);
-            else next.add(nfNumero);
-            return next;
-        });
-    };
-
-    const toggleDanfeSelectAll = () => {
-        const withNF = filteredShippings.filter(s => s.nfNumero && !s.entregaLocal);
-        if (selectedForDanfe.size === withNF.length) {
-            setSelectedForDanfe(new Set());
-        } else {
-            setSelectedForDanfe(new Set(withNF.map(s => s.nfNumero)));
-        }
-    };
-
-    const handleBatchDANFE = async () => {
-        const nfs = [...selectedForDanfe].filter(Boolean);
-        if (nfs.length === 0) return;
-
-        setBatchDanfeLoading(true);
-        try {
-            // Separate shippings with and without chave
-            const selected = shippings.filter(s => nfs.includes(s.nfNumero));
-            const semChave = selected.filter(s => !s.chaveAcesso);
-
-            let fetchedChaves = {};
-            if (semChave.length > 0) {
-                const batchNFs = semChave.map(s => s.nfNumero).slice(0, 20);
-                const { data } = await supabaseClient.functions.invoke('tiny-download-nf', {
-                    body: { nfNumeros: batchNFs },
-                });
-                if (data?.success && data.data) {
-                    for (const [nf, result] of Object.entries(data.data)) {
-                        if (result?.success && result?.chaveAcesso) {
-                            fetchedChaves[nf] = result.chaveAcesso;
-                        }
-                    }
-                }
-                await onRefresh?.();
-            }
-
-            // Build links list
-            const links = [];
-            for (const s of selected) {
-                const chave = s.chaveAcesso || fetchedChaves[s.nfNumero];
-                if (chave) {
-                    links.push({ nfNumero: s.nfNumero, cliente: s.cliente, chaveAcesso: chave });
-                }
-            }
-
-            if (links.length === 0) {
-                setError('Nenhuma DANFE encontrada para as NFs selecionadas');
-                setTimeout(() => setError(''), 6000);
-                return;
-            }
-
-            // If 3 or fewer, open directly
-            if (links.length <= 3) {
-                links.forEach(l => {
-                    window.open(`https://consultadanfe.com/?chave=${l.chaveAcesso}`, '_blank');
-                });
-                setSelectedForDanfe(new Set());
-            } else {
-                // Show modal with links
-                setDanfeLinksModal(links);
-            }
-        } catch (err) {
-            setError('Erro ao buscar DANFEs: ' + err.message);
-            setTimeout(() => setError(''), 6000);
-        } finally {
-            setBatchDanfeLoading(false);
-        }
-    };
-
     // Gerar link de rastreio baseado na transportadora ou código
     const gerarLinkRastreio = (transportadora, codigo) => {
         if (!codigo) return '';
@@ -751,34 +620,6 @@ export default function ShippingList({
                 </div>
             )}
 
-            {/* Batch DANFE selection bar */}
-            {selectedForDanfe.size > 0 && (
-                <div style={{
-                    marginBottom: '12px', padding: '10px 16px', background: '#F3F4F6',
-                    border: '1px solid #E5E7EB', borderRadius: '8px',
-                    display: 'flex', alignItems: 'center', gap: '12px',
-                }}>
-                    <span style={{fontSize: '13px', fontWeight: 500, color: '#374151'}}>
-                        {selectedForDanfe.size} NF{selectedForDanfe.size !== 1 ? 's' : ''} selecionada{selectedForDanfe.size !== 1 ? 's' : ''}
-                    </span>
-                    <button
-                        className="btn btn-primary btn-sm"
-                        onClick={handleBatchDANFE}
-                        disabled={batchDanfeLoading}
-                        style={{fontSize: '12px'}}
-                    >
-                        {batchDanfeLoading ? 'Buscando...' : `Abrir DANFE${selectedForDanfe.size !== 1 ? 's' : ''}`}
-                    </button>
-                    <button
-                        className="btn btn-secondary btn-sm"
-                        onClick={() => setSelectedForDanfe(new Set())}
-                        style={{fontSize: '12px'}}
-                    >
-                        Cancelar
-                    </button>
-                </div>
-            )}
-
             <div className="filter-tabs" style={{marginBottom: '12px'}}>
                 <button className={`filter-tab ${statusFilter === 'all' ? 'active' : ''}`} onClick={() => setStatusFilter('all')}>
                     Todos ({shippings.length})
@@ -816,15 +657,6 @@ export default function ShippingList({
                     <table className="table">
                         <thead>
                             <tr>
-                                <th style={{width: '32px', padding: '8px 4px'}}>
-                                    <input
-                                        type="checkbox"
-                                        checked={selectedForDanfe.size > 0 && selectedForDanfe.size === filteredShippings.filter(s => s.nfNumero && !s.entregaLocal).length}
-                                        onChange={toggleDanfeSelectAll}
-                                        title="Selecionar todos para DANFE"
-                                        style={{cursor: 'pointer'}}
-                                    />
-                                </th>
                                 <th>NF</th>
                                 <th>Cliente</th>
                                 <th>{isDevolucao ? 'HUB Destino' : 'Origem'}</th>
@@ -838,16 +670,6 @@ export default function ShippingList({
                         <tbody>
                             {filteredShippings.map(s => (
                                 <tr key={s.id}>
-                                    <td style={{padding: '8px 4px'}}>
-                                        {s.nfNumero && !s.entregaLocal && (
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedForDanfe.has(s.nfNumero)}
-                                                onChange={() => toggleDanfeSelect(s.nfNumero)}
-                                                style={{cursor: 'pointer'}}
-                                            />
-                                        )}
-                                    </td>
                                     <td>
                                         <strong>{s.nfNumero}</strong>
                                         <div style={{fontSize: '10px', color: 'var(--text-muted)'}}>{formatDate(s.date)}</div>
@@ -1094,27 +916,6 @@ export default function ShippingList({
                                             >
                                                 <Icon name="whatsapp" size={14} style={{color: '#25D366'}} />
                                             </button>
-                                            {/* DANFE — all roles, hidden for entrega local */}
-                                            {!s.entregaLocal && s.nfNumero && (
-                                                <button
-                                                    className="btn btn-secondary btn-sm"
-                                                    onClick={() => handleOpenDANFE(s)}
-                                                    disabled={danfeLoading === s.nfNumero}
-                                                    title="Abrir DANFE"
-                                                    style={{fontSize: '10px', padding: '4px 8px', color: s.chaveAcesso ? '#374151' : '#D1D5DB'}}
-                                                >
-                                                    {danfeLoading === s.nfNumero ? (
-                                                        <span style={{display: 'inline-block', width: '14px', height: '14px', border: '2px solid #d1d5db', borderTopColor: '#374151', borderRadius: '50%', animation: 'spin 0.6s linear infinite'}} />
-                                                    ) : (
-                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                                                            <polyline points="14 2 14 8 20 8" />
-                                                            <line x1="16" y1="13" x2="8" y2="13" />
-                                                            <line x1="16" y1="17" x2="8" y2="17" />
-                                                        </svg>
-                                                    )}
-                                                </button>
-                                            )}
                                             {/* Comprovante — for ENTREGUE shippings (canEdit) */}
                                             {canEdit && s.status === 'ENTREGUE' && (
                                                 <button
@@ -1512,45 +1313,6 @@ export default function ShippingList({
                                 <button className="btn btn-secondary" onClick={() => setComprovanteModal(null)}>Fechar</button>
                             </>
                         )}
-                    </div>
-                </div>
-            )}
-            {/* DANFE Links Modal — for batch > 3 */}
-            {danfeLinksModal && (
-                <div className="modal-overlay">
-                    <div className="modal-content" style={{maxWidth: '500px'}}>
-                        <h2 className="modal-title">DANFEs disponíveis</h2>
-                        <p className="modal-subtitle">Clique em cada link para abrir a DANFE em nova aba</p>
-                        <div style={{maxHeight: '400px', overflowY: 'auto', margin: '16px 0'}}>
-                            {danfeLinksModal.map((l, i) => (
-                                <div key={i} style={{
-                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                    padding: '10px 12px', borderBottom: '1px solid #F3F4F6',
-                                }}>
-                                    <div>
-                                        <strong style={{fontSize: '13px'}}>NF {l.nfNumero}</strong>
-                                        <span style={{fontSize: '12px', color: '#6B7280', marginLeft: '8px'}}>{l.cliente}</span>
-                                    </div>
-                                    <a
-                                        href={`https://consultadanfe.com/?chave=${l.chaveAcesso}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="btn btn-primary btn-sm"
-                                        style={{fontSize: '11px', textDecoration: 'none', whiteSpace: 'nowrap'}}
-                                    >
-                                        Abrir DANFE ↗
-                                    </a>
-                                </div>
-                            ))}
-                        </div>
-                        <div className="btn-group">
-                            <button
-                                className="btn btn-secondary"
-                                onClick={() => { setDanfeLinksModal(null); setSelectedForDanfe(new Set()); }}
-                            >
-                                Fechar
-                            </button>
-                        </div>
                     </div>
                 </div>
             )}
