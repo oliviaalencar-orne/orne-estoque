@@ -5,6 +5,7 @@ import React, { useState, useMemo, useCallback, useRef } from 'react';
 import { Icon } from '@/utils/icons';
 import { buildSeparationMessage, openWhatsAppWithMessage, copyToClipboard } from '@/utils/separationMessage';
 
+
 const STATUS_CONFIG = {
   pendente: { label: 'Pendente', color: '#6b7280', bg: '#f3f4f6' },
   separado: { label: 'Separado', color: '#3b82f6', bg: '#dbeafe' },
@@ -43,6 +44,7 @@ export default function SeparationList({
   const [shareMenuPos, setShareMenuPos] = useState({ top: 0, right: 0 });
   const [copiedId, setCopiedId] = useState(null);
   const [batchEntregaLocal, setBatchEntregaLocal] = useState(false);
+
   const shareMenuSepRef = useRef(null);
 
   // Use equipe labels when not admin/operador
