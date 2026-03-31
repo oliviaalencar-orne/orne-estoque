@@ -8,6 +8,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Icon } from '@/utils/icons';
 import { supabaseClient, SUPABASE_URL, SUPABASE_ANON_KEY } from '@/config/supabase';
 import PeriodFilter, { filterByPeriod } from '@/components/ui/PeriodFilter';
+import TinySelectiveSync from '@/components/tiny/TinySelectiveSync';
 
 export default function TinyERPPage({ user, onDataChanged, products, entries, exits, stock, onAddEntry, onAddExit, onAddProduct, categories, locaisOrigem, onUpdateLocais, onAddCategory, onUpdateCategory, onDeleteCategory }) {
     const [activeSection, setActiveSectionRaw] = useState(() => {
@@ -665,7 +666,7 @@ export default function TinyERPPage({ user, onDataChanged, products, entries, ex
                         </div>
                     )}
 
-                    {status?.connected && (
+                    {status?.connected && (<>
                         <div style={{display: 'grid', gap: '16px', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', alignItems: 'stretch'}}>
                             {/* Products sync card */}
                             <div style={{...cardStyle, display: 'flex', flexDirection: 'column', marginBottom: 0}}>
@@ -848,7 +849,14 @@ export default function TinyERPPage({ user, onDataChanged, products, entries, ex
 
                             {/* NF-e import removido — funcionalidade integrada em Entrada/Saida */}
                         </div>
-                    )}
+
+                        {/* Selective sync */}
+                        <TinySelectiveSync
+                            products={products}
+                            syncLock={syncLock}
+                            onDataChanged={onDataChanged}
+                        />
+                    </>)}
                 </div>
             )}
 
