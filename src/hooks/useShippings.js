@@ -120,13 +120,19 @@ export function useShippings(user, isStockAdmin, isOperador) {
       if (data.motivoDevolucao !== undefined) mapped.motivo_devolucao = data.motivoDevolucao;
       if (data.hubDestino !== undefined) mapped.hub_destino = data.hubDestino;
       if (data.entradaCriada !== undefined) mapped.entrada_criada = data.entradaCriada;
-      const { error } = await supabaseClient
+      const { data: updated, error } = await supabaseClient
         .from('shippings')
         .update(mapped)
-        .eq('id', shippingId);
+        .eq('id', shippingId)
+        .select('id');
       if (error) {
         console.error('Erro ao atualizar despacho:', error);
         alert('Erro ao atualizar despacho: ' + error.message);
+        return;
+      }
+      if (!updated || updated.length === 0) {
+        console.error('Update retornou 0 rows — possível bloqueio de RLS para shippingId:', shippingId);
+        alert('Erro: não foi possível salvar as alterações. Verifique suas permissões.');
         return;
       }
       setShippings((prev) =>

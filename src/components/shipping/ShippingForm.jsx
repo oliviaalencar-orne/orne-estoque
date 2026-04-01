@@ -66,6 +66,7 @@ export default function ShippingForm({
     const [error, setError] = useState('');
     const [uploadingFoto, setUploadingFoto] = useState(false);
     const fotoInputRef = useRef(null);
+    const [fotoSignedUrls, setFotoSignedUrls] = useState({});
 
     const isEntregaLocal = form.transportadora === 'Entrega Local';
 
@@ -81,6 +82,7 @@ export default function ShippingForm({
         setUploadingFoto(true);
         setError('');
         const newFotos = [...currentFotos];
+        const newUrls = {};
         for (const file of files) {
             try {
                 validateImageFile(file);
@@ -91,11 +93,16 @@ export default function ShippingForm({
                     .upload(path, resized, { contentType: resized.type, upsert: false });
                 if (upErr) throw upErr;
                 newFotos.push(data.path);
+                // Get signed URL for preview
+                const { data: urlData } = await supabaseClient.storage
+                    .from('comprovantes').createSignedUrl(data.path, 3600);
+                if (urlData?.signedUrl) newUrls[data.path] = urlData.signedUrl;
             } catch (err) {
                 setError('Erro ao enviar foto: ' + err.message);
             }
         }
         setForm({ ...form, comprovanteFotos: newFotos });
+        setFotoSignedUrls(prev => ({ ...prev, ...newUrls }));
         setUploadingFoto(false);
         if (fotoInputRef.current) fotoInputRef.current.value = '';
     };
@@ -752,7 +759,7 @@ export default function ShippingForm({
                                         borderRadius: '8px', overflow: 'hidden', border: '1px solid #d1d5db'
                                     }}>
                                         <img
-                                            src={`${import.meta.env.VITE_SUPABASE_URL || 'https://ppslljqxsdsdmwfiayok.supabase.co'}/storage/v1/object/sign/comprovantes/${path}?token=preview`}
+                                            src={fotoSignedUrls[path] || ''}
                                             alt=""
                                             style={{width: '100%', height: '100%', objectFit: 'cover'}}
                                             onError={(e) => { e.target.style.display = 'none'; }}
