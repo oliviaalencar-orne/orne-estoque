@@ -570,7 +570,7 @@ export default function ShippingList({
                         {atualizandoRastreio ? 'Atualizando...' : 'Atualizar Rastreios'}
                     </button>
                 )}
-                {canEdit && !isDevolucao && (
+                {canEdit && (
                     <button
                         className="btn btn-secondary"
                         onClick={vincularRastreiosME}
