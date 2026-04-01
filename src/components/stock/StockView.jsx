@@ -8,7 +8,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Icon, CategoryIcon } from '@/utils/icons';
 import { formatBRL } from '@/utils/formatters';
 import CategorySelectInline from '@/components/ui/CategorySelectInline';
-import { callTinyFunction, normalizeTinyError } from '@/services/tinyService';
+import { callTinyFunction } from '@/services/tinyService';
 import { supabaseClient } from '@/config/supabase';
 
 export default function StockView({ stock, categories, onUpdate, onDelete, searchTerm, setSearchTerm, entries, exits, locaisOrigem, onAddCategory, onUpdateCategory, onDeleteCategory, products, isEquipe, isStockAdmin, equipeProducts, equipeLoading, equipeHasMore, onEquipeLoadMore, onEquipeSearch, equipeTotalCount }) {
@@ -45,9 +45,12 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
         if (!product.sku || tinySyncLoading) return;
         setTinySyncLoading(product.id);
         try {
-            const data = await callTinyFunction('tiny-sync-product-single', { sku: product.sku });
+            const payload = product.tinyId
+                ? { tiny_id: product.tinyId, sku: product.sku }
+                : { sku: product.sku };
+            const data = await callTinyFunction('tiny-sync-product-single', payload);
             if (!data.success) {
-                alert(normalizeTinyError(data.error) || 'Erro ao atualizar do Tiny');
+                alert(data.error || 'Erro ao atualizar do Tiny');
                 return;
             }
             const prod = data.product;

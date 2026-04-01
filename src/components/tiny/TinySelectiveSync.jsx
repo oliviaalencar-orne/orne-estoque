@@ -51,7 +51,7 @@ export default function TinySelectiveSync({ products, syncLock, onDataChanged })
 
     const addProduct = (product) => {
         if (selectedProducts.some(p => p.sku === product.sku)) return;
-        setSelectedProducts(prev => [...prev, { sku: product.sku, name: product.name, isNew: false }]);
+        setSelectedProducts(prev => [...prev, { sku: product.sku, name: product.name, tinyId: product.tinyId || '', isNew: false }]);
         setSearchTerm('');
         setShowDropdown(false);
     };
@@ -113,11 +113,12 @@ export default function TinySelectiveSync({ products, syncLock, onDataChanged })
         let updated = 0;
 
         for (let i = 0; i < selectedProducts.length; i++) {
-            const { sku } = selectedProducts[i];
+            const { sku, tinyId } = selectedProducts[i];
             setProgress({ current: i + 1, total: selectedProducts.length, currentSku: sku, status: 'running' });
 
             try {
-                const data = await callTinyFunction('tiny-sync-product-single', { sku });
+                const payload = tinyId ? { tiny_id: tinyId, sku } : { sku };
+                const data = await callTinyFunction('tiny-sync-product-single', payload);
                 if (!data.success) {
                     errors.push({ sku, error: data.error || 'Erro desconhecido' });
                     if (i < selectedProducts.length - 1) await sleep(DELAY_BETWEEN_CALLS_MS);

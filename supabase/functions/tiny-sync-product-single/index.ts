@@ -252,42 +252,93 @@ Deno.serve(async (req: Request) => {
       if (result.newToken) token = result.newToken;
       produto = result.data;
     } else {
-      // Search by SKU
+      // Search by SKU — max 3 API calls to stay within timeout
+      const skuLower = (sku || "").toLowerCase();
+
+      // Determine search term: for variation SKUs like "1005006621816154-Walnut wood-30cm..."
+      // search with the base code (before first hyphen) to find the parent product
+      const hasHyphen = sku!.includes('-');
+      const searchTerm = hasHyphen ? sku!.split('-')[0].trim() : sku!;
+
+      console.log(`Searching for SKU "${sku}", search term: "${searchTerm}", hasHyphen: ${hasHyphen}`);
+
+      // API call 1: Search products
       const searchResult = await safeTinyFetch(
         supabase,
-        `${TINY_API_BASE}/produtos?pesquisa=${encodeURIComponent(sku!)}&criterio=codigo`,
+        `${TINY_API_BASE}/produtos?pesquisa=${encodeURIComponent(searchTerm)}&criterio=codigo`,
         token,
       );
       if (searchResult.newToken) token = searchResult.newToken;
 
       const itens = searchResult.data?.itens || [];
-      // Find exact SKU match (case-insensitive)
+      console.log(`Search returned ${itens.length} results`);
+
+      // Try direct match at top level first
       produto = itens.find((p: any) =>
-        (p.sku || "").toLowerCase() === (sku || "").toLowerCase()
+        (p.sku || "").toLowerCase() === skuLower ||
+        (p.codigo || "").toLowerCase() === skuLower
       );
 
+      // If no direct match, check variations in up to first 3 results
       if (!produto && itens.length > 0) {
-        // Fallback: match by codigo field
-        produto = itens.find((p: any) =>
-          (p.codigo || "").toLowerCase() === (sku || "").toLowerCase()
-        );
+        const maxChecks = Math.min(itens.length, 3);
+        console.log(`No direct match. Checking variations in ${maxChecks} products...`);
+
+        for (let i = 0; i < maxChecks; i++) {
+          const item = itens[i];
+          if (!item.id) continue;
+          try {
+            // API call 2/3/4: Fetch product detail to see variations
+            const detailResult = await safeTinyFetch(supabase, `${TINY_API_BASE}/produtos/${item.id}`, token);
+            if (detailResult.newToken) token = detailResult.newToken;
+            const detail = detailResult.data;
+
+            // Check if this is the product itself (exact match on detail)
+            if ((detail.sku || "").toLowerCase() === skuLower ||
+                (detail.codigo || "").toLowerCase() === skuLower) {
+              produto = detail;
+              break;
+            }
+
+            // Check variations array
+            const variacoes = detail.variacoes || detail.variations || [];
+            console.log(`Product ${item.id} has ${variacoes.length} variations`);
+
+            const matchedVar = variacoes.find((v: any) =>
+              (v.sku || "").toLowerCase() === skuLower ||
+              (v.codigo || "").toLowerCase() === skuLower
+            );
+
+            if (matchedVar) {
+              console.log(`Found variation match in parent product ${item.id}`);
+              produto = {
+                ...detail,
+                ...matchedVar,
+                descricao: matchedVar.descricao || detail.descricao || "",
+                id: matchedVar.id || detail.id,
+              };
+              break;
+            }
+          } catch (detailErr: any) {
+            console.warn("Could not fetch detail for item", item.id, detailErr.message);
+          }
+        }
       }
 
-      // If found in list, fetch full detail
-      if (produto?.id) {
+      // If found in list (not via detail), fetch full detail
+      if (produto?.id && !produto.variacoes && !produto.precos) {
         try {
           const detailResult = await safeTinyFetch(supabase, `${TINY_API_BASE}/produtos/${produto.id}`, token);
           if (detailResult.newToken) token = detailResult.newToken;
           produto = { ...produto, ...detailResult.data };
         } catch (detailErr: any) {
-          // If detail fetch fails, continue with list data
           console.warn("Could not fetch product detail:", detailErr.message);
         }
       }
     }
 
     if (!produto) {
-      return jsonErr(`Produto não encontrado no Tiny: ${sku || tiny_id}`, 404);
+      return jsonOk({ success: false, error: `Produto não encontrado no Tiny: ${sku || tiny_id}` });
     }
 
     // Extract product data using same field mapping as tiny-sync-products
