@@ -8,8 +8,10 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Icon, CategoryIcon } from '@/utils/icons';
 import { formatBRL } from '@/utils/formatters';
 import CategorySelectInline from '@/components/ui/CategorySelectInline';
+import { callTinyFunction } from '@/services/tinyService';
+import { supabaseClient } from '@/config/supabase';
 
-export default function StockView({ stock, categories, onUpdate, onDelete, searchTerm, setSearchTerm, entries, exits, locaisOrigem, onAddCategory, onUpdateCategory, onDeleteCategory, products, isEquipe, equipeProducts, equipeLoading, equipeHasMore, onEquipeLoadMore, onEquipeSearch, equipeTotalCount }) {
+export default function StockView({ stock, categories, onUpdate, onDelete, searchTerm, setSearchTerm, entries, exits, locaisOrigem, onAddCategory, onUpdateCategory, onDeleteCategory, products, isEquipe, isStockAdmin, equipeProducts, equipeLoading, equipeHasMore, onEquipeLoadMore, onEquipeSearch, equipeTotalCount }) {
     // Loading state
     const showInitialLoading = isEquipe
         ? ((equipeProducts || []).length === 0 && equipeLoading)
@@ -37,6 +39,59 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
     const [editForm, setEditForm] = useState({});
     const [successMsg, setSuccessMsg] = useState('');
     const [hideZeroStock, setHideZeroStock] = useState(true);
+    const [tinySyncLoading, setTinySyncLoading] = useState(null); // product id being synced
+
+    const handleTinySync = async (product) => {
+        if (!product.sku || tinySyncLoading) return;
+        setTinySyncLoading(product.id);
+        try {
+            const payload = product.tinyId
+                ? { tiny_id: product.tinyId, sku: product.sku }
+                : { sku: product.sku };
+            const data = await callTinyFunction('tiny-sync-product-single', payload);
+            if (!data.success) {
+                alert(data.error || 'Erro ao atualizar do Tiny');
+                return;
+            }
+            const prod = data.product;
+            const updateData = {};
+            if (prod.name) updateData.name = prod.name;
+            if (prod.ean !== undefined) updateData.ean = prod.ean;
+            if (prod.category) updateData.category = prod.category;
+            if (prod.unit_price !== undefined) updateData.unitPrice = prod.unit_price;
+            if (prod.observations !== undefined) updateData.observations = prod.observations;
+            if (prod.imagem_url) updateData.imagemUrl = prod.imagem_url;
+
+            // Update via Supabase directly for fields not covered by onUpdate
+            const dbUpdate = {};
+            if (prod.name) dbUpdate.name = prod.name;
+            if (prod.ean !== undefined) dbUpdate.ean = prod.ean;
+            if (prod.category) dbUpdate.category = prod.category;
+            if (prod.unit_price !== undefined) dbUpdate.unit_price = prod.unit_price;
+            if (prod.observations !== undefined) dbUpdate.observations = prod.observations;
+            if (prod.imagem_url) dbUpdate.imagem_url = prod.imagem_url;
+            if (prod.tiny_id) dbUpdate.tiny_id = prod.tiny_id;
+
+            await supabaseClient.from('products').update(dbUpdate).eq('id', product.id);
+
+            // Update local state via onUpdate callback pattern
+            if (onUpdate) {
+                await onUpdate(product.id, updateData);
+            }
+
+            // Update detail modal if open
+            if (detailProduct?.id === product.id) {
+                setDetailProduct(prev => ({ ...prev, ...updateData }));
+            }
+
+            setSuccessMsg('Produto atualizado do Tiny');
+            setTimeout(() => setSuccessMsg(''), 3000);
+        } catch (err) {
+            alert(normalizeTinyError(err.message));
+        } finally {
+            setTinySyncLoading(null);
+        }
+    };
 
     // Accordion state — all collapsed by default
     const [expandedCategories, setExpandedCategories] = useState(new Set());
@@ -479,6 +534,21 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                         })()}
 
                         <div className="btn-group" style={{gap: '8px'}}>
+                            {isStockAdmin && detailProduct.sku && (
+                                <button
+                                    className="btn btn-secondary"
+                                    onClick={() => handleTinySync(detailProduct)}
+                                    disabled={tinySyncLoading === detailProduct.id}
+                                    title="Atualizar dados do Tiny ERP"
+                                    style={{fontSize: '12px'}}
+                                >
+                                    {tinySyncLoading === detailProduct.id ? (
+                                        <><Icon name="spinner" size={14} style={{animation: 'spin 1s linear infinite'}} /> Atualizando...</>
+                                    ) : (
+                                        <><Icon name="sync" size={14} /> Atualizar do Tiny</>
+                                    )}
+                                </button>
+                            )}
                             {!isEquipe && (
                                 <>
                                     <button className="btn btn-primary" onClick={() => { openEditModal(detailProduct); }}>Editar</button>
