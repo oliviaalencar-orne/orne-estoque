@@ -20,6 +20,7 @@ export function useSeparations(user, isStockAdmin, isOperador = false) {
         cliente: separation.cliente || '',
         destino: separation.destino || '',
         observacoes: separation.observacoes || '',
+        transportadora: separation.transportadora || '',
         status: separation.status || 'pendente',
         produtos: separation.produtos || [],
         shipping_id: separation.shippingId || '',
@@ -67,6 +68,7 @@ export function useSeparations(user, isStockAdmin, isOperador = false) {
       if (data.cliente !== undefined) mapped.cliente = data.cliente;
       if (data.destino !== undefined) mapped.destino = data.destino;
       if (data.observacoes !== undefined) mapped.observacoes = data.observacoes;
+      if (data.transportadora !== undefined) mapped.transportadora = data.transportadora;
       if (data.status !== undefined) mapped.status = data.status;
       if (data.produtos !== undefined) mapped.produtos = data.produtos;
       if (data.shippingId !== undefined) mapped.shipping_id = data.shippingId;

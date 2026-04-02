@@ -311,6 +311,11 @@ export default function SeparationList({
                           </span>
                         ) : null;
                       })()}
+                      {sep.transportadora && (
+                        <span className="badge" style={{ background: '#fef3c7', color: '#92400e', fontSize: '10px' }}>
+                          {sep.transportadora}
+                        </span>
+                      )}
                       {isSuccess && (
                         <span style={{ color: 'var(--success)', fontSize: '12px', fontWeight: 500 }}>
                           ✓ Atualizado

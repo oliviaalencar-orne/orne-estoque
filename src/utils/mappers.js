@@ -82,6 +82,7 @@ export const mapSeparationFromDB = (row) => ({
   cliente: row.cliente || '',
   destino: row.destino || '',
   observacoes: row.observacoes || '',
+  transportadora: row.transportadora || '',
   status: row.status || 'pendente',
   produtos: row.produtos || [],
   shippingId: row.shipping_id || '',
