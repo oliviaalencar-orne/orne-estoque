@@ -149,7 +149,7 @@ export default function ShippingList({
             setDeliveryToken(data);
 
             // Open WhatsApp
-            const link = `${window.location.origin}/entrega/${data.token}`;
+            const link = `https://orne-estoque.vercel.app/entrega/${data.token}`;
             const telefone = entregadorTelefone.replace(/\D/g, '');
             const tel = telefone.startsWith('55') ? telefone : `55${telefone}`;
             const msg = encodeURIComponent(
@@ -1232,14 +1232,14 @@ export default function ShippingList({
                                         </div>
                                         <div style={{display: 'flex', gap: '6px', flexWrap: 'wrap'}}>
                                             <button className="btn btn-secondary btn-sm" style={{fontSize: '11px'}} onClick={() => {
-                                                const link = `${window.location.origin}/entrega/${deliveryToken.token}`;
+                                                const link = `https://orne-estoque.vercel.app/entrega/${deliveryToken.token}`;
                                                 navigator.clipboard.writeText(link).then(() => {
                                                     setSuccess('Link copiado!');
                                                     setTimeout(() => setSuccess(''), 2000);
                                                 });
                                             }}>Copiar Link</button>
                                             <button className="btn btn-secondary btn-sm" style={{fontSize: '11px'}} onClick={() => {
-                                                const link = `${window.location.origin}/entrega/${deliveryToken.token}`;
+                                                const link = `https://orne-estoque.vercel.app/entrega/${deliveryToken.token}`;
                                                 const telefone = (deliveryToken.entregador_telefone || '').replace(/\D/g, '');
                                                 const tel = telefone.startsWith('55') ? telefone : `55${telefone}`;
                                                 const msg = encodeURIComponent(
