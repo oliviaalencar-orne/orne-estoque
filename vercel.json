@@ -23,6 +23,10 @@
     {
       "source": "/tiny-callback",
       "destination": "/tiny-callback.html"
+    },
+    {
+      "source": "/entrega/:token",
+      "destination": "/index.html"
     }
   ],
   "headers": [
