@@ -187,20 +187,6 @@ export default function ShippingList({
         });
     };
 
-    // Multi-NF: selectable shippings (entrega local + DESPACHADO)
-    const selectableShippings = useMemo(() => {
-        return filteredShippings.filter(s => s.entregaLocal && s.status === 'DESPACHADO');
-    }, [filteredShippings]);
-
-    // Multi-NF: select/deselect all visible
-    const toggleSelectAll = () => {
-        if (selectedForDelivery.size === selectableShippings.length && selectableShippings.length > 0) {
-            setSelectedForDelivery(new Set());
-        } else {
-            setSelectedForDelivery(new Set(selectableShippings.map(s => s.id)));
-        }
-    };
-
     // Generate multi-NF delivery token
     const gerarLinkMultiEntregador = async () => {
         if (selectedForDelivery.size === 0) return;
@@ -409,6 +395,20 @@ export default function ShippingList({
         });
         return items.sort((a, b) => new Date(b.date) - new Date(a.date));
     }, [shippings, searchTerm, statusFilter, shipPeriodFilter, shipCustomMonth, shipCustomYear]);
+
+    // Multi-NF: selectable shippings (entrega local + DESPACHADO)
+    const selectableShippings = useMemo(() => {
+        return filteredShippings.filter(s => s.entregaLocal && s.status === 'DESPACHADO');
+    }, [filteredShippings]);
+
+    // Multi-NF: select/deselect all visible
+    const toggleSelectAll = () => {
+        if (selectedForDelivery.size === selectableShippings.length && selectableShippings.length > 0) {
+            setSelectedForDelivery(new Set());
+        } else {
+            setSelectedForDelivery(new Set(selectableShippings.map(s => s.id)));
+        }
+    };
 
     // Status progression — only advances, never regresses
     const STATUS_RANK = { DESPACHADO: 0, AGUARDANDO_COLETA: 0.5, EM_TRANSITO: 1, SAIU_ENTREGA: 2, TENTATIVA_ENTREGA: 2, ENTREGUE: 3, DEVOLVIDO: 3 };
