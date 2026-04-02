@@ -162,15 +162,18 @@ export default function ShippingBatchImport({
                     </div>
 
                     {/* Tabela de despachos em lote */}
-                    <div className="table-container" style={{maxHeight: '400px', overflowY: 'auto'}}>
+                    <div className="table-container" style={{maxHeight: '400px', overflow: 'auto'}}>
                         <table className="table">
-                            <thead style={{position: 'sticky', top: 0, background: 'white'}}>
+                            <thead style={{position: 'sticky', top: 0, background: 'white', zIndex: 1}}>
                                 <tr>
                                     <th style={{width: '40px'}}><Icon name="check" size={14} /></th>
                                     <th>NF / Arquivo</th>
                                     <th>Cliente</th>
+                                    <th>Destino</th>
+                                    <th>Origem</th>
                                     <th>Produtos</th>
                                     <th>Transportadora</th>
+                                    <th>Obs</th>
                                     <th style={{width: '80px'}}>Status</th>
                                 </tr>
                             </thead>
@@ -211,6 +214,29 @@ export default function ShippingBatchImport({
                                                 placeholder="Nome do cliente"
                                             />
                                         </td>
+                                        <td>
+                                            <input
+                                                type="text"
+                                                className="form-input"
+                                                value={d.destino || ''}
+                                                onChange={(e) => editarDespachoBatch(idx, 'destino', e.target.value)}
+                                                disabled={!!d.error}
+                                                style={{fontSize: '11px', padding: '4px 8px', minWidth: '140px'}}
+                                                placeholder="Endereço"
+                                            />
+                                        </td>
+                                        <td>
+                                            <select
+                                                className="form-select"
+                                                value={d.localOrigem || ''}
+                                                onChange={(e) => editarDespachoBatch(idx, 'localOrigem', e.target.value)}
+                                                disabled={!!d.error}
+                                                style={{fontSize: '11px', padding: '4px', minWidth: '100px'}}
+                                            >
+                                                <option value="">Selecionar...</option>
+                                                {locaisOrigem.map(l => <option key={l} value={l}>{l}</option>)}
+                                            </select>
+                                        </td>
                                         <td style={{fontSize: '12px'}}>
                                             {d.error ? (
                                                 <span style={{color: 'var(--danger)'}}>{d.error}</span>
@@ -236,6 +262,17 @@ export default function ShippingBatchImport({
                                                 <option value="">Selecionar...</option>
                                                 {transportadoras.map(t => <option key={t} value={t}>{t}</option>)}
                                             </select>
+                                        </td>
+                                        <td>
+                                            <input
+                                                type="text"
+                                                className="form-input"
+                                                value={d.observacoes || ''}
+                                                onChange={(e) => editarDespachoBatch(idx, 'observacoes', e.target.value)}
+                                                disabled={!!d.error}
+                                                style={{fontSize: '11px', padding: '4px 8px', minWidth: '120px'}}
+                                                placeholder="Ex: TRANSPORTE LOCAL"
+                                            />
                                         </td>
                                         <td style={{textAlign: 'center'}}>
                                             {d.error ? (
