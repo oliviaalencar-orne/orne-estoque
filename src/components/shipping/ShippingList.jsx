@@ -110,7 +110,7 @@ export default function ShippingList({
 
     // Load existing delivery token when editing a shipping
     useEffect(() => {
-        if (!editingShipping?.id || !editingShipping?.entregaLocal) {
+        if (!editingShipping?.id || !(editingShipping?.entregaLocal || editingShipping?.transportadora === 'Entrega Local')) {
             setDeliveryToken(null);
             setEntregadorNome('');
             setEntregadorTelefone('');
@@ -134,7 +134,7 @@ export default function ShippingList({
                 setEntregadorTelefone('');
             }
         })();
-    }, [editingShipping?.id, editingShipping?.entregaLocal]);
+    }, [editingShipping?.id, editingShipping?.entregaLocal, editingShipping?.transportadora]);
 
     const gerarLinkEntregador = async () => {
         if (!editingShipping?.id) return;
@@ -396,9 +396,12 @@ export default function ShippingList({
         return items.sort((a, b) => new Date(b.date) - new Date(a.date));
     }, [shippings, searchTerm, statusFilter, shipPeriodFilter, shipCustomMonth, shipCustomYear]);
 
+    // Helper: detect entrega local by flag OR transportadora text
+    const isEntregaLocalShipping = (s) => s.entregaLocal || s.transportadora === 'Entrega Local';
+
     // Multi-NF: selectable shippings (entrega local + DESPACHADO)
     const selectableShippings = useMemo(() => {
-        return filteredShippings.filter(s => s.entregaLocal && s.status === 'DESPACHADO');
+        return filteredShippings.filter(s => isEntregaLocalShipping(s) && s.status === 'DESPACHADO');
     }, [filteredShippings]);
 
     // Multi-NF: select/deselect all visible
@@ -883,7 +886,7 @@ export default function ShippingList({
                                 <tr key={s.id} style={selectedForDelivery.has(s.id) ? {background: '#EFF6FF'} : undefined}>
                                     {!isDevolucao && selectableShippings.length > 0 && (
                                         <td style={{textAlign: 'center'}}>
-                                            {s.entregaLocal && s.status === 'DESPACHADO' ? (
+                                            {isEntregaLocalShipping(s) && s.status === 'DESPACHADO' ? (
                                                 <input
                                                     type="checkbox"
                                                     checked={selectedForDelivery.has(s.id)}
@@ -903,12 +906,12 @@ export default function ShippingList({
                                     </td>
                                     <td style={{fontSize: '12px'}}>{isDevolucao ? (s.hubDestino || '-') : s.localOrigem}</td>
                                     <td style={{fontSize: '12px'}}>
-                                        {s.entregaLocal ? (
+                                        {isEntregaLocalShipping(s) ? (
                                             <span style={{color: '#065F46', fontWeight: 500}}>📦 Local</span>
                                         ) : (getTransportadoraReal(s) || '-')}
                                     </td>
                                     <td>
-                                        {s.entregaLocal ? (
+                                        {isEntregaLocalShipping(s) ? (
                                             <div>
                                                 {s.recebedorNome && (
                                                     <div style={{fontSize: '12px', fontWeight: 500}}>
@@ -999,7 +1002,7 @@ export default function ShippingList({
                                                 lineHeight: '1.4',
                                                 whiteSpace: 'nowrap',
                                             }}>
-                                                {s.entregaLocal && s.status === 'DESPACHADO' ? 'Aguardando Entrega' : s.entregaLocal && s.status === 'ENTREGUE' ? 'Entregue (Local)' : (isDevolucao ? (getStatusLabel(s.status, 'devolucao') || statusList[s.status]?.label || s.status) : (statusList[s.status]?.label || s.status))}
+                                                {isEntregaLocalShipping(s) && s.status === 'DESPACHADO' ? 'Aguardando Entrega' : isEntregaLocalShipping(s) && s.status === 'ENTREGUE' ? 'Entregue (Local)' : (isDevolucao ? (getStatusLabel(s.status, 'devolucao') || statusList[s.status]?.label || s.status) : (statusList[s.status]?.label || s.status))}
                                             </span>
                                             {canEdit && (statusTransitions[s.status] || []).length > 0 && (
                                                 <>
@@ -1144,14 +1147,14 @@ export default function ShippingList({
                                                 <button
                                                     className="btn btn-secondary btn-sm"
                                                     onClick={() => openComprovante(s)}
-                                                    title={s.entregaLocal ? 'Ver/editar comprovante' : 'Adicionar comprovante'}
+                                                    title={isEntregaLocalShipping(s) ? 'Ver/editar comprovante' : 'Adicionar comprovante'}
                                                     style={{fontSize: '10px', padding: '4px 8px'}}
                                                 >
                                                     📋
                                                 </button>
                                             )}
                                             {/* Tracking — canEdit, not for local delivery */}
-                                            {canEdit && !s.entregaLocal && (s.codigoRastreio || s.melhorEnvioId) && (
+                                            {canEdit && !isEntregaLocalShipping(s) && (s.codigoRastreio || s.melhorEnvioId) && (
                                                 <button
                                                     className="btn btn-primary btn-sm"
                                                     onClick={() => atualizarRastreioMelhorEnvio(s)}
@@ -1162,7 +1165,7 @@ export default function ShippingList({
                                                     {atualizandoRastreio ? '...' : '⟳'}
                                                 </button>
                                             )}
-                                            {canEdit && !s.entregaLocal && s.nfNumero && (!s.codigoRastreio || !s.melhorEnvioId) && (
+                                            {canEdit && !isEntregaLocalShipping(s) && s.nfNumero && (!s.codigoRastreio || !s.melhorEnvioId) && (
                                                 <button
                                                     className="btn btn-secondary btn-sm"
                                                     onClick={() => buscarRastreioNF(s)}
@@ -1345,7 +1348,7 @@ export default function ShippingList({
                         )}
 
                         {/* Link para Entregador — only for Entrega Local */}
-                        {editingShipping.entregaLocal && (
+                        {(editingShipping.entregaLocal || editingShipping.transportadora === 'Entrega Local') && (
                             <div style={{border: '1px solid #d1d5db', borderRadius: '8px', padding: '14px', marginBottom: '12px'}}>
                                 <h4 style={{margin: '0 0 10px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)'}}>Link para Entregador</h4>
                                 <div className="form-row">
