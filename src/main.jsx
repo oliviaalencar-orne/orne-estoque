@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import { handleTinyCallback } from '@/utils/helpers';
+import EntregadorUpload from '@/components/delivery/EntregadorUpload';
 
 // PDF.js worker setup (replaces CDN script tag)
 import * as pdfjsLib from 'pdfjs-dist';
@@ -18,8 +19,14 @@ import './styles/pages.css';
 // Handle Tiny ERP OAuth callback in popup window (must run BEFORE React mount)
 handleTinyCallback();
 
+// Public route: /entrega/:token (no auth required)
+const entregaMatch = window.location.pathname.match(/^\/entrega\/([a-f0-9]+)$/);
+const RootComponent = entregaMatch
+  ? () => <EntregadorUpload token={entregaMatch[1]} />
+  : App;
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <App />
+    <RootComponent />
   </React.StrictMode>
 );

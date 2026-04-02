@@ -55,6 +55,14 @@ function resizeImage(file, maxWidth = 1200) {
     });
 }
 
+// Resolve bucket name and real path for comprovante photos
+function resolvePhotoBucket(path) {
+    if (path.startsWith('externos:')) {
+        return { bucket: 'comprovantes-externos', realPath: path.slice(9) };
+    }
+    return { bucket: 'comprovantes', realPath: path };
+}
+
 export default function ShippingList({
     shippings, onUpdate, onDelete, isStockAdmin, locaisOrigem,
     statusList, statusTransitions, transportadoras, onRefresh,
@@ -88,8 +96,80 @@ export default function ShippingList({
     const [batchMEActive, setBatchMEActive] = useState(false);
     const [batchMEProgress, setBatchMEProgress] = useState(null); // { current, total, vinculados, naoEncontrados, erros, nfAtual }
     const batchMECancelRef = useRef(false);
+    // Delivery token state (entregador link)
+    const [deliveryToken, setDeliveryToken] = useState(null); // { token, status, uploads_count, max_uploads, expires_at, entregador_nome, entregador_telefone }
+    const [loadingToken, setLoadingToken] = useState(false);
+    const [entregadorNome, setEntregadorNome] = useState('');
+    const [entregadorTelefone, setEntregadorTelefone] = useState('');
 
+    // Load existing delivery token when editing a shipping
+    useEffect(() => {
+        if (!editingShipping?.id || !editingShipping?.entregaLocal) {
+            setDeliveryToken(null);
+            setEntregadorNome('');
+            setEntregadorTelefone('');
+            return;
+        }
+        (async () => {
+            const { data } = await supabaseClient
+                .from('delivery_tokens')
+                .select('*')
+                .eq('shipping_id', editingShipping.id)
+                .order('created_at', { ascending: false })
+                .limit(1);
+            if (data && data.length > 0) {
+                const t = data[0];
+                setDeliveryToken(t);
+                setEntregadorNome(t.entregador_nome || '');
+                setEntregadorTelefone(t.entregador_telefone || '');
+            } else {
+                setDeliveryToken(null);
+                setEntregadorNome('');
+                setEntregadorTelefone('');
+            }
+        })();
+    }, [editingShipping?.id, editingShipping?.entregaLocal]);
 
+    const gerarLinkEntregador = async () => {
+        if (!editingShipping?.id) return;
+        if (!entregadorNome.trim()) { setError('Preencha o nome do entregador'); setTimeout(() => setError(''), 3000); return; }
+        if (!entregadorTelefone.trim()) { setError('Preencha o telefone do entregador'); setTimeout(() => setError(''), 3000); return; }
+        setLoadingToken(true);
+        try {
+            const { data, error: err } = await supabaseClient
+                .from('delivery_tokens')
+                .insert({
+                    shipping_id: editingShipping.id,
+                    entregador_nome: entregadorNome.trim(),
+                    entregador_telefone: entregadorTelefone.trim(),
+                })
+                .select('*')
+                .single();
+            if (err) throw err;
+            setDeliveryToken(data);
+
+            // Open WhatsApp
+            const link = `${window.location.origin}/entrega/${data.token}`;
+            const telefone = entregadorTelefone.replace(/\D/g, '');
+            const tel = telefone.startsWith('55') ? telefone : `55${telefone}`;
+            const msg = encodeURIComponent(
+                `Olá ${entregadorNome.trim()}!\n\n` +
+                `Você está realizando uma entrega da *ORNE™*.\n\n` +
+                `NF: ${editingShipping.nfNumero || '-'}\n` +
+                `Cliente: ${editingShipping.cliente || '-'}\n` +
+                `Endereço: ${editingShipping.destino || '-'}\n\n` +
+                `Por favor, anexe o comprovante de entrega neste link:\n${link}\n\n` +
+                `O link é válido por 48 horas.\nObrigado!`
+            );
+            window.open(`https://wa.me/${tel}?text=${msg}`, '_blank');
+        } catch (err) {
+            console.error('Erro ao gerar token:', err);
+            setError('Erro ao gerar link: ' + (err.message || err));
+            setTimeout(() => setError(''), 5000);
+        } finally {
+            setLoadingToken(false);
+        }
+    };
 
     // Load signed URLs when editing shipping has photos
     useEffect(() => {
@@ -101,7 +181,8 @@ export default function ShippingList({
             for (const path of fotos) {
                 if (editSignedUrls[path]) { urls[path] = editSignedUrls[path]; continue; }
                 try {
-                    const { data } = await supabaseClient.storage.from('comprovantes').createSignedUrl(path, 3600);
+                    const { bucket, realPath } = resolvePhotoBucket(path);
+                    const { data } = await supabaseClient.storage.from(bucket).createSignedUrl(realPath, 3600);
                     if (data?.signedUrl) urls[path] = data.signedUrl;
                 } catch (_) {}
             }
@@ -162,8 +243,9 @@ export default function ShippingList({
         const urls = {};
         for (const path of (shipping.comprovanteFotos || [])) {
             try {
+                const { bucket, realPath } = resolvePhotoBucket(path);
                 const { data } = await supabaseClient.storage
-                    .from('comprovantes').createSignedUrl(path, 3600);
+                    .from(bucket).createSignedUrl(realPath, 3600);
                 if (data?.signedUrl) urls[path] = data.signedUrl;
             } catch (_) {}
         }
@@ -203,7 +285,7 @@ export default function ShippingList({
         const path = fotos[index];
         fotos.splice(index, 1);
         setComprovanteForm({ ...comprovanteForm, comprovanteFotos: fotos });
-        try { await supabaseClient.storage.from('comprovantes').remove([path]); } catch (_) {}
+        try { const rb = resolvePhotoBucket(path); await supabaseClient.storage.from(rb.bucket).remove([rb.realPath]); } catch (_) {}
     };
 
     const saveComprovante = async () => {
@@ -1099,7 +1181,7 @@ export default function ShippingList({
                                                     const fotos = [...(editingShipping.comprovanteFotos || [])];
                                                     const removed = fotos.splice(i, 1)[0];
                                                     setEditingShipping({...editingShipping, comprovanteFotos: fotos});
-                                                    try { await supabaseClient.storage.from('comprovantes').remove([removed]); } catch (_) {}
+                                                    try { const rb = resolvePhotoBucket(removed); await supabaseClient.storage.from(rb.bucket).remove([rb.realPath]); } catch (_) {}
                                                 }} style={{
                                                     position: 'absolute', top: '3px', right: '3px',
                                                     width: '20px', height: '20px', borderRadius: '50%',
@@ -1119,6 +1201,62 @@ export default function ShippingList({
                                         </div>
                                     )}
                                 </div>
+                            </div>
+                        )}
+
+                        {/* Link para Entregador — only for Entrega Local */}
+                        {editingShipping.entregaLocal && (
+                            <div style={{border: '1px solid #d1d5db', borderRadius: '8px', padding: '14px', marginBottom: '12px'}}>
+                                <h4 style={{margin: '0 0 10px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)'}}>Link para Entregador</h4>
+                                <div className="form-row">
+                                    <div className="form-group">
+                                        <label className="form-label">Nome do Entregador</label>
+                                        <input type="text" className="form-input" value={entregadorNome} onChange={(e) => setEntregadorNome(e.target.value)} placeholder="Nome do motorista" />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Telefone (WhatsApp)</label>
+                                        <input type="text" className="form-input" value={entregadorTelefone} onChange={(e) => setEntregadorTelefone(e.target.value)} placeholder="(11) 99999-9999" />
+                                    </div>
+                                </div>
+                                {deliveryToken ? (
+                                    <div style={{fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px'}}>
+                                        <div style={{display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px'}}>
+                                            <span className="badge" style={{
+                                                background: deliveryToken.status === 'ativo' ? '#d1fae5' : '#fee2e2',
+                                                color: deliveryToken.status === 'ativo' ? '#065f46' : '#991b1b',
+                                                fontSize: '10px',
+                                            }}>
+                                                {deliveryToken.status === 'ativo' ? 'Link ativo' : deliveryToken.status === 'usado' ? 'Usado' : 'Expirado'}
+                                            </span>
+                                            <span>Fotos: {deliveryToken.uploads_count}/{deliveryToken.max_uploads}</span>
+                                        </div>
+                                        <div style={{display: 'flex', gap: '6px', flexWrap: 'wrap'}}>
+                                            <button className="btn btn-secondary btn-sm" style={{fontSize: '11px'}} onClick={() => {
+                                                const link = `${window.location.origin}/entrega/${deliveryToken.token}`;
+                                                navigator.clipboard.writeText(link).then(() => {
+                                                    setSuccess('Link copiado!');
+                                                    setTimeout(() => setSuccess(''), 2000);
+                                                });
+                                            }}>Copiar Link</button>
+                                            <button className="btn btn-secondary btn-sm" style={{fontSize: '11px'}} onClick={() => {
+                                                const link = `${window.location.origin}/entrega/${deliveryToken.token}`;
+                                                const telefone = (deliveryToken.entregador_telefone || '').replace(/\D/g, '');
+                                                const tel = telefone.startsWith('55') ? telefone : `55${telefone}`;
+                                                const msg = encodeURIComponent(
+                                                    `Olá ${deliveryToken.entregador_nome || ''}!\n\nLink para comprovante de entrega ORNE™:\n${link}`
+                                                );
+                                                window.open(`https://wa.me/${tel}?text=${msg}`, '_blank');
+                                            }}>Reenviar WhatsApp</button>
+                                            <button className="btn btn-primary btn-sm" style={{fontSize: '11px'}} onClick={gerarLinkEntregador} disabled={loadingToken}>
+                                                {loadingToken ? 'Gerando...' : 'Novo Link'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <button className="btn btn-primary btn-sm" style={{fontSize: '12px', marginTop: '4px'}} onClick={gerarLinkEntregador} disabled={loadingToken}>
+                                        {loadingToken ? 'Gerando...' : 'Gerar Link e Enviar WhatsApp'}
+                                    </button>
+                                )}
                             </div>
                         )}
 
