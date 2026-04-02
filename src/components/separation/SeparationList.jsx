@@ -479,7 +479,7 @@ export default function SeparationList({
               onChange={(e) => setBatchEntregaLocal(e.target.checked)}
               style={{width: '14px', height: '14px', accentColor: '#10b981'}}
             />
-            📦 Entrega Local (já entregue)
+            📦 Entrega Local
           </label>
           <button
             style={{

@@ -267,7 +267,7 @@ export default function ShippingForm({
                         <div>
                             <div style={{fontWeight: 600, color: '#065F46', fontSize: '13px'}}>Entrega Local selecionada</div>
                             <div style={{fontSize: '11px', color: '#047857'}}>
-                                O despacho será criado com status ENTREGUE automaticamente. Campos de rastreio ocultos.
+                                O entregador receberá um link para anexar o comprovante de entrega.
                             </div>
                         </div>
                     </div>
@@ -820,7 +820,7 @@ export default function ShippingForm({
 
                 <div className="btn-group">
                     <button type="submit" className="btn btn-primary">
-                        {isEntregaLocal ? 'Registrar como Entregue' : 'Registrar Despacho'}
+                        {isEntregaLocal ? 'Registrar Entrega Local' : 'Registrar Despacho'}
                     </button>
                     <button type="button" className="btn btn-secondary" onClick={onCancel}>Cancelar</button>
                 </div>

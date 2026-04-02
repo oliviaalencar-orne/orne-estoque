@@ -278,12 +278,12 @@ export default function ShippingManager({
                 hubTelefone: form.hubTelefone || '',
                 produtos: form.produtos,
                 observacoes: form.observacoes,
-                status: isLocal ? 'ENTREGUE' : 'DESPACHADO',
+                status: 'DESPACHADO',
                 entregaLocal: isLocal,
                 recebedorNome: isLocal ? (form.recebedorNome || '') : '',
                 comprovanteObs: isLocal ? (form.comprovanteObs || '') : '',
                 comprovanteFotos: isLocal ? (form.comprovanteFotos || []) : [],
-                dataEntrega: isLocal ? new Date().toISOString() : null,
+                dataEntrega: null,
             };
 
             const savedShipping = await onAdd(shippingData);
@@ -356,7 +356,7 @@ export default function ShippingManager({
                 tentarBuscarRastreioME(shippingId, form.nfNumero, form.cliente);
             }
 
-            setSuccess(isLocal ? 'Entrega local registrada como ENTREGUE!' : 'Despacho registrado com sucesso!');
+            setSuccess(isLocal ? 'Entrega local registrada! Aguardando comprovante do entregador.' : 'Despacho registrado com sucesso!');
             setForm({
                 nfNumero: '', cliente: '', destino: '', localOrigem: locaisOrigem[0] || 'Loja Principal',
                 transportadora: '', codigoRastreio: '', linkRastreio: '', melhorEnvioId: '',
