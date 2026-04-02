@@ -7,6 +7,8 @@ import React, { useState } from 'react';
 import { Icon } from '@/utils/icons';
 import { getEstoquePorNF } from '@/utils/fifo';
 
+const TRANSPORTADORAS = ['Melhor Envio', 'Correios', 'Jadlog', 'Total Express', 'Braspress', 'TNT', 'Azul Cargo', 'Loggi', 'Entrega Local', 'Outro'];
+
 export default function SeparationForm({
   data, onSave, onCancel,
   products, stock, entries, exits,
@@ -20,6 +22,7 @@ export default function SeparationForm({
     cliente: data?.cliente || '',
     destino: data?.destino || '',
     observacoes: data?.observacoes || '',
+    transportadora: data?.transportadora || '',
     status: data?.status || 'pendente',
     hubId: data?.hubId || defaultHubId || '',
     produtos: (data?.produtos || []).map(p => ({ ...p, selected: p.selected !== false })),
@@ -140,6 +143,13 @@ export default function SeparationForm({
             </select>
           </div>
         )}
+        <div>
+          <label className="form-label">Transportadora</label>
+          <select className="form-select" value={form.transportadora || ''} onChange={e => setForm({ ...form, transportadora: e.target.value })}>
+            <option value="">Selecionar...</option>
+            {TRANSPORTADORAS.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </div>
       </div>
 
       <div style={{ marginBottom: '16px' }}>

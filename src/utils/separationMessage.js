@@ -21,6 +21,23 @@ function formatDateBR() {
  * @param {Array} options.separations - Array of separation objects (status: pendente)
  * @returns {string} Formatted message text
  */
+/**
+ * Render a single separation line block (NF + products + obs).
+ */
+function renderSeparationBlock(sep) {
+  const lines = [];
+  lines.push(`*NF ${sep.nfNumero || '-'}* — ${sep.cliente || '-'}`);
+  (sep.produtos || []).forEach(p => {
+    const nome = p.produtoEstoque?.name || p.nome || '-';
+    const qtd = p.quantidade || 1;
+    lines.push(`• ${nome} — Qtd: ${qtd}`);
+    if (p.observacao) {
+      lines.push(`  ↳ Obs: ${p.observacao}`);
+    }
+  });
+  return lines;
+}
+
 export function buildSeparationMessage({ hubName, separations }) {
   const lines = [];
 
@@ -30,26 +47,45 @@ export function buildSeparationMessage({ hubName, separations }) {
   lines.push('Solicitação: Separação das NFs abaixo');
   lines.push('');
 
+  // Group by transportadora
+  const grupos = {};
+  separations.forEach(sep => {
+    const key = sep.transportadora || '';
+    if (!grupos[key]) grupos[key] = [];
+    grupos[key].push(sep);
+  });
+
+  const hasMultipleGroups = Object.keys(grupos).length > 1 || (Object.keys(grupos).length === 1 && Object.keys(grupos)[0] !== '');
+
   const obsGerais = [];
 
-  separations.forEach((sep, idx) => {
-    if (idx > 0) lines.push('');
+  if (hasMultipleGroups) {
+    // Ordered display: known carriers first, then others
+    const ordem = ['Entrega Local', 'Loggi', 'Correios', 'Melhor Envio', 'Jadlog', 'Total Express', 'Braspress', 'TNT', 'Azul Cargo'];
+    const sortedKeys = [
+      ...ordem.filter(k => grupos[k]),
+      ...Object.keys(grupos).filter(k => k && !ordem.includes(k)),
+      ...(grupos[''] ? [''] : []),
+    ];
 
-    lines.push(`*NF ${sep.nfNumero || '-'}* — ${sep.cliente || '-'}`);
-
-    (sep.produtos || []).forEach(p => {
-      const nome = p.produtoEstoque?.name || p.nome || '-';
-      const qtd = p.quantidade || 1;
-      lines.push(`• ${nome} — Qtd: ${qtd}`);
-      if (p.observacao) {
-        lines.push(`  ↳ Obs: ${p.observacao}`);
-      }
+    sortedKeys.forEach((key, gi) => {
+      if (gi > 0) lines.push('');
+      const label = key || 'Sem transportadora';
+      lines.push(`📦 *${label.toUpperCase()}:*`);
+      grupos[key].forEach((sep, idx) => {
+        if (idx > 0) lines.push('');
+        lines.push(...renderSeparationBlock(sep));
+        if (sep.observacoes) obsGerais.push({ nf: sep.nfNumero || '-', obs: sep.observacoes });
+      });
     });
-
-    if (sep.observacoes) {
-      obsGerais.push({ nf: sep.nfNumero || '-', obs: sep.observacoes });
-    }
-  });
+  } else {
+    // No grouping needed (all same or no transportadora)
+    separations.forEach((sep, idx) => {
+      if (idx > 0) lines.push('');
+      lines.push(...renderSeparationBlock(sep));
+      if (sep.observacoes) obsGerais.push({ nf: sep.nfNumero || '-', obs: sep.observacoes });
+    });
+  }
 
   if (obsGerais.length > 0) {
     lines.push('');

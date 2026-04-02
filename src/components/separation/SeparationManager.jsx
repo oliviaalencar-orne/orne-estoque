@@ -188,6 +188,7 @@ export default function SeparationManager({
       nfNumero: separation.nfNumero,
       cliente: separation.cliente,
       destino: separation.destino,
+      transportadora: separation.transportadora || '',
       produtos: separation.produtos,
     };
     await onUpdate(separation.id, { status: 'despachado', shippingId: 'pending' });
@@ -252,7 +253,7 @@ export default function SeparationManager({
           cliente: sep.cliente || '',
           destino: sep.destino || '',
           localOrigem,
-          transportadora: isLocal ? 'Entrega Local' : '',
+          transportadora: isLocal ? 'Entrega Local' : (sep.transportadora || ''),
           codigoRastreio: '',
           linkRastreio: '',
           melhorEnvioId: '',
