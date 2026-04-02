@@ -101,6 +101,12 @@ export default function ShippingList({
     const [loadingToken, setLoadingToken] = useState(false);
     const [entregadorNome, setEntregadorNome] = useState('');
     const [entregadorTelefone, setEntregadorTelefone] = useState('');
+    // Multi-NF delivery token (select multiple local deliveries)
+    const [selectedForDelivery, setSelectedForDelivery] = useState(new Set());
+    const [showMultiDeliveryModal, setShowMultiDeliveryModal] = useState(false);
+    const [multiEntregadorNome, setMultiEntregadorNome] = useState('');
+    const [multiEntregadorTelefone, setMultiEntregadorTelefone] = useState('');
+    const [loadingMultiToken, setLoadingMultiToken] = useState(false);
 
     // Load existing delivery token when editing a shipping
     useEffect(() => {
@@ -168,6 +174,90 @@ export default function ShippingList({
             setTimeout(() => setError(''), 5000);
         } finally {
             setLoadingToken(false);
+        }
+    };
+
+    // Multi-NF: toggle selection
+    const toggleDeliverySelection = (shippingId) => {
+        setSelectedForDelivery(prev => {
+            const next = new Set(prev);
+            if (next.has(shippingId)) next.delete(shippingId);
+            else next.add(shippingId);
+            return next;
+        });
+    };
+
+    // Multi-NF: selectable shippings (entrega local + DESPACHADO)
+    const selectableShippings = useMemo(() => {
+        return filteredShippings.filter(s => s.entregaLocal && s.status === 'DESPACHADO');
+    }, [filteredShippings]);
+
+    // Multi-NF: select/deselect all visible
+    const toggleSelectAll = () => {
+        if (selectedForDelivery.size === selectableShippings.length && selectableShippings.length > 0) {
+            setSelectedForDelivery(new Set());
+        } else {
+            setSelectedForDelivery(new Set(selectableShippings.map(s => s.id)));
+        }
+    };
+
+    // Generate multi-NF delivery token
+    const gerarLinkMultiEntregador = async () => {
+        if (selectedForDelivery.size === 0) return;
+        if (!multiEntregadorNome.trim()) { setError('Preencha o nome do entregador'); setTimeout(() => setError(''), 3000); return; }
+        if (!multiEntregadorTelefone.trim()) { setError('Preencha o telefone do entregador'); setTimeout(() => setError(''), 3000); return; }
+        setLoadingMultiToken(true);
+        try {
+            // 1. Create token (no shipping_id — multi-NF)
+            const { data: tokenData, error: tokenErr } = await supabaseClient
+                .from('delivery_tokens')
+                .insert({
+                    shipping_id: null,
+                    entregador_nome: multiEntregadorNome.trim(),
+                    entregador_telefone: multiEntregadorTelefone.trim(),
+                })
+                .select('*')
+                .single();
+            if (tokenErr) throw tokenErr;
+
+            // 2. Create junction records
+            const junctionRows = Array.from(selectedForDelivery).map(sid => ({
+                token_id: tokenData.id,
+                shipping_id: sid,
+            }));
+            const { error: jErr } = await supabaseClient
+                .from('delivery_token_shippings')
+                .insert(junctionRows);
+            if (jErr) throw jErr;
+
+            // 3. Build WhatsApp message
+            const selectedShippingsList = shippings.filter(s => selectedForDelivery.has(s.id));
+            const nfList = selectedShippingsList.map(s => `• NF ${s.nfNumero || '-'} — ${s.cliente || '-'}`).join('\n');
+            const link = `https://orne-estoque.vercel.app/entrega/${tokenData.token}`;
+            const telefone = multiEntregadorTelefone.replace(/\D/g, '');
+            const tel = telefone.startsWith('55') ? telefone : `55${telefone}`;
+            const msg = encodeURIComponent(
+                `Olá ${multiEntregadorNome.trim()}!\n\n` +
+                `Você está realizando ${selectedForDelivery.size} entrega(s) da *ORNE™*.\n\n` +
+                `${nfList}\n\n` +
+                `Anexe os comprovantes de entrega neste link:\n${link}\n\n` +
+                `O link é válido por 48 horas.\nObrigado!`
+            );
+            window.open(`https://wa.me/${tel}?text=${msg}`, '_blank');
+
+            // Clean up
+            setShowMultiDeliveryModal(false);
+            setSelectedForDelivery(new Set());
+            setMultiEntregadorNome('');
+            setMultiEntregadorTelefone('');
+            setSuccess(`Link gerado para ${selectedForDelivery.size} entregas!`);
+            setTimeout(() => setSuccess(''), 5000);
+        } catch (err) {
+            console.error('Erro ao gerar token multi-NF:', err);
+            setError('Erro ao gerar link: ' + (err.message || err));
+            setTimeout(() => setError(''), 5000);
+        } finally {
+            setLoadingMultiToken(false);
         }
     };
 
@@ -728,6 +818,34 @@ export default function ShippingList({
                 customYear={shipCustomYear} setCustomYear={setShipCustomYear}
             />
 
+            {/* Multi-select action bar */}
+            {!isDevolucao && selectedForDelivery.size > 0 && (
+                <div style={{
+                    display: 'flex', alignItems: 'center', gap: '12px',
+                    padding: '10px 16px', marginBottom: '12px',
+                    background: '#EFF6FF', border: '1px solid #BFDBFE',
+                    borderRadius: '8px', fontSize: '13px',
+                }}>
+                    <span style={{fontWeight: 600, color: '#1D4ED8'}}>
+                        {selectedForDelivery.size} entrega(s) selecionada(s)
+                    </span>
+                    <button
+                        className="btn btn-primary btn-sm"
+                        style={{fontSize: '12px', marginLeft: 'auto'}}
+                        onClick={() => setShowMultiDeliveryModal(true)}
+                    >
+                        📦 Gerar Link para Entregador
+                    </button>
+                    <button
+                        className="btn btn-secondary btn-sm"
+                        style={{fontSize: '12px'}}
+                        onClick={() => setSelectedForDelivery(new Set())}
+                    >
+                        Limpar
+                    </button>
+                </div>
+            )}
+
             {filteredShippings.length === 0 ? (
                 <div className="empty-state">
                     <div className="empty-state-icon"><Icon name="shipping" size={48} /></div>
@@ -739,6 +857,17 @@ export default function ShippingList({
                     <table className="table">
                         <thead>
                             <tr>
+                                {!isDevolucao && selectableShippings.length > 0 && (
+                                    <th style={{width: '36px', textAlign: 'center'}}>
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedForDelivery.size === selectableShippings.length && selectableShippings.length > 0}
+                                            onChange={toggleSelectAll}
+                                            title="Selecionar todas entregas locais pendentes"
+                                            style={{cursor: 'pointer'}}
+                                        />
+                                    </th>
+                                )}
                                 <th>NF</th>
                                 <th>Cliente</th>
                                 <th>{isDevolucao ? 'HUB Destino' : 'Origem'}</th>
@@ -751,7 +880,19 @@ export default function ShippingList({
                         </thead>
                         <tbody>
                             {filteredShippings.map(s => (
-                                <tr key={s.id}>
+                                <tr key={s.id} style={selectedForDelivery.has(s.id) ? {background: '#EFF6FF'} : undefined}>
+                                    {!isDevolucao && selectableShippings.length > 0 && (
+                                        <td style={{textAlign: 'center'}}>
+                                            {s.entregaLocal && s.status === 'DESPACHADO' ? (
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedForDelivery.has(s.id)}
+                                                    onChange={() => toggleDeliverySelection(s.id)}
+                                                    style={{cursor: 'pointer'}}
+                                                />
+                                            ) : null}
+                                        </td>
+                                    )}
                                     <td>
                                         <strong>{s.nfNumero}</strong>
                                         <div style={{fontSize: '10px', color: 'var(--text-muted)'}}>{formatDate(s.date)}</div>
@@ -858,7 +999,7 @@ export default function ShippingList({
                                                 lineHeight: '1.4',
                                                 whiteSpace: 'nowrap',
                                             }}>
-                                                {s.entregaLocal && s.status === 'ENTREGUE' ? 'Entregue (Local)' : (isDevolucao ? (getStatusLabel(s.status, 'devolucao') || statusList[s.status]?.label || s.status) : (statusList[s.status]?.label || s.status))}
+                                                {s.entregaLocal && s.status === 'DESPACHADO' ? 'Aguardando Entrega' : s.entregaLocal && s.status === 'ENTREGUE' ? 'Entregue (Local)' : (isDevolucao ? (getStatusLabel(s.status, 'devolucao') || statusList[s.status]?.label || s.status) : (statusList[s.status]?.label || s.status))}
                                             </span>
                                             {canEdit && (statusTransitions[s.status] || []).length > 0 && (
                                                 <>
@@ -1093,8 +1234,7 @@ export default function ShippingList({
                                         transportadora: val,
                                         ...(isLocal ? {
                                             codigoRastreio: '', linkRastreio: '', melhorEnvioId: '',
-                                            entregaLocal: true, status: 'ENTREGUE',
-                                            dataEntrega: editingShipping.dataEntrega || new Date().toISOString(),
+                                            entregaLocal: true,
                                         } : {
                                             entregaLocal: false,
                                         }),
@@ -1115,7 +1255,7 @@ export default function ShippingList({
                                 padding: '10px 14px', marginBottom: '12px', fontSize: '13px', color: '#065F46',
                                 display: 'flex', alignItems: 'center', gap: '8px'
                             }}>
-                                📦 Entrega local — será marcado como <strong>ENTREGUE</strong> automaticamente.
+                                📦 Entrega local — entregador receberá link para anexar comprovante.
                             </div>
                         )}
 
@@ -1305,7 +1445,6 @@ export default function ShippingList({
                                 className="btn btn-primary"
                                 onClick={async () => {
                                     const isLocal = editingShipping.transportadora === 'Entrega Local';
-                                    const isEntregue = isLocal || editingShipping.status === 'ENTREGUE';
                                     const updateData = {
                                         nfNumero: editingShipping.nfNumero,
                                         cliente: editingShipping.cliente,
@@ -1315,15 +1454,15 @@ export default function ShippingList({
                                         codigoRastreio: isLocal ? '' : editingShipping.codigoRastreio,
                                         linkRastreio: isLocal ? '' : editingShipping.linkRastreio,
                                         melhorEnvioId: isLocal ? '' : editingShipping.melhorEnvioId,
-                                        status: isLocal ? 'ENTREGUE' : editingShipping.status,
+                                        status: editingShipping.status,
                                         observacoes: editingShipping.observacoes,
                                         hubTelefone: editingShipping.hubTelefone,
                                         telefoneCliente: editingShipping.telefoneCliente,
                                         entregaLocal: isLocal,
-                                        recebedorNome: isEntregue ? (editingShipping.recebedorNome || '') : editingShipping.recebedorNome,
-                                        comprovanteObs: isEntregue ? (editingShipping.comprovanteObs || '') : editingShipping.comprovanteObs,
+                                        recebedorNome: editingShipping.recebedorNome || '',
+                                        comprovanteObs: editingShipping.comprovanteObs || '',
                                         comprovanteFotos: editingShipping.comprovanteFotos || [],
-                                        dataEntrega: isLocal ? (editingShipping.dataEntrega || new Date().toISOString()) : editingShipping.dataEntrega,
+                                        dataEntrega: editingShipping.dataEntrega,
                                         updatedAt: new Date().toISOString()
                                     };
                                     if (isDevolucao) {
@@ -1451,6 +1590,68 @@ export default function ShippingList({
                                 <button className="btn btn-secondary" onClick={() => setComprovanteModal(null)}>Fechar</button>
                             </>
                         )}
+                    </div>
+                </div>
+            )}
+            {/* Modal Multi-NF Delivery Token */}
+            {showMultiDeliveryModal && (
+                <div className="modal-overlay">
+                    <div className="modal-content" style={{maxWidth: '500px'}}>
+                        <h2 className="modal-title">📦 Link para Entregador</h2>
+                        <p className="modal-subtitle">
+                            Gerar link único para {selectedForDelivery.size} entrega(s) local(is)
+                        </p>
+
+                        <div style={{
+                            background: '#F9FAFB', border: '1px solid #E5E7EB',
+                            borderRadius: '8px', padding: '12px', marginBottom: '16px',
+                            maxHeight: '200px', overflowY: 'auto',
+                        }}>
+                            {shippings.filter(s => selectedForDelivery.has(s.id)).map(s => (
+                                <div key={s.id} style={{
+                                    display: 'flex', justifyContent: 'space-between',
+                                    padding: '6px 0', borderBottom: '1px solid #E5E7EB',
+                                    fontSize: '13px',
+                                }}>
+                                    <span><strong>NF {s.nfNumero || '-'}</strong> — {s.cliente || '-'}</span>
+                                    <span style={{color: '#6B7280', fontSize: '12px'}}>{s.destino ? s.destino.substring(0, 25) + '...' : ''}</span>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="form-row">
+                            <div className="form-group">
+                                <label className="form-label">Nome do Entregador *</label>
+                                <input
+                                    type="text" className="form-input"
+                                    value={multiEntregadorNome}
+                                    onChange={(e) => setMultiEntregadorNome(e.target.value)}
+                                    placeholder="Nome do motorista"
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Telefone (WhatsApp) *</label>
+                                <input
+                                    type="text" className="form-input"
+                                    value={multiEntregadorTelefone}
+                                    onChange={(e) => setMultiEntregadorTelefone(e.target.value)}
+                                    placeholder="(11) 99999-9999"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="btn-group">
+                            <button
+                                className="btn btn-primary"
+                                onClick={gerarLinkMultiEntregador}
+                                disabled={loadingMultiToken}
+                            >
+                                {loadingMultiToken ? 'Gerando...' : 'Gerar Link e Enviar WhatsApp'}
+                            </button>
+                            <button className="btn btn-secondary" onClick={() => setShowMultiDeliveryModal(false)}>
+                                Cancelar
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

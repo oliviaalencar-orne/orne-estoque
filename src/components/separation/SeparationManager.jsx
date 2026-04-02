@@ -259,9 +259,9 @@ export default function SeparationManager({
           melhorEnvioId: '',
           produtos: sep.produtos || [],
           observacoes: sep.observacoes || '',
-          status: isLocal ? 'ENTREGUE' : 'DESPACHADO',
+          status: 'DESPACHADO',
           entregaLocal: isLocal,
-          dataEntrega: isLocal ? new Date().toISOString() : null,
+          dataEntrega: null,
         });
 
         const shippingId = shippingResult?.id;
