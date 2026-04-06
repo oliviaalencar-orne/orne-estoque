@@ -18,6 +18,9 @@ export const mapProductFromDB = (row) => ({
   local: row.local || '',
   imagemUrl: row.imagem_url || '',
   createdAt: row.created_at,
+  defeito: row.defeito || false,
+  defeitoDescricao: row.defeito_descricao || '',
+  defeitoData: row.defeito_data || null,
 });
 
 export const mapEntryFromDB = (row) => ({

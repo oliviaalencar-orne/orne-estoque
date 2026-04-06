@@ -184,7 +184,8 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                 (p.name || '').toLowerCase().includes(term) ||
                 (p.sku || '').toLowerCase().includes(term) ||
                 (p.ean || '').toLowerCase().includes(term) ||
-                (p.nfOrigem || '').toLowerCase().includes(term)
+                (p.nfOrigem || '').toLowerCase().includes(term) ||
+                (p.defeitoDescricao || '').toLowerCase().includes(term)
             );
         }
 
@@ -215,13 +216,27 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
             if (b[0] === '__none__') return -1;
             return getCategoryName(a[0]).localeCompare(getCategoryName(b[0]));
         });
-        return sorted.map(([catId, prods]) => ({
+        const result = [];
+        // Virtual category: Produtos com Defeito (first, if any)
+        const produtosDefeito = filteredProducts.filter(p => p.defeito);
+        if (produtosDefeito.length > 0) {
+            result.push({
+                categoryId: '__defeito__',
+                categoryName: '⚠️ Produtos com Defeito',
+                categoryColor: '#DC2626',
+                categoryIcon: null,
+                products: produtosDefeito,
+                isDefeitoCategory: true,
+            });
+        }
+        result.push(...sorted.map(([catId, prods]) => ({
             categoryId: catId,
             categoryName: getCategoryName(catId === '__none__' ? null : catId),
             categoryColor: getCategoryColor(catId === '__none__' ? null : catId),
             categoryIcon: categories.find(c => c.id === catId)?.icon || null,
             products: prods,
-        }));
+        })));
+        return result;
     }, [filteredProducts, categories]);
 
     // Status counts
@@ -281,13 +296,20 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
             minStock: product.minStock || 3,
             observations: product.observations || '',
             local: product.local || '',
+            defeito: product.defeito || false,
+            defeitoDescricao: product.defeitoDescricao || '',
         });
         setEditingProduct(product);
     };
 
     const handleSaveEdit = async () => {
         if (!editForm.name || !editForm.sku) return;
-        await onUpdate(editingProduct.id, { ...editForm });
+        const saveData = { ...editForm };
+        // Set defeito_data on first mark, preserve on unmark
+        if (saveData.defeito && !editingProduct.defeitoData) {
+            saveData.defeitoData = new Date().toISOString();
+        }
+        await onUpdate(editingProduct.id, saveData);
         setEditingProduct(null);
         setSuccessMsg('Produto atualizado!');
         setTimeout(() => setSuccessMsg(''), 3000);
@@ -372,8 +394,15 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                 </div>
             </td>
             <td>
-                <div className="product-name" style={{display: 'flex', alignItems: 'center', gap: '4px'}}>
+                <div className="product-name" style={{display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap'}}>
                     {p.name}
+                    {p.defeito && (
+                        <span style={{
+                            fontSize: '10px', fontWeight: 600, color: '#DC2626',
+                            background: '#FEE2E2', padding: '1px 6px', borderRadius: '4px',
+                            whiteSpace: 'nowrap', flexShrink: 0,
+                        }}>Defeito</span>
+                    )}
                     {p.observations && p.observations.trim() && (
                         <span
                             style={{display: 'inline-flex', alignItems: 'center', cursor: 'help', flexShrink: 0}}
@@ -390,6 +419,11 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                     )}
                 </div>
                 {p.local && <div className="product-local">{'\uD83D\uDCCD'} {p.local}</div>}
+                {p.defeito && p.defeitoDescricao && (
+                    <div style={{fontSize: '11px', color: '#DC2626', marginTop: '2px', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
+                        {p.defeitoDescricao}
+                    </div>
+                )}
             </td>
             <td className="hide-mobile product-sku">{p.sku}</td>
             <td>
@@ -644,6 +678,35 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                             <textarea className="form-textarea" value={editForm.observations} onChange={(e) => setEditForm({...editForm, observations: e.target.value})} placeholder="Informacoes adicionais sobre o produto..." />
                         </div>
 
+                        {/* Defeito */}
+                        <div style={{
+                            border: editForm.defeito ? '1px solid #FCA5A5' : '1px solid var(--border)',
+                            background: editForm.defeito ? '#FEF2F2' : 'transparent',
+                            borderRadius: 'var(--radius)', padding: '12px', marginBottom: '16px',
+                        }}>
+                            <label style={{display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: 500}}>
+                                <input
+                                    type="checkbox"
+                                    checked={editForm.defeito}
+                                    onChange={(e) => setEditForm({...editForm, defeito: e.target.checked})}
+                                    style={{width: '18px', height: '18px', accentColor: '#DC2626'}}
+                                />
+                                Produto com defeito
+                            </label>
+                            {editForm.defeito && (
+                                <div className="form-group" style={{marginTop: '10px', marginBottom: 0}}>
+                                    <label className="form-label">Descrição do defeito</label>
+                                    <textarea
+                                        className="form-textarea"
+                                        value={editForm.defeitoDescricao}
+                                        onChange={(e) => setEditForm({...editForm, defeitoDescricao: e.target.value})}
+                                        placeholder="Ex: Risco na base, LED queimado, peça faltante..."
+                                        rows={2}
+                                    />
+                                </div>
+                            )}
+                        </div>
+
                         <div style={{background: 'var(--bg-primary)', padding: '12px', borderRadius: 'var(--radius)', marginBottom: '16px', fontSize: '13px'}}>
                             <strong>Estoque atual:</strong> {editingProduct.currentQuantity} unidades
                             <div style={{fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px'}}>Para alterar quantidade, use Entrada ou Saida</div>
@@ -714,11 +777,11 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                     {groupedProducts.map(group => (
                         <div key={group.categoryId} className="stock-category-section">
                             {/* Category header */}
-                            <div className="stock-category-header" onClick={() => toggleCategory(group.categoryId)}>
+                            <div className="stock-category-header" onClick={() => toggleCategory(group.categoryId)} style={group.isDefeitoCategory ? {background: '#FEF2F2', borderColor: '#FCA5A5'} : undefined}>
                                 <span className="stock-category-arrow">
                                     {(hasSearch || expandedCategories.has(group.categoryId)) ? '\u25BC' : '\u25B6'}
                                 </span>
-                                <span style={{fontWeight: 600, color: '#374151'}}>
+                                <span style={{fontWeight: 600, color: group.isDefeitoCategory ? '#DC2626' : '#374151'}}>
                                     {group.categoryName}
                                 </span>
                                 <span className="stock-category-count">

@@ -17,7 +17,7 @@ const MOTIVOS_DEVOLUCAO = [
 
 export default function DevolucaoForm({
   locaisOrigem, transportadoras, products, stock, onAdd,
-  onCancel, onSuccess, onError,
+  onCancel, onSuccess, onError, onUpdateProduct,
 }) {
   const [form, setForm] = useState({
     nfNumero: '',
@@ -128,6 +128,21 @@ export default function DevolucaoForm({
         hubDestino: form.hubDestino,
         entradaCriada: false,
       });
+      // Mark products as defeituosos if flagged
+      if (onUpdateProduct) {
+        for (const prod of form.produtos) {
+          if (prod.defeito && prod.sku) {
+            const product = products.find(p => p.sku === prod.sku);
+            if (product) {
+              await onUpdateProduct(product.id, {
+                defeito: true,
+                defeitoDescricao: (prod.defeitoDescricao || '').trim(),
+                defeitoData: product.defeitoData || new Date().toISOString(),
+              });
+            }
+          }
+        }
+      }
       onSuccess('Devolução registrada com sucesso!');
     } catch (err) {
       onError('Erro ao registrar devolução: ' + err.message);
@@ -288,7 +303,8 @@ export default function DevolucaoForm({
           {form.produtos.length > 0 && (
             <div style={{ marginTop: '12px' }}>
               {form.produtos.map((prod, i) => (
-                <div key={i} style={{
+                <React.Fragment key={i}>
+                <div style={{
                   display: 'flex', alignItems: 'center', gap: '10px',
                   padding: '8px 12px', background: 'var(--bg-secondary)',
                   borderRadius: '8px', marginBottom: '6px',
@@ -296,7 +312,29 @@ export default function DevolucaoForm({
                   <div style={{ flex: 1, fontSize: '13px' }}>
                     <strong>{prod.descricao || prod.sku}</strong>
                     <span style={{ marginLeft: '6px', color: 'var(--text-muted)', fontSize: '11px' }}>({prod.sku})</span>
+                    {prod.defeito && prod.defeitoDescricao && (
+                      <div style={{fontSize: '11px', color: '#DC2626', marginTop: '2px'}}>{prod.defeitoDescricao}</div>
+                    )}
                   </div>
+                  <label style={{display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: prod.defeito ? '#DC2626' : '#6B7280', cursor: 'pointer', whiteSpace: 'nowrap'}}>
+                    <input
+                      type="checkbox"
+                      checked={prod.defeito || false}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setForm({
+                          ...form,
+                          produtos: form.produtos.map((p, j) => j === i ? {
+                            ...p,
+                            defeito: checked,
+                            defeitoDescricao: checked ? (p.defeitoDescricao || form.motivoDevolucao || '') : (p.defeitoDescricao || ''),
+                          } : p),
+                        });
+                      }}
+                      style={{width: '14px', height: '14px', accentColor: '#DC2626'}}
+                    />
+                    Defeito
+                  </label>
                   <input
                     type="number"
                     min="1"
@@ -317,6 +355,22 @@ export default function DevolucaoForm({
                     ×
                   </button>
                 </div>
+                {prod.defeito && (
+                  <div style={{padding: '4px 12px 8px', background: '#FEF2F2', borderRadius: '0 0 8px 8px', marginTop: '-6px', marginBottom: '6px'}}>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={prod.defeitoDescricao || ''}
+                      onChange={(e) => setForm({
+                        ...form,
+                        produtos: form.produtos.map((p, j) => j === i ? { ...p, defeitoDescricao: e.target.value } : p),
+                      })}
+                      placeholder="Descreva o defeito..."
+                      style={{fontSize: '12px', padding: '6px 10px'}}
+                    />
+                  </div>
+                )}
+                </React.Fragment>
               ))}
             </div>
           )}

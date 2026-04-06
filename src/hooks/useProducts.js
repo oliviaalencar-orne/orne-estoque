@@ -18,7 +18,7 @@ import { mapProductFromDB, mapEntryFromDB, mapExitFromDB } from '@/utils/mappers
 import { generateId } from '@/utils/helpers';
 import { fetchAllRows } from './useSupabaseCollection';
 
-const PRODUCT_FIELDS = 'id, name, sku, ean, category, min_stock, observations, nf_origem, created_at, tiny_id, unit_price, local, imagem_url';
+const PRODUCT_FIELDS = 'id, name, sku, ean, category, min_stock, observations, nf_origem, created_at, tiny_id, unit_price, local, imagem_url, defeito, defeito_descricao, defeito_data';
 const PRODUCT_FILTERS = [(q) => q.neq('sku', ''), (q) => q.neq('name', '')];
 
 /**
@@ -99,6 +99,9 @@ export function useProducts(user, isStockAdmin) {
       if (data.observations !== undefined) mapped.observations = data.observations;
       if (data.nfOrigem !== undefined) mapped.nf_origem = data.nfOrigem;
       if (data.local !== undefined) mapped.local = data.local;
+      if (data.defeito !== undefined) mapped.defeito = data.defeito;
+      if (data.defeitoDescricao !== undefined) mapped.defeito_descricao = data.defeitoDescricao;
+      if (data.defeitoData !== undefined) mapped.defeito_data = data.defeitoData;
       const { error } = await supabaseClient.from('products').update(mapped).eq('id', productId);
       if (error) {
         console.error('Erro ao atualizar produto:', error);

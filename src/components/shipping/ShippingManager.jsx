@@ -47,7 +47,7 @@ export default function ShippingManager({
     categories, entries, exits, isStockAdmin,
     onAddCategory, onUpdateCategory, onDeleteCategory,
     pendingDispatchData, onClearPendingDispatch, onRefreshShippings,
-    isOperador, isEquipe
+    isOperador, isEquipe, onUpdateProduct
 }) {
     const [activeView, setActiveView] = useState('list');
     const [tipoView, setTipoView] = useState('despacho');
@@ -737,6 +737,7 @@ export default function ShippingManager({
                         setTimeout(() => setSuccess(''), 3000);
                     }}
                     onError={setError}
+                    onUpdateProduct={onUpdateProduct}
                 />
             )}
 

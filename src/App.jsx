@@ -586,6 +586,7 @@ export default function App() {
                 products={products}
                 onSubmit={addEntry}
                 onAddProduct={addProduct}
+                onUpdateProduct={updateProduct}
                 categories={categories}
                 locaisOrigem={locaisOrigem}
                 onUpdateLocais={updateLocaisOrigem}
@@ -679,6 +680,7 @@ export default function App() {
               pendingDispatchData={pendingDispatchData}
               onClearPendingDispatch={() => setPendingDispatchData(null)}
               onRefreshShippings={refreshShippings}
+              onUpdateProduct={updateProduct}
             />
           </div>
           <div style={{ display: activeTab === 'history' ? 'block' : 'none' }}>

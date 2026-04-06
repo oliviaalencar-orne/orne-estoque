@@ -10,7 +10,7 @@ import LocaisModal from '@/components/ui/LocaisModal';
 import TinyNFeImport from '@/components/import/TinyNFeImport';
 import CSVImportTab from '@/components/import/CSVImportTab';
 
-export default function EntryForm({ products, onSubmit, onAddProduct, categories, locaisOrigem, onUpdateLocais, entries, exits, stock, onAddCategory, onUpdateCategory, onDeleteCategory }) {
+export default function EntryForm({ products, onSubmit, onAddProduct, onUpdateProduct, categories, locaisOrigem, onUpdateLocais, entries, exits, stock, onAddCategory, onUpdateCategory, onDeleteCategory }) {
     const [entryMode, setEntryMode] = useState('manual'); // 'manual', 'tiny', or 'csv'
     const [type, setType] = useState('COMPRA');
     const [sku, setSku] = useState('');
@@ -24,6 +24,8 @@ export default function EntryForm({ products, onSubmit, onAddProduct, categories
     const [newProductData, setNewProductData] = useState({ name: '', sku: '', ean: '', category: '', observations: '', nfOrigem: '' });
     const [productSearch, setProductSearch] = useState('');
     const [showLocaisModal, setShowLocaisModal] = useState(false);
+    const [defeito, setDefeito] = useState(false);
+    const [defeitoDescricao, setDefeitoDescricao] = useState('');
 
     // Filtrar produtos pela busca
     const filteredProducts = [...products]
@@ -35,9 +37,20 @@ export default function EntryForm({ products, onSubmit, onAddProduct, categories
         })
         .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         onSubmit({ type, sku, quantity: parseInt(quantity), supplier, nf, localEntrada, category });
+        // Mark product as defeituoso if checked
+        if (defeito && sku && onUpdateProduct) {
+            const product = products.find(p => p.sku === sku);
+            if (product) {
+                await onUpdateProduct(product.id, {
+                    defeito: true,
+                    defeitoDescricao: defeitoDescricao.trim(),
+                    defeitoData: product.defeitoData || new Date().toISOString(),
+                });
+            }
+        }
         setSuccess(true);
         setSku('');
         setQuantity('');
@@ -45,6 +58,8 @@ export default function EntryForm({ products, onSubmit, onAddProduct, categories
         setNf('');
         setCategory('');
         setProductSearch('');
+        setDefeito(false);
+        setDefeitoDescricao('');
         setTimeout(() => setSuccess(false), 3000);
     };
 
@@ -316,6 +331,37 @@ export default function EntryForm({ products, onSubmit, onAddProduct, categories
                         onDeleteCategory={onDeleteCategory}
                         products={products}
                     />
+
+                    {/* Defeito */}
+                    {sku && sku !== '__NEW__' && (
+                        <div style={{
+                            border: defeito ? '1px solid #FCA5A5' : '1px solid var(--border)',
+                            background: defeito ? '#FEF2F2' : 'transparent',
+                            borderRadius: 'var(--radius)', padding: '12px', marginBottom: '16px',
+                        }}>
+                            <label style={{display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: 500}}>
+                                <input
+                                    type="checkbox"
+                                    checked={defeito}
+                                    onChange={(e) => setDefeito(e.target.checked)}
+                                    style={{width: '18px', height: '18px', accentColor: '#DC2626'}}
+                                />
+                                Produto com defeito
+                            </label>
+                            {defeito && (
+                                <div className="form-group" style={{marginTop: '10px', marginBottom: 0}}>
+                                    <label className="form-label">Descrição do defeito</label>
+                                    <textarea
+                                        className="form-textarea"
+                                        value={defeitoDescricao}
+                                        onChange={(e) => setDefeitoDescricao(e.target.value)}
+                                        placeholder="Ex: Risco na base, LED queimado, peça faltante..."
+                                        rows={2}
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     <div className="btn-group">
                         <button type="submit" className="btn btn-primary" disabled={!sku || sku === '__NEW__'}>Registrar Entrada</button>
