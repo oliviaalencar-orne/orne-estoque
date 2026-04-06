@@ -4,7 +4,7 @@
  * Extracted from ShippingManager (index-legacy.html L6439-6604, L7686-7886)
  * Handles batch upload, selection, editing, and display of batch despachos
  */
-import React from 'react';
+import React, { useState } from 'react';
 import { Icon } from '@/utils/icons';
 import { processarXML } from './ShippingXMLImport';
 
@@ -16,6 +16,32 @@ export default function ShippingBatchImport({
     batchProgress, setBatchProgress,
     onSalvarLote, onSetSuccess, onSetError
 }) {
+    const [expandedRows, setExpandedRows] = useState(new Set());
+    const toggleExpand = (idx) => setExpandedRows(prev => {
+        const next = new Set(prev);
+        if (next.has(idx)) next.delete(idx); else next.add(idx);
+        return next;
+    });
+
+    // Edit a product field within a batch despacho
+    const editarProdutoBatch = (despIdx, prodIdx, campo, valor) => {
+        const newBatch = [...batchDespachos];
+        const prods = [...(newBatch[despIdx].produtos || [])];
+        prods[prodIdx] = { ...prods[prodIdx], [campo]: valor };
+        newBatch[despIdx] = { ...newBatch[despIdx], produtos: prods };
+        // Recalculate totals
+        newBatch[despIdx].total = prods.length;
+        newBatch[despIdx].vinculados = prods.filter(p => p.produtoEstoque).length;
+        setBatchDespachos(newBatch);
+    };
+
+    const removerProdutoBatch = (despIdx, prodIdx) => {
+        const newBatch = [...batchDespachos];
+        const prods = [...(newBatch[despIdx].produtos || [])];
+        prods.splice(prodIdx, 1);
+        newBatch[despIdx] = { ...newBatch[despIdx], produtos: prods, total: prods.length, vinculados: prods.filter(p => p.produtoEstoque).length };
+        setBatchDespachos(newBatch);
+    };
     // Processar múltiplos arquivos
     const handleBatchUpload = async (e) => {
         const files = Array.from(e.target.files);
@@ -179,7 +205,8 @@ export default function ShippingBatchImport({
                             </thead>
                             <tbody>
                                 {batchDespachos.map((d, idx) => (
-                                    <tr key={idx} style={{
+                                <React.Fragment key={idx}>
+                                    <tr style={{
                                         background: d.error ? 'var(--danger-light)' : (d.selected ? 'var(--success-light)' : 'white'),
                                         opacity: d.error ? 0.7 : 1
                                     }}>
@@ -241,14 +268,23 @@ export default function ShippingBatchImport({
                                             {d.error ? (
                                                 <span style={{color: 'var(--danger)'}}>{d.error}</span>
                                             ) : (
-                                                <span>
-                                                    {d.total} item(s)
+                                                <button
+                                                    type="button"
+                                                    onClick={() => toggleExpand(idx)}
+                                                    style={{
+                                                        background: 'none', border: '1px solid var(--border)',
+                                                        borderRadius: '6px', padding: '3px 8px', cursor: 'pointer',
+                                                        fontSize: '12px', color: 'var(--text-primary)', whiteSpace: 'nowrap',
+                                                    }}
+                                                    title="Expandir para editar produtos"
+                                                >
+                                                    {expandedRows.has(idx) ? '▼' : '▶'} {d.total} item(s)
                                                     {d.vinculados > 0 && (
                                                         <span style={{color: 'var(--success)', marginLeft: '4px'}}>
-                                                            ({d.vinculados})
+                                                            ({d.vinculados} vinc.)
                                                         </span>
                                                     )}
-                                                </span>
+                                                </button>
                                             )}
                                         </td>
                                         <td>
@@ -264,14 +300,14 @@ export default function ShippingBatchImport({
                                             </select>
                                         </td>
                                         <td>
-                                            <input
-                                                type="text"
-                                                className="form-input"
+                                            <textarea
+                                                className="form-textarea"
                                                 value={d.observacoes || ''}
                                                 onChange={(e) => editarDespachoBatch(idx, 'observacoes', e.target.value)}
                                                 disabled={!!d.error}
-                                                style={{fontSize: '11px', padding: '4px 8px', minWidth: '120px'}}
-                                                placeholder="Ex: TRANSPORTE LOCAL"
+                                                style={{fontSize: '11px', padding: '4px 8px', minWidth: '140px', minHeight: '36px', resize: 'vertical'}}
+                                                placeholder="Ex: TRANSPORTE LOCAL - São Paulo"
+                                                rows={2}
                                             />
                                         </td>
                                         <td style={{textAlign: 'center'}}>
@@ -284,6 +320,61 @@ export default function ShippingBatchImport({
                                             )}
                                         </td>
                                     </tr>
+                                    {/* Expandable product detail row */}
+                                    {expandedRows.has(idx) && !d.error && (
+                                        <tr>
+                                            <td colSpan={9} style={{padding: '8px 12px', background: '#F9FAFB', borderTop: 'none'}}>
+                                                <div style={{fontSize: '12px', fontWeight: 600, marginBottom: '6px', color: '#374151'}}>
+                                                    Produtos — NF {d.nfNumero || '-'}
+                                                </div>
+                                                {(d.produtos || []).length === 0 ? (
+                                                    <div style={{fontSize: '12px', color: 'var(--text-muted)', padding: '8px 0'}}>Nenhum produto encontrado no XML</div>
+                                                ) : (
+                                                    <div style={{display: 'flex', flexDirection: 'column', gap: '4px'}}>
+                                                        {(d.produtos || []).map((prod, pi) => (
+                                                            <div key={pi} style={{
+                                                                display: 'flex', alignItems: 'center', gap: '8px',
+                                                                padding: '4px 8px', background: 'white', borderRadius: '6px',
+                                                                border: '1px solid #E5E7EB',
+                                                            }}>
+                                                                <div style={{flex: 1, fontSize: '12px', minWidth: 0}}>
+                                                                    <div style={{fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
+                                                                        {prod.descricao || prod.nome || prod.sku || '(sem nome)'}
+                                                                    </div>
+                                                                    <div style={{fontSize: '10px', color: '#6B7280'}}>
+                                                                        SKU: {prod.sku || '-'}
+                                                                        {prod.produtoEstoque && <span style={{color: '#059669', marginLeft: '6px'}}>✓ vinculado</span>}
+                                                                        {!prod.produtoEstoque && <span style={{color: '#D97706', marginLeft: '6px'}}>⚠ não vinculado</span>}
+                                                                    </div>
+                                                                </div>
+                                                                <div style={{display: 'flex', alignItems: 'center', gap: '4px'}}>
+                                                                    <label style={{fontSize: '11px', color: '#6B7280', whiteSpace: 'nowrap'}}>Qtd:</label>
+                                                                    <input
+                                                                        type="number"
+                                                                        min="1"
+                                                                        value={prod.quantidade || 1}
+                                                                        onChange={(e) => editarProdutoBatch(idx, pi, 'quantidade', Math.max(1, parseInt(e.target.value) || 1))}
+                                                                        className="form-input"
+                                                                        style={{width: '60px', fontSize: '12px', padding: '3px 6px', textAlign: 'center'}}
+                                                                    />
+                                                                </div>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => removerProdutoBatch(idx, pi)}
+                                                                    style={{
+                                                                        background: 'none', border: 'none', cursor: 'pointer',
+                                                                        color: '#EF4444', fontSize: '16px', padding: '2px 4px', flexShrink: 0,
+                                                                    }}
+                                                                    title="Remover produto"
+                                                                >×</button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    )}
+                                </React.Fragment>
                                 ))}
                             </tbody>
                         </table>
