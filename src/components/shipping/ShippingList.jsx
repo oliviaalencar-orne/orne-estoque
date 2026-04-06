@@ -76,6 +76,9 @@ export default function ShippingList({
     const [shipPeriodFilter, setShipPeriodFilter] = useState('30');
     const [shipCustomMonth, setShipCustomMonth] = useState(new Date().getMonth());
     const [shipCustomYear, setShipCustomYear] = useState(new Date().getFullYear());
+    // Sort state for table columns
+    const [sortField, setSortField] = useState('date');
+    const [sortDir, setSortDir] = useState('desc');
     const [editingShipping, setEditingShipping] = useState(null);
     const [atualizandoRastreio, setAtualizandoRastreio] = useState(false);
     const [buscandoNF, setBuscandoNF] = useState(null); // shipping id being searched
@@ -393,16 +396,49 @@ export default function ShippingList({
             const matchesStatus = statusFilter === 'all' || s.status === statusFilter || (statusFilter === 'EM_TRANSITO' && s.status === 'TENTATIVA_ENTREGA');
             return matchesSearch && matchesStatus;
         });
-        return items.sort((a, b) => new Date(b.date) - new Date(a.date));
+        return items;
     }, [shippings, searchTerm, statusFilter, shipPeriodFilter, shipCustomMonth, shipCustomYear]);
+
+    // Sorted shippings (MUST be after filteredShippings)
+    const sortedShippings = useMemo(() => {
+        const items = [...filteredShippings];
+        items.sort((a, b) => {
+            let valA, valB;
+            switch (sortField) {
+                case 'nfNumero':
+                    valA = parseInt(a.nfNumero) || 0;
+                    valB = parseInt(b.nfNumero) || 0;
+                    break;
+                case 'date':
+                    valA = new Date(a.date || 0).getTime();
+                    valB = new Date(b.date || 0).getTime();
+                    break;
+                case 'localOrigem':
+                    valA = (a.localOrigem || '').toLowerCase();
+                    valB = (b.localOrigem || '').toLowerCase();
+                    break;
+                case 'transportadora':
+                    valA = (a.transportadora || '').toLowerCase();
+                    valB = (b.transportadora || '').toLowerCase();
+                    break;
+                default:
+                    valA = new Date(a.date || 0).getTime();
+                    valB = new Date(b.date || 0).getTime();
+            }
+            if (valA < valB) return sortDir === 'asc' ? -1 : 1;
+            if (valA > valB) return sortDir === 'asc' ? 1 : -1;
+            return 0;
+        });
+        return items;
+    }, [filteredShippings, sortField, sortDir]);
 
     // Helper: detect entrega local by flag OR transportadora text
     const isEntregaLocalShipping = (s) => s.entregaLocal || s.transportadora === 'Entrega Local';
 
     // Multi-NF: selectable shippings (entrega local + DESPACHADO)
     const selectableShippings = useMemo(() => {
-        return filteredShippings.filter(s => isEntregaLocalShipping(s) && s.status === 'DESPACHADO');
-    }, [filteredShippings]);
+        return sortedShippings.filter(s => isEntregaLocalShipping(s) && s.status === 'DESPACHADO');
+    }, [sortedShippings]);
 
     // Multi-NF: select/deselect all visible
     const toggleSelectAll = () => {
@@ -412,6 +448,29 @@ export default function ShippingList({
             setSelectedForDelivery(new Set(selectableShippings.map(s => s.id)));
         }
     };
+
+    // Sort handler
+    const handleSort = (field) => {
+        if (sortField === field) {
+            setSortDir(prev => prev === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortField(field);
+            setSortDir(field === 'date' ? 'desc' : 'asc');
+        }
+    };
+
+    const SortTh = ({ field, children, ...rest }) => (
+        <th
+            onClick={() => handleSort(field)}
+            style={{cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap'}}
+            {...rest}
+        >
+            {children}
+            <span style={{marginLeft: '4px', opacity: sortField === field ? 1 : 0.3, fontSize: '10px'}}>
+                {sortField === field ? (sortDir === 'asc' ? '▲' : '▼') : '▲▼'}
+            </span>
+        </th>
+    );
 
     // Status progression — only advances, never regresses
     const STATUS_RANK = { DESPACHADO: 0, AGUARDANDO_COLETA: 0.5, EM_TRANSITO: 1, SAIU_ENTREGA: 2, TENTATIVA_ENTREGA: 2, ENTREGUE: 3, DEVOLVIDO: 3 };
@@ -849,7 +908,7 @@ export default function ShippingList({
                 </div>
             )}
 
-            {filteredShippings.length === 0 ? (
+            {sortedShippings.length === 0 ? (
                 <div className="empty-state">
                     <div className="empty-state-icon"><Icon name="shipping" size={48} /></div>
                     <h3>{isDevolucao ? 'Nenhuma devolução encontrada' : 'Nenhum despacho encontrado'}</h3>
@@ -871,10 +930,11 @@ export default function ShippingList({
                                         />
                                     </th>
                                 )}
-                                <th>NF</th>
+                                <SortTh field="nfNumero">NF</SortTh>
+                                <SortTh field="date">Data</SortTh>
                                 <th>Cliente</th>
-                                <th>{isDevolucao ? 'HUB Destino' : 'Origem'}</th>
-                                <th>Transportadora</th>
+                                <SortTh field="localOrigem">{isDevolucao ? 'HUB Destino' : 'Origem'}</SortTh>
+                                <SortTh field="transportadora">Transportadora</SortTh>
                                 <th>Rastreio</th>
                                 <th>Status</th>
                                 {isDevolucao && <th>Motivo</th>}
@@ -882,7 +942,7 @@ export default function ShippingList({
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredShippings.map(s => (
+                            {sortedShippings.map(s => (
                                 <tr key={s.id} style={selectedForDelivery.has(s.id) ? {background: '#EFF6FF'} : undefined}>
                                     {!isDevolucao && selectableShippings.length > 0 && (
                                         <td style={{textAlign: 'center'}}>
@@ -898,7 +958,9 @@ export default function ShippingList({
                                     )}
                                     <td>
                                         <strong>{s.nfNumero}</strong>
-                                        <div style={{fontSize: '10px', color: 'var(--text-muted)'}}>{formatDate(s.date)}</div>
+                                    </td>
+                                    <td style={{fontSize: '12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap'}}>
+                                        {formatDate(s.date)}
                                     </td>
                                     <td>
                                         {s.cliente}
