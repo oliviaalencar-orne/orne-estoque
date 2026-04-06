@@ -137,9 +137,10 @@ export default function SeparationManager({
       nfNumero: nf,
       cliente: data.cliente || '',
       destino: data.destino || '',
-      observacoes: '',
+      observacoes: data.observacoes || '',
+      transportadora: data.transportadora || '',
       status: 'pendente',
-      hubId: selectedHubId !== 'all' ? selectedHubId : '',
+      hubId: data.hubId || (selectedHubId !== 'all' ? selectedHubId : ''),
       produtos: produtosComFlags,
     };
 
@@ -546,6 +547,8 @@ export default function SeparationManager({
           onDeleteCategory={onDeleteCategory}
           onPrepareShipping={handlePrepareSeparationFromTiny}
           checkNfDuplicate={checkNfDuplicate}
+          hubs={hubs}
+          defaultHubId={selectedHubId !== 'all' ? selectedHubId : ''}
         />
       )}
 

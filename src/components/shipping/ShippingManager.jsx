@@ -125,14 +125,14 @@ export default function ShippingManager({
                 nfNumero: data.nfNumero || '',
                 cliente: data.cliente || '',
                 destino: data.destino || '',
-                localOrigem: locaisOrigem[0] || 'Loja Principal',
-                transportadora: '',
+                localOrigem: data.localOrigem || locaisOrigem[0] || 'Loja Principal',
+                transportadora: data.transportadora || '',
                 codigoRastreio: '',
                 linkRastreio: '',
                 melhorEnvioId: '',
                 hubTelefone: '',
                 produtos: data.produtos || [],
-                observacoes: '',
+                observacoes: data.observacoes || '',
                 status: 'DESPACHADO',
             };
 
@@ -192,6 +192,9 @@ export default function ShippingManager({
             produtos: data.produtos || [],
             codigoRastreio: '',
             linkRastreio: '',
+            transportadora: data.transportadora || prevForm.transportadora || '',
+            observacoes: data.observacoes || prevForm.observacoes || '',
+            localOrigem: data.localOrigem || prevForm.localOrigem || '',
         }));
         setNfData({
             nfNumero: data.nfNumero || '',
@@ -686,6 +689,7 @@ export default function ShippingManager({
                     onUpdateCategory={onUpdateCategory}
                     onDeleteCategory={onDeleteCategory}
                     onPrepareShipping={handlePrepareShippingFromTiny}
+                    transportadoras={transportadoras}
                 />
             )}
 

@@ -16,7 +16,7 @@ import { getEstoquePorNF } from '@/utils/fifo';
 import CategorySelectInline from '@/components/ui/CategorySelectInline';
 import { useBatchImport, BATCH_MAX_NFS, BATCH_FETCH_TIMEOUT_MS } from '@/hooks/useBatchImport';
 
-export default function TinyNFeImport({ products, onSubmitEntry, onSubmitExit, onAddProduct, categories, locaisOrigem, onUpdateLocais, entries, exits, stock, mode, onAddCategory, onUpdateCategory, onDeleteCategory, onPrepareShipping, checkNfDuplicate, isDevolucao = false }) {
+export default function TinyNFeImport({ products, onSubmitEntry, onSubmitExit, onAddProduct, categories, locaisOrigem, onUpdateLocais, entries, exits, stock, mode, onAddCategory, onUpdateCategory, onDeleteCategory, onPrepareShipping, checkNfDuplicate, isDevolucao = false, hubs = null, defaultHubId = '', transportadoras = null }) {
     const [nfNumber, setNfNumber] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -40,6 +40,35 @@ export default function TinyNFeImport({ products, onSubmitEntry, onSubmitExit, o
     const [importMode, setImportMode] = useState('single');
     const [batchConfirmedCount, setBatchConfirmedCount] = useState(0);
     const batch = useBatchImport();
+
+    // ─── Dados do envio (editáveis, acima da tabela de produtos) ──────────
+    const TRANSPORTADORAS_PADRAO = ['Transporte Local', 'Loggi', 'Correios', 'Jadlog', 'Melhor Envio', 'Total Express', 'Braspress', 'TNT', 'Azul Cargo', 'Outro'];
+    const transportadorasOptions = transportadoras && transportadoras.length ? transportadoras : TRANSPORTADORAS_PADRAO;
+    const hubOptions = (hubs && hubs.length > 0)
+        ? hubs.map(h => ({ value: h.id, label: h.name || h.id }))
+        : (locaisOrigem || []).map(l => ({ value: l, label: l }));
+    const defaultHubValue = defaultHubId || (hubOptions[0]?.value || '');
+
+    const [dadosEnvio, setDadosEnvio] = useState({
+        cliente: '',
+        destino: '',
+        hubOrigem: defaultHubValue,
+        transportadora: '',
+        observacoes: '',
+    });
+
+    // Pré-preenche dadosEnvio sempre que uma nova NF é carregada
+    useEffect(() => {
+        if (nfeData) {
+            setDadosEnvio({
+                cliente: nfeData.cliente?.nome || '',
+                destino: nfeData.cliente?.endereco || '',
+                hubOrigem: defaultHubValue,
+                transportadora: '',
+                observacoes: '',
+            });
+        }
+    }, [nfeData, defaultHubValue]);
 
     const isEntry = mode === 'entry' || (mode === 'both' && nfeData?.tipo === 'E');
     const isExit = mode === 'exit' || (mode === 'both' && nfeData?.tipo === 'S');
@@ -289,8 +318,12 @@ export default function TinyNFeImport({ products, onSubmitEntry, onSubmitExit, o
             try {
                 const shippingPayload = {
                     nfNumero: String(nfeData.numero || ''),
-                    cliente: nfeData.cliente?.nome || '',
-                    destino: nfeData.cliente?.endereco || '',
+                    cliente: dadosEnvio.cliente || nfeData.cliente?.nome || '',
+                    destino: dadosEnvio.destino || nfeData.cliente?.endereco || '',
+                    transportadora: dadosEnvio.transportadora || '',
+                    observacoes: dadosEnvio.observacoes || '',
+                    hubId: dadosEnvio.hubOrigem || '',
+                    localOrigem: dadosEnvio.hubOrigem || '',
                     produtos: produtos,
                 };
                 if (isDevolucao) {
@@ -737,6 +770,84 @@ export default function TinyNFeImport({ products, onSubmitEntry, onSubmitExit, o
                             </span>
                         </div>
                     </div>
+
+                    {/* ─── Dados do Envio (editável) ─────────────────────── */}
+                    {isExit && !isDevolucao && (
+                        <div style={{
+                            padding: '14px 16px',
+                            borderBottom: '1px solid var(--border)',
+                            background: 'var(--bg-primary)',
+                        }}>
+                            <div style={{fontSize: '12px', fontWeight: 600, marginBottom: '10px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px'}}>
+                                Dados do Envio
+                            </div>
+                            <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px'}}>
+                                <div>
+                                    <label className="form-label" style={{fontSize: '11px', marginBottom: '3px'}}>Cliente</label>
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        value={dadosEnvio.cliente}
+                                        onChange={e => setDadosEnvio(prev => ({...prev, cliente: e.target.value}))}
+                                        placeholder="Nome do cliente"
+                                        style={{fontSize: '12px', padding: '6px 8px'}}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="form-label" style={{fontSize: '11px', marginBottom: '3px'}}>Destino / Endereço</label>
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        value={dadosEnvio.destino}
+                                        onChange={e => setDadosEnvio(prev => ({...prev, destino: e.target.value}))}
+                                        placeholder="Endereço de entrega"
+                                        style={{fontSize: '12px', padding: '6px 8px'}}
+                                    />
+                                </div>
+                            </div>
+                            <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px'}}>
+                                <div>
+                                    <label className="form-label" style={{fontSize: '11px', marginBottom: '3px'}}>HUB Origem</label>
+                                    <select
+                                        className="form-select"
+                                        value={dadosEnvio.hubOrigem}
+                                        onChange={e => setDadosEnvio(prev => ({...prev, hubOrigem: e.target.value}))}
+                                        style={{fontSize: '12px', padding: '6px 8px'}}
+                                    >
+                                        <option value="">Selecione...</option>
+                                        {hubOptions.map(h => (
+                                            <option key={h.value} value={h.value}>{h.label}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="form-label" style={{fontSize: '11px', marginBottom: '3px'}}>Transportadora</label>
+                                    <select
+                                        className="form-select"
+                                        value={dadosEnvio.transportadora}
+                                        onChange={e => setDadosEnvio(prev => ({...prev, transportadora: e.target.value}))}
+                                        style={{fontSize: '12px', padding: '6px 8px'}}
+                                    >
+                                        <option value="">Selecione...</option>
+                                        {transportadorasOptions.map(t => (
+                                            <option key={t} value={t}>{t}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="form-label" style={{fontSize: '11px', marginBottom: '3px'}}>Observações</label>
+                                <textarea
+                                    className="form-input"
+                                    value={dadosEnvio.observacoes}
+                                    onChange={e => setDadosEnvio(prev => ({...prev, observacoes: e.target.value}))}
+                                    placeholder="Instruções para o HUB (ex: TRANSPORTE LOCAL - São Paulo)"
+                                    rows={2}
+                                    style={{fontSize: '12px', padding: '6px 8px', resize: 'vertical', width: '100%'}}
+                                />
+                            </div>
+                        </div>
+                    )}
 
                     {/* Items table */}
                     <div style={{overflowX: 'auto'}}>
