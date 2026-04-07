@@ -4,6 +4,8 @@
 import React, { useState, useMemo, useCallback, useRef } from 'react';
 import { Icon } from '@/utils/icons';
 import { buildSeparationMessage, openWhatsAppWithMessage, copyToClipboard } from '@/utils/separationMessage';
+import { useEscapeDeselect } from '@/hooks/useEscapeDeselect';
+import { classificarTransporte } from '@/utils/transportadora';
 
 
 const STATUS_CONFIG = {
@@ -30,7 +32,7 @@ const ALL_STATUSES = ['pendente', 'separado', 'embalado', 'despachado'];
 
 export default function SeparationList({
   separations, onUpdate, onDelete, onEdit, onSendToDispatch,
-  onBatchStatusChange, onBatchDispatch,
+  onBatchStatusChange, onBatchDispatch, onGerarLinkEntregador,
   hubs, showHubBadge, isStockAdmin, isOperador = false
 }) {
   const canEditSep = isStockAdmin || isOperador;
@@ -38,6 +40,11 @@ export default function SeparationList({
   const canCreateSep = isStockAdmin;
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [filtroTransporte, setFiltroTransporte] = useState('all'); // all|local|loggi|correios|outras
+  const [showEntregadorModal, setShowEntregadorModal] = useState(false);
+  const [entregadorNome, setEntregadorNome] = useState('');
+  const [entregadorTelefone, setEntregadorTelefone] = useState('');
+  const [gerandoLink, setGerandoLink] = useState(false);
   const [loadingId, setLoadingId] = useState(null);
   const [successId, setSuccessId] = useState(null);
   const [shareMenuId, setShareMenuId] = useState(null);
@@ -69,6 +76,9 @@ export default function SeparationList({
         items = items.filter(s => s.status === statusFilter);
       }
     }
+    if (filtroTransporte !== 'all') {
+      items = items.filter(s => classificarTransporte(s) === filtroTransporte);
+    }
     if (searchTerm) {
       const q = searchTerm.toLowerCase();
       items = items.filter(s =>
@@ -78,7 +88,25 @@ export default function SeparationList({
       );
     }
     return items.sort((a, b) => new Date(b.date) - new Date(a.date));
-  }, [separations, searchTerm, statusFilter, isStockAdmin, isOperador]);
+  }, [separations, searchTerm, statusFilter, filtroTransporte, isStockAdmin, isOperador]);
+
+  // Counts por tipo de transporte (respeitando statusFilter atual)
+  const transporteCounts = useMemo(() => {
+    let base = [...separations];
+    if (statusFilter !== 'all') {
+      if (!isStockAdmin && !isOperador && statusFilter === 'em_separacao') {
+        base = base.filter(s => s.status === 'pendente' || s.status === 'separado');
+      } else {
+        base = base.filter(s => s.status === statusFilter);
+      }
+    }
+    const c = { all: base.length, local: 0, loggi: 0, correios: 0, outras: 0, sem_transporte: 0 };
+    base.forEach(s => {
+      const tipo = classificarTransporte(s);
+      if (c[tipo] !== undefined) c[tipo]++;
+    });
+    return c;
+  }, [separations, statusFilter, isStockAdmin, isOperador]);
 
   const counts = useMemo(() => {
     const c = { all: separations.length, pendente: 0, separado: 0, embalado: 0, despachado: 0 };
@@ -127,7 +155,10 @@ export default function SeparationList({
     }
   };
 
-  const clearSelection = () => setSelectedIds(new Set());
+  const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
+
+  // ESC limpa seleção múltipla (ignora se modal aberto ou input focado)
+  useEscapeDeselect(clearSelection);
 
   const handleStatusAdvance = async (sep) => {
     if (loadingId) return;
@@ -197,6 +228,48 @@ export default function SeparationList({
     separations.filter(s => activeSelectedIds.has(s.id)),
   [separations, activeSelectedIds]);
 
+  // Tipo de seleção: 'todas_local' | 'misto' | 'sem_local'
+  const tipoSelecao = useMemo(() => {
+    if (selectedSeparations.length === 0) return 'sem_local';
+    const tipos = selectedSeparations.map(classificarTransporte);
+    const todasLocal = tipos.every(t => t === 'local');
+    if (todasLocal) return 'todas_local';
+    const algumaLocal = tipos.some(t => t === 'local');
+    return algumaLocal ? 'misto' : 'sem_local';
+  }, [selectedSeparations]);
+
+  const handleAbrirModalEntregador = useCallback(() => {
+    if (tipoSelecao !== 'todas_local') {
+      alert('Para gerar link de entregador, selecione apenas separações de Entrega Local.');
+      return;
+    }
+    setEntregadorNome('');
+    setEntregadorTelefone('');
+    setShowEntregadorModal(true);
+  }, [tipoSelecao]);
+
+  const handleConfirmarGerarLink = useCallback(async () => {
+    if (!entregadorNome.trim()) { alert('Informe o nome do entregador.'); return; }
+    if (!entregadorTelefone.trim()) { alert('Informe o telefone do entregador.'); return; }
+    if (typeof onGerarLinkEntregador !== 'function') {
+      alert('Função de geração de link não disponível.');
+      return;
+    }
+    setGerandoLink(true);
+    try {
+      await onGerarLinkEntregador(selectedSeparations, {
+        nome: entregadorNome.trim(),
+        telefone: entregadorTelefone.trim(),
+      }, clearSelection);
+      setShowEntregadorModal(false);
+    } catch (err) {
+      console.error('Erro ao gerar link entregador:', err);
+      alert('Erro ao gerar link: ' + (err.message || err));
+    } finally {
+      setGerandoLink(false);
+    }
+  }, [entregadorNome, entregadorTelefone, onGerarLinkEntregador, selectedSeparations, clearSelection]);
+
   // Build filter tabs based on role
   const filterTabs = useMemo(() => {
     if (isStockAdmin || isOperador) {
@@ -258,6 +331,48 @@ export default function SeparationList({
             </label>
           )}
         </div>
+        {/* Granular transport filter (pills) — admin/operador */}
+        {canEditSep && (() => {
+          const TIPOS = [
+            { key: 'local',    label: 'Local',    color: '#065f46', bg: '#d1fae5', border: '#6ee7b7' },
+            { key: 'loggi',    label: 'Loggi',    color: '#92400e', bg: '#fef3c7', border: '#fcd34d' },
+            { key: 'correios', label: 'Correios', color: '#1e40af', bg: '#dbeafe', border: '#93c5fd' },
+            { key: 'outras',   label: 'Outras',   color: '#4b5563', bg: '#f3f4f6', border: '#d1d5db' },
+          ];
+          return (
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '10px', paddingTop: '10px', borderTop: '1px solid var(--border-color)' }}>
+              {TIPOS.map(t => {
+                const count = transporteCounts[t.key] || 0;
+                if (count === 0) return null;
+                const active = filtroTransporte === t.key;
+                return (
+                  <button
+                    key={t.key}
+                    onClick={() => setFiltroTransporte(active ? 'all' : t.key)}
+                    title={active ? 'Clique para remover filtro' : `Filtrar por ${t.label}`}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      padding: '4px 10px',
+                      borderRadius: '999px',
+                      border: `1px solid ${active ? t.color : t.border}`,
+                      background: active ? t.color : t.bg,
+                      color: active ? '#fff' : t.color,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
+                      boxShadow: active ? '0 1px 3px rgba(0,0,0,0.15)' : 'none',
+                    }}
+                  >
+                    {t.label} ({count})
+                  </button>
+                );
+              })}
+            </div>
+          );
+        })()}
       </div>
 
       {/* List */}
@@ -466,6 +581,39 @@ export default function SeparationList({
           >
             <Icon name="shipping" size={14} /> {batchEntregaLocal ? 'Enviar como Entrega Local' : 'Enviar para Despacho'}
           </button>
+          {tipoSelecao === 'todas_local' && (
+            <button
+              className="btn"
+              style={{
+                fontSize: '12px',
+                padding: '6px 14px',
+                background: '#25D366',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: 600,
+                whiteSpace: 'nowrap',
+              }}
+              onClick={handleAbrirModalEntregador}
+              title="Gerar link de entrega para entregador"
+            >
+              <Icon name="whatsapp" size={14} /> Gerar Link Entregador
+            </button>
+          )}
+          {tipoSelecao === 'misto' && (
+            <span style={{
+              fontSize: '11px',
+              color: '#fbbf24',
+              background: 'rgba(251,191,36,0.15)',
+              padding: '4px 10px',
+              borderRadius: '6px',
+              border: '1px solid rgba(251,191,36,0.4)',
+              whiteSpace: 'nowrap',
+            }}>
+              ⚠ Misto: link só p/ 100% Local
+            </span>
+          )}
           <label style={{
             display: 'flex', alignItems: 'center', gap: '6px',
             color: '#fff', fontSize: '11px', cursor: 'pointer',
@@ -495,6 +643,71 @@ export default function SeparationList({
           >
             Limpar
           </button>
+        </div>
+      )}
+
+      {/* Modal: nome/telefone do entregador */}
+      {showEntregadorModal && (
+        <div
+          className="modal-overlay"
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000,
+          }}
+          onClick={() => !gerandoLink && setShowEntregadorModal(false)}
+        >
+          <div
+            role="dialog"
+            style={{
+              background: '#fff', borderRadius: '12px', padding: '24px',
+              maxWidth: '420px', width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <h3 style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: 600 }}>
+              Gerar Link para Entregador
+            </h3>
+            <p style={{ margin: '0 0 16px', fontSize: '12px', color: 'var(--text-muted)' }}>
+              {selectedSeparations.length} separação(ões) de Entrega Local serão despachadas e vinculadas ao link.
+            </p>
+            <div style={{ marginBottom: '12px' }}>
+              <label className="form-label" style={{ fontSize: '12px' }}>Nome do entregador</label>
+              <input
+                type="text"
+                className="form-input"
+                value={entregadorNome}
+                onChange={e => setEntregadorNome(e.target.value)}
+                placeholder="Ex: João Silva"
+                disabled={gerandoLink}
+                autoFocus
+              />
+            </div>
+            <div style={{ marginBottom: '20px' }}>
+              <label className="form-label" style={{ fontSize: '12px' }}>Telefone (WhatsApp)</label>
+              <input
+                type="tel"
+                className="form-input"
+                value={entregadorTelefone}
+                onChange={e => setEntregadorTelefone(e.target.value)}
+                placeholder="Ex: 11999998888"
+                disabled={gerandoLink}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setShowEntregadorModal(false)}
+                disabled={gerandoLink}
+              >Cancelar</button>
+              <button
+                className="btn btn-primary"
+                onClick={handleConfirmarGerarLink}
+                disabled={gerandoLink}
+              >
+                {gerandoLink ? 'Gerando...' : 'Gerar e Abrir WhatsApp'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

@@ -4,9 +4,10 @@
  * Extracted from ShippingManager (index-legacy.html L7300-7624)
  * Includes: filteredShippings, tracking updates, edit modal, status management
  */
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { Icon } from '@/utils/icons';
 import PeriodFilter, { filterByPeriod } from '@/components/ui/PeriodFilter';
+import { useEscapeDeselect } from '@/hooks/useEscapeDeselect';
 import { fetchTrackingInfo, buscarRastreioPorNF, buscarRastreiosLoteME } from '@/services/trackingService';
 import { supabaseClient, SUPABASE_URL } from '@/config/supabase';
 import {
@@ -111,6 +112,10 @@ export default function ShippingList({
     const [multiEntregadorTelefone, setMultiEntregadorTelefone] = useState('');
     const [loadingMultiToken, setLoadingMultiToken] = useState(false);
 
+    // ESC limpa seleção múltipla de entregas locais (ignora se modal aberto ou input focado)
+    const clearDeliverySelection = useCallback(() => setSelectedForDelivery(new Set()), []);
+    useEscapeDeselect(clearDeliverySelection);
+
     // Load existing delivery token when editing a shipping
     useEffect(() => {
         if (!editingShipping?.id || !(editingShipping?.entregaLocal || editingShipping?.transportadora === 'Entrega Local')) {
@@ -158,7 +163,7 @@ export default function ShippingList({
             setDeliveryToken(data);
 
             // Open WhatsApp
-            const link = `https://orne-estoque.vercel.app/entrega/${data.token}`;
+            const link = `https://estoque.ornedecor.com/entrega/${data.token}`;
             const telefone = entregadorTelefone.replace(/\D/g, '');
             const tel = telefone.startsWith('55') ? telefone : `55${telefone}`;
             const msg = encodeURIComponent(
@@ -222,7 +227,7 @@ export default function ShippingList({
             // 3. Build WhatsApp message
             const selectedShippingsList = shippings.filter(s => selectedForDelivery.has(s.id));
             const nfList = selectedShippingsList.map(s => `• NF ${s.nfNumero || '-'} — ${s.cliente || '-'}`).join('\n');
-            const link = `https://orne-estoque.vercel.app/entrega/${tokenData.token}`;
+            const link = `https://estoque.ornedecor.com/entrega/${tokenData.token}`;
             const telefone = multiEntregadorTelefone.replace(/\D/g, '');
             const tel = telefone.startsWith('55') ? telefone : `55${telefone}`;
             const msg = encodeURIComponent(
@@ -433,7 +438,11 @@ export default function ShippingList({
     }, [filteredShippings, sortField, sortDir]);
 
     // Helper: detect entrega local by flag OR transportadora text
-    const isEntregaLocalShipping = (s) => s.entregaLocal || s.transportadora === 'Entrega Local';
+    const isEntregaLocalShipping = (s) => {
+        if (s.entregaLocal) return true;
+        const t = (s.transportadora || '').toLowerCase().trim();
+        return t === 'entrega local' || t === 'transporte local';
+    };
 
     // Multi-NF: selectable shippings (entrega local + DESPACHADO)
     const selectableShippings = useMemo(() => {
@@ -1437,14 +1446,14 @@ export default function ShippingList({
                                         </div>
                                         <div style={{display: 'flex', gap: '6px', flexWrap: 'wrap'}}>
                                             <button className="btn btn-secondary btn-sm" style={{fontSize: '11px'}} onClick={() => {
-                                                const link = `https://orne-estoque.vercel.app/entrega/${deliveryToken.token}`;
+                                                const link = `https://estoque.ornedecor.com/entrega/${deliveryToken.token}`;
                                                 navigator.clipboard.writeText(link).then(() => {
                                                     setSuccess('Link copiado!');
                                                     setTimeout(() => setSuccess(''), 2000);
                                                 });
                                             }}>Copiar Link</button>
                                             <button className="btn btn-secondary btn-sm" style={{fontSize: '11px'}} onClick={() => {
-                                                const link = `https://orne-estoque.vercel.app/entrega/${deliveryToken.token}`;
+                                                const link = `https://estoque.ornedecor.com/entrega/${deliveryToken.token}`;
                                                 const telefone = (deliveryToken.entregador_telefone || '').replace(/\D/g, '');
                                                 const tel = telefone.startsWith('55') ? telefone : `55${telefone}`;
                                                 const msg = encodeURIComponent(
