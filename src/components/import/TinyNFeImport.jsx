@@ -42,7 +42,7 @@ export default function TinyNFeImport({ products, onSubmitEntry, onSubmitExit, o
     const batch = useBatchImport();
 
     // ─── Dados do envio (editáveis, acima da tabela de produtos) ──────────
-    const TRANSPORTADORAS_PADRAO = ['Transporte Local', 'Loggi', 'Correios', 'Jadlog', 'Melhor Envio', 'Total Express', 'Braspress', 'TNT', 'Azul Cargo', 'Outro'];
+    const TRANSPORTADORAS_PADRAO = ['Entrega Local', 'Loggi', 'Correios', 'Jadlog', 'Melhor Envio', 'Total Express', 'Braspress', 'TNT', 'Azul Cargo', 'Outro'];
     const transportadorasOptions = transportadoras && transportadoras.length ? transportadoras : TRANSPORTADORAS_PADRAO;
     const hubOptions = (hubs && hubs.length > 0)
         ? hubs.map(h => ({ value: h.id, label: h.name || h.id }))

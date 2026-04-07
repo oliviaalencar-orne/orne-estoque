@@ -438,7 +438,11 @@ export default function ShippingList({
     }, [filteredShippings, sortField, sortDir]);
 
     // Helper: detect entrega local by flag OR transportadora text
-    const isEntregaLocalShipping = (s) => s.entregaLocal || s.transportadora === 'Entrega Local';
+    const isEntregaLocalShipping = (s) => {
+        if (s.entregaLocal) return true;
+        const t = (s.transportadora || '').toLowerCase().trim();
+        return t === 'entrega local' || t === 'transporte local';
+    };
 
     // Multi-NF: selectable shippings (entrega local + DESPACHADO)
     const selectableShippings = useMemo(() => {

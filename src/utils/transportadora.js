@@ -49,7 +49,7 @@ export function classificarTransporte(sep) {
   if (sep.entregaLocal === true) return 'local';
   const t = normalizar(sep.transportadora);
   if (!t) return 'sem_transporte';
-  if (t.includes('entrega local') || t === 'local') return 'local';
+  if (t.includes('entrega local') || t.includes('transporte local') || t === 'local') return 'local';
   if (t.includes('loggi')) return 'loggi';
   if (t.includes('correio')) return 'correios';
   return 'outras';
