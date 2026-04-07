@@ -318,25 +318,6 @@ export default function SeparationList({
               >{f.label}</button>
             ))}
           </div>
-          {/* Granular transport filter — admin/operador */}
-          {canEditSep && (
-            <div className="filter-tabs" style={{ gap: '4px' }}>
-              {[
-                { key: 'all', label: `Todos (${transporteCounts.all})` },
-                { key: 'local', label: `Local (${transporteCounts.local})` },
-                { key: 'loggi', label: `Loggi (${transporteCounts.loggi})` },
-                { key: 'correios', label: `Correios (${transporteCounts.correios})` },
-                { key: 'outras', label: `Outras (${transporteCounts.outras})` },
-              ].map(f => (
-                <button
-                  key={f.key}
-                  className={`filter-tab ${filtroTransporte === f.key ? 'active' : ''}`}
-                  onClick={() => setFiltroTransporte(f.key)}
-                  style={{ fontSize: '11px' }}
-                >{f.label}</button>
-              ))}
-            </div>
-          )}
           {/* Select All checkbox — admin/operador */}
           {canEditSep && selectableItems.length > 0 && (
             <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
@@ -350,6 +331,48 @@ export default function SeparationList({
             </label>
           )}
         </div>
+        {/* Granular transport filter (pills) — admin/operador */}
+        {canEditSep && (() => {
+          const TIPOS = [
+            { key: 'local',    label: 'Local',    color: '#065f46', bg: '#d1fae5', border: '#6ee7b7' },
+            { key: 'loggi',    label: 'Loggi',    color: '#92400e', bg: '#fef3c7', border: '#fcd34d' },
+            { key: 'correios', label: 'Correios', color: '#1e40af', bg: '#dbeafe', border: '#93c5fd' },
+            { key: 'outras',   label: 'Outras',   color: '#4b5563', bg: '#f3f4f6', border: '#d1d5db' },
+          ];
+          return (
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '10px', paddingTop: '10px', borderTop: '1px solid var(--border-color)' }}>
+              {TIPOS.map(t => {
+                const count = transporteCounts[t.key] || 0;
+                if (count === 0) return null;
+                const active = filtroTransporte === t.key;
+                return (
+                  <button
+                    key={t.key}
+                    onClick={() => setFiltroTransporte(active ? 'all' : t.key)}
+                    title={active ? 'Clique para remover filtro' : `Filtrar por ${t.label}`}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      padding: '4px 10px',
+                      borderRadius: '999px',
+                      border: `1px solid ${active ? t.color : t.border}`,
+                      background: active ? t.color : t.bg,
+                      color: active ? '#fff' : t.color,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
+                      boxShadow: active ? '0 1px 3px rgba(0,0,0,0.15)' : 'none',
+                    }}
+                  >
+                    {t.label} ({count})
+                  </button>
+                );
+              })}
+            </div>
+          );
+        })()}
       </div>
 
       {/* List */}
