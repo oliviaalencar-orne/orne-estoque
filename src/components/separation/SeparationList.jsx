@@ -4,6 +4,7 @@
 import React, { useState, useMemo, useCallback, useRef } from 'react';
 import { Icon } from '@/utils/icons';
 import { buildSeparationMessage, openWhatsAppWithMessage, copyToClipboard } from '@/utils/separationMessage';
+import { useEscapeDeselect } from '@/hooks/useEscapeDeselect';
 
 
 const STATUS_CONFIG = {
@@ -127,7 +128,10 @@ export default function SeparationList({
     }
   };
 
-  const clearSelection = () => setSelectedIds(new Set());
+  const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
+
+  // ESC limpa seleção múltipla (ignora se modal aberto ou input focado)
+  useEscapeDeselect(clearSelection);
 
   const handleStatusAdvance = async (sep) => {
     if (loadingId) return;

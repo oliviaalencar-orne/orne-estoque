@@ -4,9 +4,10 @@
  * Extracted from ShippingManager (index-legacy.html L7300-7624)
  * Includes: filteredShippings, tracking updates, edit modal, status management
  */
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { Icon } from '@/utils/icons';
 import PeriodFilter, { filterByPeriod } from '@/components/ui/PeriodFilter';
+import { useEscapeDeselect } from '@/hooks/useEscapeDeselect';
 import { fetchTrackingInfo, buscarRastreioPorNF, buscarRastreiosLoteME } from '@/services/trackingService';
 import { supabaseClient, SUPABASE_URL } from '@/config/supabase';
 import {
@@ -110,6 +111,10 @@ export default function ShippingList({
     const [multiEntregadorNome, setMultiEntregadorNome] = useState('');
     const [multiEntregadorTelefone, setMultiEntregadorTelefone] = useState('');
     const [loadingMultiToken, setLoadingMultiToken] = useState(false);
+
+    // ESC limpa seleção múltipla de entregas locais (ignora se modal aberto ou input focado)
+    const clearDeliverySelection = useCallback(() => setSelectedForDelivery(new Set()), []);
+    useEscapeDeselect(clearDeliverySelection);
 
     // Load existing delivery token when editing a shipping
     useEffect(() => {
