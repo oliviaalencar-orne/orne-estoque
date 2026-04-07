@@ -202,8 +202,21 @@ export default function App() {
     setSyncStatus('syncing');
     const channels = [];
 
+    // ─── Helper: debounced refetch subscription (for paginated tables) ───
+    const subscribeRefetch = (tableName, refetchFn, debounceMs = 800) => {
+      let timer = null;
+      const ch = supabaseClient
+        .channel(tableName + '-refetch')
+        .on('postgres_changes', { event: '*', schema: 'public', table: tableName }, () => {
+          clearTimeout(timer);
+          timer = setTimeout(() => { refetchFn(); }, debounceMs);
+        })
+        .subscribe();
+      return ch;
+    };
+
     if (isEquipe || isOperador) {
-      // ═══ EQUIPE/OPERADOR MODE: 2 realtime channels (shippings + separations) ═══
+      // ═══ EQUIPE/OPERADOR MODE: realtime channels ═══
 
       // Categories — fetch once, no realtime
       supabaseClient.from('categories').select('*').then(({ data, error }) => {
@@ -212,8 +225,12 @@ export default function App() {
         else setCategories(DEFAULT_CATEGORIES);
       });
 
-      // Products — paginated fetch, no realtime (needed for Dashboard & SeparationManager)
+      // Products — paginated fetch + realtime refetch
       loadProducts();
+      channels.push(subscribeRefetch('products', loadProducts));
+
+      // Entries/Exits: NÃO carregar nem subscrever no modo equipe/operador
+      // (usam RPC stock map para evitar carregar milhares de linhas)
 
       // Stock summary via RPC (for Dashboard — avoids loading entries/exits)
       loadStockSummary().then((map) => setEquipeStockMap(map));
@@ -267,8 +284,9 @@ export default function App() {
         })
       );
 
-      // Products — no Realtime, paginated fetch (> 1000 products)
+      // Products — paginated fetch + realtime refetch
       loadProducts().then(() => setSyncStatus('online'));
+      channels.push(subscribeRefetch('products', loadProducts));
 
       // Entries — realtime
       channels.push(
