@@ -163,7 +163,7 @@ export default function ShippingList({
             setDeliveryToken(data);
 
             // Open WhatsApp
-            const link = `https://orne-estoque.vercel.app/entrega/${data.token}`;
+            const link = `https://estoque.ornedecor.com/entrega/${data.token}`;
             const telefone = entregadorTelefone.replace(/\D/g, '');
             const tel = telefone.startsWith('55') ? telefone : `55${telefone}`;
             const msg = encodeURIComponent(
@@ -227,7 +227,7 @@ export default function ShippingList({
             // 3. Build WhatsApp message
             const selectedShippingsList = shippings.filter(s => selectedForDelivery.has(s.id));
             const nfList = selectedShippingsList.map(s => `• NF ${s.nfNumero || '-'} — ${s.cliente || '-'}`).join('\n');
-            const link = `https://orne-estoque.vercel.app/entrega/${tokenData.token}`;
+            const link = `https://estoque.ornedecor.com/entrega/${tokenData.token}`;
             const telefone = multiEntregadorTelefone.replace(/\D/g, '');
             const tel = telefone.startsWith('55') ? telefone : `55${telefone}`;
             const msg = encodeURIComponent(
@@ -1442,14 +1442,14 @@ export default function ShippingList({
                                         </div>
                                         <div style={{display: 'flex', gap: '6px', flexWrap: 'wrap'}}>
                                             <button className="btn btn-secondary btn-sm" style={{fontSize: '11px'}} onClick={() => {
-                                                const link = `https://orne-estoque.vercel.app/entrega/${deliveryToken.token}`;
+                                                const link = `https://estoque.ornedecor.com/entrega/${deliveryToken.token}`;
                                                 navigator.clipboard.writeText(link).then(() => {
                                                     setSuccess('Link copiado!');
                                                     setTimeout(() => setSuccess(''), 2000);
                                                 });
                                             }}>Copiar Link</button>
                                             <button className="btn btn-secondary btn-sm" style={{fontSize: '11px'}} onClick={() => {
-                                                const link = `https://orne-estoque.vercel.app/entrega/${deliveryToken.token}`;
+                                                const link = `https://estoque.ornedecor.com/entrega/${deliveryToken.token}`;
                                                 const telefone = (deliveryToken.entregador_telefone || '').replace(/\D/g, '');
                                                 const tel = telefone.startsWith('55') ? telefone : `55${telefone}`;
                                                 const msg = encodeURIComponent(

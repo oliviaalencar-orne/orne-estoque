@@ -322,6 +322,142 @@ export default function SeparationManager({
     setTimeout(() => setSuccess(''), 8000);
   };
 
+  // ── Gerar link de entregador a partir de separações (Entrega Local) ──
+  const gerarLinkEntregadorDaSeparacao = async (selectedSeparations, entregador, clearSelection) => {
+    if (!selectedSeparations?.length) return;
+    if (!entregador?.nome || !entregador?.telefone) {
+      throw new Error('Nome e telefone do entregador são obrigatórios');
+    }
+
+    // 1. Garantir que todas viraram despachos: separar as que ainda não têm shippingId
+    const pendentes = selectedSeparations.filter(s => !s.shippingId || s.shippingId === 'pending');
+    const jaDespachadas = selectedSeparations.filter(s => s.shippingId && s.shippingId !== 'pending');
+
+    const shippingIdsCriados = [];
+    const total = pendentes.length;
+
+    for (let i = 0; i < pendentes.length; i++) {
+      const sep = pendentes[i];
+      setBatchProgress({ current: i + 1, total, message: `Despachando ${i + 1}/${total} (NF ${sep.nfNumero || '-'})...` });
+      try {
+        const hub = (hubs || []).find(h => h.id === sep.hubId);
+        const localOrigem = hub?.name || '';
+        const shippingResult = await onAddShipping({
+          nfNumero: sep.nfNumero || '',
+          cliente: sep.cliente || '',
+          destino: sep.destino || '',
+          localOrigem,
+          transportadora: 'Entrega Local',
+          codigoRastreio: '',
+          linkRastreio: '',
+          melhorEnvioId: '',
+          produtos: sep.produtos || [],
+          observacoes: sep.observacoes || '',
+          status: 'DESPACHADO',
+          entregaLocal: true,
+          dataEntrega: null,
+        });
+        const shippingId = shippingResult?.id;
+        if (!shippingId) throw new Error('Despacho criado mas sem ID');
+
+        // Process exits
+        if (onAddExit && sep.produtos?.length) {
+          const produtosComExit = [...sep.produtos];
+          for (let j = 0; j < produtosComExit.length; j++) {
+            const prod = produtosComExit[j];
+            if (prod.produtoEstoque && prod.baixarEstoque) {
+              try {
+                const exitResult = await onAddExit({
+                  type: 'VENDA',
+                  sku: prod.produtoEstoque.sku || prod.sku,
+                  quantity: prod.quantidade || 1,
+                  client: sep.cliente || '',
+                  nf: sep.nfNumero || '',
+                  nfOrigem: (prod.nfOrigem && prod.nfOrigem !== 'Sem NF' && prod.nfOrigem !== 'SEM_NF')
+                    ? prod.nfOrigem : null,
+                });
+                if (exitResult?.id) {
+                  produtosComExit[j] = { ...produtosComExit[j], exitId: exitResult.id, baixouEstoque: true };
+                }
+              } catch (exitErr) {
+                console.error(`Erro exit: ${prod.sku}`, exitErr);
+              }
+            }
+          }
+          const hasExit = produtosComExit.some(p => p.exitId);
+          if (hasExit) {
+            try {
+              await supabaseClient.from('shippings').update({ produtos: produtosComExit }).eq('id', shippingId);
+            } catch (updateErr) {
+              console.error('Erro ao atualizar produtos do despacho:', updateErr);
+            }
+          }
+        }
+
+        await onUpdate(sep.id, { status: 'despachado', shippingId });
+        shippingIdsCriados.push(shippingId);
+      } catch (err) {
+        console.error(`Erro ao despachar NF ${sep.nfNumero}:`, err);
+        setBatchProgress(null);
+        throw new Error(`Falha ao despachar NF ${sep.nfNumero}: ${err.message || err}`);
+      }
+    }
+
+    setBatchProgress(null);
+
+    // 2. Reunir todos os shippingIds (criados agora + já existentes)
+    const allShippingIds = [
+      ...shippingIdsCriados,
+      ...jaDespachadas.map(s => s.shippingId),
+    ].filter(Boolean);
+
+    if (!allShippingIds.length) {
+      throw new Error('Nenhum despacho disponível para vincular');
+    }
+
+    // 3. Criar token multi-NF (shipping_id=null)
+    const { data: tokenData, error: tokenErr } = await supabaseClient
+      .from('delivery_tokens')
+      .insert({
+        shipping_id: null,
+        entregador_nome: entregador.nome,
+        entregador_telefone: entregador.telefone,
+      })
+      .select('*')
+      .single();
+    if (tokenErr) throw tokenErr;
+
+    // 4. Criar junction rows
+    const junctionRows = allShippingIds.map(sid => ({
+      token_id: tokenData.id,
+      shipping_id: sid,
+    }));
+    const { error: jErr } = await supabaseClient
+      .from('delivery_token_shippings')
+      .insert(junctionRows);
+    if (jErr) throw jErr;
+
+    // 5. Build WhatsApp message (NOVO domínio: estoque.ornedecor.com)
+    const nfList = selectedSeparations
+      .map(s => `• NF ${s.nfNumero || '-'} — ${s.cliente || '-'}`)
+      .join('\n');
+    const link = `https://estoque.ornedecor.com/entrega/${tokenData.token}`;
+    const telefoneDigits = entregador.telefone.replace(/\D/g, '');
+    const tel = telefoneDigits.startsWith('55') ? telefoneDigits : `55${telefoneDigits}`;
+    const msg = encodeURIComponent(
+      `Olá ${entregador.nome}!\n\n` +
+      `Você está realizando ${allShippingIds.length} entrega(s) da *ORNE™*.\n\n` +
+      `${nfList}\n\n` +
+      `Anexe os comprovantes de entrega neste link:\n${link}\n\n` +
+      `O link é válido por 48 horas.\nObrigado!`
+    );
+    window.open(`https://wa.me/${tel}?text=${msg}`, '_blank');
+
+    if (clearSelection) clearSelection();
+    setSuccess(`Link gerado para ${allShippingIds.length} entrega(s)!`);
+    setTimeout(() => setSuccess(''), 5000);
+  };
+
   const hasPending = pendingSeparationsForHub.length > 0;
   const isHubSelected = selectedHubId !== 'all';
 
@@ -522,6 +658,7 @@ export default function SeparationManager({
           onSendToDispatch={handleSendToDispatch}
           onBatchStatusChange={handleBatchStatusChange}
           onBatchDispatch={handleBatchDispatch}
+          onGerarLinkEntregador={gerarLinkEntregadorDaSeparacao}
           hubs={hubs}
           showHubBadge={selectedHubId === 'all'}
           isStockAdmin={isStockAdmin}
