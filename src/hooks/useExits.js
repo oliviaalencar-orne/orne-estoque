@@ -18,7 +18,7 @@ import { mapExitFromDB } from '@/utils/mappers';
  * @param {boolean} isStockAdmin - Permission flag
  * @returns {Object}
  */
-export function useExits(user, isStockAdmin) {
+export function useExits(user, isStockAdmin, isOperador) {
   const [exits, setExits] = useState([]);
 
   /**
@@ -28,7 +28,7 @@ export function useExits(user, isStockAdmin) {
    */
   const addExit = useCallback(
     async (exit) => {
-      if (!isStockAdmin) {
+      if (!isStockAdmin && !isOperador) {
         alert('Sem permissão para esta ação');
         return null;
       }
@@ -64,12 +64,12 @@ export function useExits(user, isStockAdmin) {
       }
       return null;
     },
-    [user, isStockAdmin]
+    [user, isStockAdmin, isOperador]
   );
 
   const updateExit = useCallback(
     async (exitId, data) => {
-      if (!isStockAdmin) {
+      if (!isStockAdmin && !isOperador) {
         alert('Sem permissão para esta ação');
         return;
       }
@@ -91,7 +91,7 @@ export function useExits(user, isStockAdmin) {
         prev.map((e) => (e.id === exitId ? { ...e, ...data } : e))
       );
     },
-    [isStockAdmin]
+    [isStockAdmin, isOperador]
   );
 
   const deleteExit = useCallback(

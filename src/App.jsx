@@ -137,7 +137,7 @@ export default function App() {
     useEntries(user, isStockAdmin, setProducts);
 
   const { exits, setExits, addExit, updateExit, deleteExit } =
-    useExits(user, isStockAdmin);
+    useExits(user, isStockAdmin, isOperador);
 
   const { shippings, setShippings, addShipping, updateShipping, deleteShipping, refreshShippings } =
     useShippings(user, isStockAdmin, isOperador);
