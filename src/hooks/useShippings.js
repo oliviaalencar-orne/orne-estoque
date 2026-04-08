@@ -24,7 +24,7 @@ export function useShippings(user, isStockAdmin, isOperador) {
 
   const addShipping = useCallback(
     async (shipping) => {
-      if (!isStockAdmin) {
+      if (!isStockAdmin && !isOperador) {
         alert('Sem permissão para esta ação');
         return;
       }
@@ -86,7 +86,7 @@ export function useShippings(user, isStockAdmin, isOperador) {
       });
       return created;
     },
-    [user, isStockAdmin]
+    [user, isStockAdmin, isOperador]
   );
 
   const updateShipping = useCallback(
