@@ -542,7 +542,7 @@ export default function ShippingList({
         }
     };
 
-    // Atualizar todos os rastreios pendentes — EF v15 persists directly
+    // Atualizar todos os rastreios pendentes — EF v19 persists directly, batched from frontend
     const atualizarTodosRastreios = async () => {
         const activeStatuses = ['DESPACHADO', 'AGUARDANDO_COLETA', 'EM_TRANSITO', 'SAIU_ENTREGA', 'TENTATIVA_ENTREGA'];
         const pendentes = shippings.filter(s =>
@@ -561,56 +561,121 @@ export default function ShippingList({
         const porCodigo = pendentes.filter(s => !s.melhorEnvioId?.trim() || s.melhorEnvioId?.startsWith('ORD-')).filter(s => s.codigoRastreio?.trim());
 
         let alterados = 0, semMudanca = 0, erros = 0;
+        const ME_BATCH_SIZE = 20;
+        const CODE_BATCH_SIZE = 10;
 
         try {
-            // Batch call for Melhor Envio UUIDs
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            const token = session?.access_token;
+            const totalBatches = Math.ceil(porME.length / ME_BATCH_SIZE) + Math.ceil(porCodigo.length / CODE_BATCH_SIZE);
+            let currentBatch = 0;
+
+            // Batch calls for Melhor Envio UUIDs (groups of 20)
             if (porME.length > 0) {
-                const uuids = porME.map(s => s.melhorEnvioId);
-                try {
-                    const { data: { session } } = await supabaseClient.auth.getSession();
-                    const token = session?.access_token;
-                    const response = await fetch(`${SUPABASE_URL}/functions/v1/rastrear-envio`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                        body: JSON.stringify({ orderIds: uuids }),
-                    });
-                    const result = await response.json();
-                    if (result.success && result.data) {
-                        for (const [id, info] of Object.entries(result.data)) {
-                            if (info?.erro) erros++;
-                            else if (info?.persisted) alterados++;
-                            else semMudanca++;
+                for (let i = 0; i < porME.length; i += ME_BATCH_SIZE) {
+                    const batch = porME.slice(i, i + ME_BATCH_SIZE);
+                    const uuids = batch.map(s => s.melhorEnvioId);
+                    currentBatch++;
+                    setSuccess(`Atualizando rastreios... (${currentBatch}/${totalBatches})`);
+                    try {
+                        const response = await fetch(`${SUPABASE_URL}/functions/v1/rastrear-envio`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                            body: JSON.stringify({ orderIds: uuids }),
+                        });
+                        const result = await response.json();
+                        if (result.success && result.data) {
+                            for (const [id, info] of Object.entries(result.data)) {
+                                if (info?.erro) erros++;
+                                else if (info?.persisted) alterados++;
+                                else semMudanca++;
+                            }
                         }
+                    } catch (err) {
+                        console.error('Erro ao rastrear via ME (batch):', err.message);
+                        erros += batch.length;
                     }
-                } catch (err) {
-                    console.error('Erro ao rastrear via ME:', err.message);
-                    erros += porME.length;
+                    // Delay between batches to avoid rate limits
+                    if (i + ME_BATCH_SIZE < porME.length) {
+                        await new Promise(r => setTimeout(r, 1000));
+                    }
                 }
             }
 
-            // Batch call for tracking codes
+            // Batch calls for tracking codes (groups of 10)
             if (porCodigo.length > 0) {
-                const codigos = porCodigo.map(s => s.codigoRastreio.trim());
-                try {
-                    const { data: { session } } = await supabaseClient.auth.getSession();
-                    const token = session?.access_token;
-                    const response = await fetch(`${SUPABASE_URL}/functions/v1/rastrear-envio`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                        body: JSON.stringify({ codigosRastreio: codigos }),
-                    });
-                    const result = await response.json();
-                    if (result.success && result.data) {
-                        for (const [id, info] of Object.entries(result.data)) {
-                            if (info?.erro) erros++;
-                            else if (info?.persisted) alterados++;
-                            else semMudanca++;
+                for (let i = 0; i < porCodigo.length; i += CODE_BATCH_SIZE) {
+                    const batch = porCodigo.slice(i, i + CODE_BATCH_SIZE);
+                    const codigos = batch.map(s => s.codigoRastreio.trim());
+                    currentBatch++;
+                    setSuccess(`Atualizando rastreios... (${currentBatch}/${totalBatches})`);
+                    try {
+                        const response = await fetch(`${SUPABASE_URL}/functions/v1/rastrear-envio`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                            body: JSON.stringify({ codigosRastreio: codigos }),
+                        });
+                        const result = await response.json();
+                        if (result.success && result.data) {
+                            for (const [id, info] of Object.entries(result.data)) {
+                                if (info?.erro) erros++;
+                                else if (info?.persisted) alterados++;
+                                else semMudanca++;
+                            }
                         }
+                    } catch (err) {
+                        console.error('Erro ao rastrear via código (batch):', err.message);
+                        erros += batch.length;
                     }
-                } catch (err) {
-                    console.error('Erro ao rastrear via código:', err.message);
-                    erros += porCodigo.length;
+                    if (i + CODE_BATCH_SIZE < porCodigo.length) {
+                        await new Promise(r => setTimeout(r, 1000));
+                    }
                 }
+            }
+
+            // Time-based alert: stuck shippings with all-fallbacks-failed > 10 business days → TENTATIVA_ENTREGA
+            setSuccess('Verificando alertas por tempo...');
+            try {
+                const cutoffDate = new Date();
+                let bizDays = 0;
+                while (bizDays < 10) {
+                    cutoffDate.setDate(cutoffDate.getDate() - 1);
+                    const dow = cutoffDate.getDay();
+                    if (dow !== 0 && dow !== 6) bizDays++;
+                }
+                const stuckShippings = shippings.filter(s => {
+                    if (!['DESPACHADO', 'AGUARDANDO_COLETA'].includes(s.status)) return false;
+                    if (s.entregaLocal) return false;
+                    if (!s.date || new Date(s.date) > cutoffDate) return false;
+                    const fb = s.rastreioInfo?.carrierFallback;
+                    return fb && (fb.result === 'all-fallbacks-failed' || fb.reason === 'loggi-no-fallback');
+                });
+                let timeAlerted = 0;
+                for (const s of stuckShippings) {
+                    try {
+                        await onUpdate(s.id, {
+                            status: 'TENTATIVA_ENTREGA',
+                            rastreioInfo: {
+                                ...s.rastreioInfo,
+                                timeAlert: {
+                                    reason: 'stuck-10-business-days',
+                                    previousStatus: s.status,
+                                    alertDate: new Date().toISOString(),
+                                    shippingDate: s.date,
+                                },
+                            },
+                        });
+                        timeAlerted++;
+                    } catch (err) {
+                        console.error(`[time-alert] Erro ao alertar ${s.nfNumero}:`, err.message);
+                    }
+                }
+                if (timeAlerted > 0) {
+                    alterados += timeAlerted;
+                    console.log(`[time-alert] ${timeAlerted} shippings marcados como TENTATIVA_ENTREGA`);
+                }
+            } catch (err) {
+                console.error('[time-alert] Erro geral:', err.message);
             }
 
             // Refetch shippings from DB (EF already persisted)

@@ -317,6 +317,64 @@ export default async function handler(req, res) {
       }
     }
 
+    // 3c. Time-based alert: shippings stuck with all-fallbacks-failed for 10+ business days → TENTATIVA_ENTREGA
+    let timeAlerted = 0;
+    try {
+      // 10 business days ≈ 14 calendar days (conservative)
+      const cutoffDate = new Date();
+      let bizDays = 0;
+      while (bizDays < 10) {
+        cutoffDate.setDate(cutoffDate.getDate() - 1);
+        const dow = cutoffDate.getDay();
+        if (dow !== 0 && dow !== 6) bizDays++;
+      }
+      const cutoffISO = cutoffDate.toISOString();
+
+      // Query shippings stuck in early statuses, older than cutoff
+      const stuckQuery = new URLSearchParams({
+        select: 'id,nf_numero,status,codigo_rastreio,date,rastreio_info',
+        or: '(status.eq.DESPACHADO,status.eq.AGUARDANDO_COLETA)',
+        'date': `lt.${cutoffISO}`,
+      });
+      const stuckRes = await fetch(`${REST_URL}/shippings?${stuckQuery}`, {
+        headers: supabaseHeaders,
+      });
+      const stuckShippings = stuckRes.ok ? await stuckRes.json() : [];
+
+      for (const s of stuckShippings) {
+        // Only alert if fallback was attempted and failed (or skipped for Loggi)
+        const fb = s.rastreio_info?.carrierFallback;
+        const isFallbackFailed = fb && (fb.result === 'all-fallbacks-failed' || fb.reason === 'loggi-no-fallback');
+        if (!isFallbackFailed) continue;
+
+        // Skip entrega_local
+        if (s.entrega_local) continue;
+
+        const ok = await patchShipping(REST_URL, supabaseHeaders, s.id, {
+          status: 'TENTATIVA_ENTREGA',
+          ultima_atualizacao_rastreio: now,
+          rastreio_info: {
+            ...s.rastreio_info,
+            timeAlert: {
+              reason: 'stuck-10-business-days',
+              previousStatus: s.status,
+              alertDate: now,
+              shippingDate: s.date,
+            },
+          },
+        });
+        if (ok) {
+          timeAlerted++;
+          console.log(`[CRON] Time alert: NF ${s.nf_numero} ${s.status} → TENTATIVA_ENTREGA (criado em ${s.date?.substring(0, 10)})`);
+        }
+      }
+      if (timeAlerted > 0) {
+        console.log(`[CRON] Time alerts aplicados: ${timeAlerted} shippings → TENTATIVA_ENTREGA`);
+      }
+    } catch (err) {
+      console.error('[CRON] Erro ao aplicar time alerts:', err.message);
+    }
+
     // 4. Auto-create stock entries for devoluções that reached ENTREGUE
     let devEntriesCreated = 0;
     let devEntriesErrors = 0;
@@ -417,6 +475,7 @@ export default async function handler(req, res) {
       checked,
       updated,
       errors,
+      timeAlerted,
       devEntriesCreated,
       devEntriesErrors,
       timestamp: now,
