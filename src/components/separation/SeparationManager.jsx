@@ -129,7 +129,7 @@ export default function SeparationManager({
     const produtosComFlags = (data.produtos || []).map(p => ({
       ...p,
       doNossoEstoque: !!p.produtoEstoque,
-      baixarEstoque: !!p.produtoEstoque,
+      baixarEstoque: false,
       observacao: '',
     }));
 

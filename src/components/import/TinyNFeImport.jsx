@@ -96,7 +96,7 @@ export default function TinyNFeImport({ products, onSubmitEntry, onSubmitExit, o
                 observations: '',
                 category: matched?.category || '',
                 alreadyRegistered,
-                baixarEstoque: !isDevolucao && !!matched && isExitNfe,
+                baixarEstoque: false,
                 nfOrigem: '',
             };
         });
@@ -221,7 +221,7 @@ export default function TinyNFeImport({ products, onSubmitEntry, onSubmitExit, o
         updateItemState(idx, {
             linkedSku: sku,
             linkedProduct: prod || null,
-            baixarEstoque: !isDevolucao && !!prod && isExit,
+            baixarEstoque: false,
             nfOrigem: '',
         });
         setShowVincularModal(null);
@@ -247,7 +247,7 @@ export default function TinyNFeImport({ products, onSubmitEntry, onSubmitExit, o
             updateItemState(idx, {
                 linkedSku: newProductData.sku.trim(),
                 linkedProduct: { name: newProductData.name.trim(), sku: newProductData.sku.trim() },
-                baixarEstoque: !isDevolucao && isExit,
+                baixarEstoque: false,
                 nfOrigem: '',
             });
             setShowNewProductModal(null);

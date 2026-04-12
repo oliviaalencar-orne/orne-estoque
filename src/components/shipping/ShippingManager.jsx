@@ -75,7 +75,7 @@ export default function ShippingManager({
         linkRastreio: '',
         melhorEnvioId: '',
         hubTelefone: '',
-        baixarEstoque: true,
+        baixarEstoque: false,
         produtos: [],
         observacoes: '',
         recebedorNome: '',
@@ -363,7 +363,7 @@ export default function ShippingManager({
             setForm({
                 nfNumero: '', cliente: '', destino: '', localOrigem: locaisOrigem[0] || 'Loja Principal',
                 transportadora: '', codigoRastreio: '', linkRastreio: '', melhorEnvioId: '',
-                hubTelefone: '', baixarEstoque: true, produtos: [], observacoes: '',
+                hubTelefone: '', baixarEstoque: false, produtos: [], observacoes: '',
                 recebedorNome: '', comprovanteObs: '', comprovanteFotos: [],
             });
             setNfFile(null);

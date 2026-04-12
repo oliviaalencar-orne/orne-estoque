@@ -125,7 +125,7 @@ export default function ShippingForm({
         newProdutos[index] = {
             ...newProdutos[index],
             produtoEstoque: produtoEstoque || null,
-            baixarEstoque: !!produtoEstoque
+            baixarEstoque: false
         };
         setForm({...form, produtos: newProdutos});
 

@@ -99,7 +99,7 @@ export const processarXML = (file, stock, locaisOrigem) => {
                             nome: xProd,
                             quantidade: parseInt(parseFloat(qCom)) || 1,
                             ean: eanNormalizado,
-                            baixarEstoque: !!produtoEncontrado,
+                            baixarEstoque: false,
                             produtoEstoque: produtoEncontrado || null,
                             autoVinculado: !!produtoEncontrado
                         });
@@ -235,7 +235,7 @@ export default function ShippingXMLImport({ stock, nfFile, setNfFile, onSetForm,
                                 nome: xProd,
                                 quantidade: parseInt(parseFloat(qCom)) || 1,
                                 ean: eanNormalizado,
-                                baixarEstoque: !!produtoEncontrado,
+                                baixarEstoque: false,
                                 produtoEstoque: produtoEncontrado || null,
                                 autoVinculado: !!produtoEncontrado
                             });
@@ -389,7 +389,7 @@ export default function ShippingXMLImport({ stock, nfFile, setNfFile, onSetForm,
                             nome: nome,
                             quantidade: Math.round(qtd),
                             ean: '',
-                            baixarEstoque: !!produtoEncontrado,
+                            baixarEstoque: false,
                             produtoEstoque: produtoEncontrado || null,
                             autoVinculado: !!produtoEncontrado
                         });
@@ -407,7 +407,7 @@ export default function ShippingXMLImport({ stock, nfFile, setNfFile, onSetForm,
                                 nome: nome,
                                 quantidade: parseInt(match[3]) || 1,
                                 ean: '',
-                                baixarEstoque: !!produtoEncontrado,
+                                baixarEstoque: false,
                                 produtoEstoque: produtoEncontrado || null,
                                 autoVinculado: !!produtoEncontrado
                             });
