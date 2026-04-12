@@ -49,7 +49,7 @@ export default function SeparationForm({
       vinculado: true,
       produtoEstoque: { id: prodEstoque.id, name: prodEstoque.name, sku: prodEstoque.sku },
       doNossoEstoque: true,
-      baixarEstoque: true,
+      baixarEstoque: false,
     });
     setShowVincularModal(null);
     setVincularSearch('');
@@ -275,7 +275,7 @@ export default function SeparationForm({
                           const val = e.target.checked;
                           updateProduto(i, {
                             doNossoEstoque: val,
-                            baixarEstoque: val && !!prod.vinculado,
+                            baixarEstoque: false,
                             nfOrigem: val ? prod.nfOrigem : '',
                           });
                         }}
