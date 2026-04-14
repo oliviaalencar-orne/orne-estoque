@@ -662,6 +662,8 @@ export default function App() {
                 onSendToDispatch={handleSendSeparationToDispatch}
                 onAddShipping={addShipping}
                 onAddExit={addExit}
+                onDeleteShipping={deleteShipping}
+                onDeleteExit={deleteExit}
                 isStockAdmin={isStockAdmin}
                 isOperador={isOperador}
                 hubs={hubs}

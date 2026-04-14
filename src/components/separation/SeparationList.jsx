@@ -33,6 +33,7 @@ const ALL_STATUSES = ['pendente', 'separado', 'embalado', 'despachado'];
 export default function SeparationList({
   separations, onUpdate, onDelete, onEdit, onSendToDispatch,
   onBatchStatusChange, onBatchDispatch, onGerarLinkEntregador,
+  onReverter, onBatchReverter,
   hubs, showHubBadge, isStockAdmin, isOperador = false
 }) {
   const canEditSep = isStockAdmin || isOperador;
@@ -51,8 +52,14 @@ export default function SeparationList({
   const [shareMenuPos, setShareMenuPos] = useState({ top: 0, right: 0 });
   const [copiedId, setCopiedId] = useState(null);
   const [batchEntregaLocal, setBatchEntregaLocal] = useState(false);
+  const [revertMenuId, setRevertMenuId] = useState(null);
+  const [revertMenuPos, setRevertMenuPos] = useState({ top: 0, right: 0 });
+  const [revertConfirm, setRevertConfirm] = useState(null); // { sep, targetStatus } | { batch, targetStatus, seps }
+  const [revertLoading, setRevertLoading] = useState(false);
+  const [showBatchRevertMenu, setShowBatchRevertMenu] = useState(false);
 
   const shareMenuSepRef = useRef(null);
+  const revertMenuSepRef = useRef(null);
 
   // Use equipe labels when not admin/operador
   const displayConfig = (isStockAdmin || isOperador) ? STATUS_CONFIG : EQUIPE_STATUS_CONFIG;
@@ -222,6 +229,67 @@ export default function SeparationList({
     shareMenuSepRef.current = separations.find(s => s.id === sepId) || null;
     setShareMenuId(sepId);
   };
+
+  // Possible target statuses to revert to (anything before current status)
+  const getRevertTargets = (sep) => {
+    const idx = ALL_STATUSES.indexOf(sep.status);
+    if (idx <= 0) return [];
+    return ALL_STATUSES.slice(0, idx);
+  };
+
+  const openRevertMenu = (sepId, btnEl) => {
+    if (revertMenuId === sepId) {
+      setRevertMenuId(null);
+      return;
+    }
+    const rect = btnEl.getBoundingClientRect();
+    setRevertMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+    revertMenuSepRef.current = separations.find(s => s.id === sepId) || null;
+    setRevertMenuId(sepId);
+  };
+
+  const askRevertConfirmation = (sep, targetStatus) => {
+    setRevertMenuId(null);
+    setRevertConfirm({ mode: 'single', sep, targetStatus });
+  };
+
+  const askBatchRevertConfirmation = (targetStatus) => {
+    setShowBatchRevertMenu(false);
+    setRevertConfirm({ mode: 'batch', seps: selectedSeparations, targetStatus });
+  };
+
+  const handleConfirmRevert = useCallback(async () => {
+    if (!revertConfirm) return;
+    setRevertLoading(true);
+    try {
+      if (revertConfirm.mode === 'single') {
+        if (typeof onReverter !== 'function') {
+          alert('Função de reversão não disponível.');
+          return;
+        }
+        const result = await onReverter(revertConfirm.sep, revertConfirm.targetStatus);
+        if (result?.ok === false && result.blockers?.length) {
+          alert(
+            `Não é possível reverter a NF ${result.nf || revertConfirm.sep.nfNumero}:\n\n` +
+            result.blockers.map(b => `• ${b}`).join('\n') +
+            `\n\nLimpe esses dados antes de reverter (ex: remover código de rastreio, comprovantes, ou link de entrega).`
+          );
+        }
+      } else if (revertConfirm.mode === 'batch') {
+        if (typeof onBatchReverter !== 'function') {
+          alert('Função de reversão em lote não disponível.');
+          return;
+        }
+        await onBatchReverter(revertConfirm.seps, revertConfirm.targetStatus, clearSelection);
+      }
+      setRevertConfirm(null);
+    } catch (err) {
+      console.error('Erro ao reverter:', err);
+      alert('Erro ao reverter: ' + (err.message || err));
+    } finally {
+      setRevertLoading(false);
+    }
+  }, [revertConfirm, onReverter, onBatchReverter, clearSelection]);
 
   // Get the selected separation objects
   const selectedSeparations = useMemo(() =>
@@ -493,6 +561,18 @@ export default function SeparationList({
                           <Icon name="whatsapp" size={14} style={{ color: '#25D366' }} />
                         </button>
                       )}
+                      {/* Revert button — admin only, available for any non-pendente */}
+                      {isStockAdmin && sep.status !== 'pendente' && getRevertTargets(sep).length > 0 && (
+                        <button
+                          className="btn btn-secondary"
+                          style={{ fontSize: '12px', padding: '6px 10px', color: '#b45309', borderColor: '#fcd34d' }}
+                          onClick={(e) => openRevertMenu(sep.id, e.currentTarget)}
+                          title="Reverter status"
+                          disabled={isLoading}
+                        >
+                          <Icon name="refresh" size={14} /> Reverter
+                        </button>
+                      )}
                       {sep.status !== 'despachado' && (
                         <>
                           <button
@@ -629,6 +709,26 @@ export default function SeparationList({
             />
             📦 Entrega Local
           </label>
+          {isStockAdmin && selectedSeparations.some(s => s.status !== 'pendente') && (
+            <button
+              className="btn"
+              style={{
+                fontSize: '12px',
+                padding: '6px 14px',
+                background: '#b45309',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: 600,
+                whiteSpace: 'nowrap',
+              }}
+              onClick={() => setShowBatchRevertMenu(true)}
+              title="Reverter status das selecionadas"
+            >
+              <Icon name="refresh" size={14} /> Reverter
+            </button>
+          )}
           <button
             style={{
               background: 'transparent',
@@ -778,6 +878,193 @@ export default function SeparationList({
               <Icon name="copy" size={14} />
               Copiar mensagem
             </button>
+          </div>
+        </>
+      )}
+
+      {/* Per-card revert dropdown — admin only */}
+      {isStockAdmin && revertMenuId && revertMenuSepRef.current && (
+        <>
+          <div
+            style={{ position: 'fixed', inset: 0, zIndex: 9998 }}
+            onClick={() => setRevertMenuId(null)}
+          />
+          <div style={{
+            position: 'fixed',
+            top: revertMenuPos.top,
+            right: revertMenuPos.right,
+            zIndex: 9999,
+            background: '#fff',
+            border: '1px solid var(--border-color)',
+            borderRadius: '8px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
+            padding: '4px',
+            minWidth: '200px',
+          }}>
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)', padding: '6px 12px 4px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+              Reverter para:
+            </div>
+            {getRevertTargets(revertMenuSepRef.current).map(st => {
+              const cfg = STATUS_CONFIG[st];
+              return (
+                <button
+                  key={st}
+                  onClick={() => askRevertConfirmation(revertMenuSepRef.current, st)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    width: '100%',
+                    padding: '8px 12px',
+                    border: 'none',
+                    background: 'transparent',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    textAlign: 'left',
+                    transition: 'background 0.12s',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-secondary)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                >
+                  <span className="badge" style={{ background: cfg.bg, color: cfg.color, fontSize: '10px' }}>
+                    {cfg.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {/* Revert confirmation modal */}
+      {revertConfirm && (
+        <div
+          className="modal-overlay"
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10001,
+          }}
+          onClick={() => !revertLoading && setRevertConfirm(null)}
+        >
+          <div
+            role="dialog"
+            style={{
+              background: '#fff', borderRadius: '12px', padding: '24px',
+              maxWidth: '480px', width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <h3 style={{ margin: '0 0 12px', fontSize: '16px', fontWeight: 600 }}>
+              Confirmar Reversão de Status
+            </h3>
+            {(() => {
+              const targetCfg = STATUS_CONFIG[revertConfirm.targetStatus] || STATUS_CONFIG.pendente;
+              const isFromDispatched = revertConfirm.mode === 'single'
+                ? revertConfirm.sep.status === 'despachado'
+                : revertConfirm.seps.some(s => s.status === 'despachado');
+              return (
+                <>
+                  <p style={{ margin: '0 0 12px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                    {revertConfirm.mode === 'single'
+                      ? <>Reverter a NF <strong>{revertConfirm.sep.nfNumero}</strong> de <strong>{(STATUS_CONFIG[revertConfirm.sep.status] || {}).label}</strong> para <strong>{targetCfg.label}</strong>?</>
+                      : <>Reverter <strong>{revertConfirm.seps.length}</strong> separação(ões) para <strong>{targetCfg.label}</strong>?</>
+                    }
+                  </p>
+                  {isFromDispatched && (
+                    <div style={{
+                      padding: '10px 12px',
+                      background: '#fef3c7',
+                      border: '1px solid #fcd34d',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      color: '#92400e',
+                      marginBottom: '16px',
+                    }}>
+                      <strong>⚠ Atenção:</strong> Separações já despachadas terão o despacho e as saídas de estoque
+                      <strong> excluídos</strong>. NFs com código de rastreio, comprovante de entrega ou link de
+                      entregador <strong>não serão revertidas</strong>.
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => setRevertConfirm(null)}
+                      disabled={revertLoading}
+                    >Cancelar</button>
+                    <button
+                      className="btn btn-primary"
+                      style={{ background: '#b45309', borderColor: '#b45309' }}
+                      onClick={handleConfirmRevert}
+                      disabled={revertLoading}
+                    >
+                      {revertLoading ? 'Revertendo...' : 'Confirmar Reversão'}
+                    </button>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* Batch revert target-status menu */}
+      {isStockAdmin && showBatchRevertMenu && (
+        <>
+          <div
+            style={{ position: 'fixed', inset: 0, zIndex: 9998 }}
+            onClick={() => setShowBatchRevertMenu(false)}
+          />
+          <div style={{
+            position: 'fixed',
+            bottom: '80px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 9999,
+            background: '#fff',
+            border: '1px solid var(--border-color)',
+            borderRadius: '8px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            padding: '4px',
+            minWidth: '200px',
+          }}>
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)', padding: '6px 12px 4px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+              Reverter selecionadas para:
+            </div>
+            {/* Only status options that are "before" at least one selected item */}
+            {['pendente', 'separado', 'embalado'].map(st => {
+              const cfg = STATUS_CONFIG[st];
+              const anyEligible = selectedSeparations.some(s => ALL_STATUSES.indexOf(s.status) > ALL_STATUSES.indexOf(st));
+              if (!anyEligible) return null;
+              return (
+                <button
+                  key={st}
+                  onClick={() => askBatchRevertConfirmation(st)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    width: '100%',
+                    padding: '8px 12px',
+                    border: 'none',
+                    background: 'transparent',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    textAlign: 'left',
+                    transition: 'background 0.12s',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-secondary)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                >
+                  <span className="badge" style={{ background: cfg.bg, color: cfg.color, fontSize: '10px' }}>
+                    {cfg.label}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </>
       )}

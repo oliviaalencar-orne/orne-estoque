@@ -19,7 +19,9 @@ export default function SeparationManager({
   products, stock, entries, exits, shippings,
   categories, locaisOrigem, onUpdateLocais,
   onAddProduct, onAddCategory, onUpdateCategory, onDeleteCategory,
-  user, onSendToDispatch, onAddShipping, onAddExit, isStockAdmin,
+  user, onSendToDispatch, onAddShipping, onAddExit,
+  onDeleteShipping, onDeleteExit,
+  isStockAdmin,
   isOperador,
   hubs, onAddHub, onUpdateHub, onDeleteHub
 }) {
@@ -224,6 +226,159 @@ export default function SeparationManager({
     setSuccess(msg);
     setTimeout(() => setSuccess(''), 5000);
   };
+
+  // ── Revert status (admin-only) ─────────────────────────────────────
+  // Checks shipping blockers before reverting FROM 'despachado'.
+  // Returns:
+  //   { ok: true }                              — success
+  //   { ok: false, blockers: [...], nf }        — blocked by real shipping activity
+  //   throws Error                              — unexpected failure
+  const STATUS_ORDER = ['pendente', 'separado', 'embalado', 'despachado'];
+
+  const verificarBloqueiosReversao = useCallback(async (sep) => {
+    // Called only when sep.status === 'despachado'
+    const shippingId = sep.shippingId;
+    if (!shippingId || shippingId === 'pending') return { blockers: [], shipping: null };
+
+    // Fetch fresh shipping from DB to avoid stale state
+    const { data: shipRow, error: shipErr } = await supabaseClient
+      .from('shippings')
+      .select('id, codigo_rastreio, comprovante_fotos')
+      .eq('id', shippingId)
+      .maybeSingle();
+    if (shipErr) throw shipErr;
+
+    const blockers = [];
+    if (shipRow) {
+      if (shipRow.codigo_rastreio && String(shipRow.codigo_rastreio).trim()) {
+        blockers.push(`código de rastreio preenchido (${shipRow.codigo_rastreio})`);
+      }
+      if (Array.isArray(shipRow.comprovante_fotos) && shipRow.comprovante_fotos.length > 0) {
+        blockers.push(`${shipRow.comprovante_fotos.length} comprovante(s) de entrega anexado(s)`);
+      }
+    }
+
+    const { data: tokenLinks, error: tokenErr } = await supabaseClient
+      .from('delivery_token_shippings')
+      .select('token_id')
+      .eq('shipping_id', shippingId);
+    if (tokenErr) throw tokenErr;
+    if (tokenLinks && tokenLinks.length > 0) {
+      blockers.push(`vinculado a ${tokenLinks.length} link(s) de entrega`);
+    }
+
+    return { blockers, shipping: shipRow };
+  }, []);
+
+  const handleReverterStatus = useCallback(async (sep, targetStatus) => {
+    if (!isStockAdmin) {
+      throw new Error('Apenas administradores podem reverter status.');
+    }
+    const currentIdx = STATUS_ORDER.indexOf(sep.status);
+    const targetIdx = STATUS_ORDER.indexOf(targetStatus);
+    if (targetIdx < 0 || currentIdx < 0) {
+      throw new Error('Status inválido.');
+    }
+    if (targetIdx >= currentIdx) {
+      throw new Error('Status de destino deve ser anterior ao atual.');
+    }
+
+    // Simple case: not coming from despachado
+    if (sep.status !== 'despachado') {
+      await onUpdate(sep.id, { status: targetStatus });
+      return { ok: true };
+    }
+
+    // Coming from despachado — verify shipping
+    const { blockers, shipping: shipRow } = await verificarBloqueiosReversao(sep);
+    if (blockers.length > 0) {
+      return { ok: false, blockers, nf: sep.nfNumero };
+    }
+
+    // Clean path — delete exits, shipping, then revert separation
+    const shippingId = sep.shippingId;
+
+    // 1. Delete exits that were created for this separation
+    const exitIds = (sep.produtos || []).map(p => p.exitId).filter(Boolean);
+    if (exitIds.length > 0 && typeof onDeleteExit === 'function') {
+      for (const eid of exitIds) {
+        try {
+          await onDeleteExit(eid);
+        } catch (e) {
+          console.error('Erro ao excluir saída', eid, e);
+        }
+      }
+    }
+
+    // 2. Delete the shipping (if any)
+    if (shippingId && shippingId !== 'pending' && shipRow && typeof onDeleteShipping === 'function') {
+      try {
+        await onDeleteShipping(shippingId);
+      } catch (e) {
+        console.error('Erro ao excluir despacho', shippingId, e);
+      }
+    }
+
+    // 3. Clear exitId/baixouEstoque from produtos and revert separation
+    const produtosLimpos = (sep.produtos || []).map(p => {
+      const { exitId: _ex, baixouEstoque: _bx, ...rest } = p;
+      return rest;
+    });
+    await onUpdate(sep.id, {
+      status: targetStatus,
+      shippingId: null,
+      produtos: produtosLimpos,
+    });
+
+    return { ok: true };
+  }, [isStockAdmin, onUpdate, onDeleteExit, onDeleteShipping, verificarBloqueiosReversao]);
+
+  // ── Batch revert (admin-only) ─────────────────────────────────────
+  const handleBatchReverter = useCallback(async (selectedSeparations, targetStatus, clearSelection) => {
+    if (!isStockAdmin) {
+      alert('Apenas administradores podem reverter status.');
+      return;
+    }
+    if (!selectedSeparations?.length) return;
+
+    const total = selectedSeparations.length;
+    let reverted = 0;
+    const blocked = []; // { nf, blockers }
+    let errors = 0;
+    setBatchProgress({ current: 0, total, message: `Revertendo 0/${total}...` });
+
+    for (let i = 0; i < selectedSeparations.length; i++) {
+      const sep = selectedSeparations[i];
+      setBatchProgress({ current: i + 1, total, message: `Revertendo ${i + 1}/${total}... (NF ${sep.nfNumero || '-'})` });
+      try {
+        const result = await handleReverterStatus(sep, targetStatus);
+        if (result?.ok) {
+          reverted++;
+        } else if (result?.blockers?.length) {
+          blocked.push({ nf: sep.nfNumero, blockers: result.blockers });
+        }
+      } catch (err) {
+        console.error(`Erro ao reverter NF ${sep.nfNumero}:`, err);
+        errors++;
+      }
+    }
+
+    setBatchProgress(null);
+    clearSelection && clearSelection();
+
+    const parts = [];
+    if (reverted > 0) parts.push(`${reverted} revertida(s)`);
+    if (blocked.length > 0) {
+      parts.push(`${blocked.length} bloqueada(s)`);
+      // Print detailed warning
+      const details = blocked.slice(0, 3).map(b => `NF ${b.nf}: ${b.blockers.join('; ')}`).join('\n');
+      const more = blocked.length > 3 ? `\n...e mais ${blocked.length - 3}` : '';
+      alert(`Algumas NFs foram bloqueadas:\n\n${details}${more}`);
+    }
+    if (errors > 0) parts.push(`${errors} com erro`);
+    setSuccess(parts.join(', ') || 'Nenhuma ação');
+    setTimeout(() => setSuccess(''), 6000);
+  }, [isStockAdmin, handleReverterStatus]);
 
   // ── Batch dispatch — create shippings + exits ──────────────────────
   const handleBatchDispatch = async (selectedSeparations, clearSelection, options = {}) => {
@@ -658,6 +813,8 @@ export default function SeparationManager({
           onSendToDispatch={handleSendToDispatch}
           onBatchStatusChange={handleBatchStatusChange}
           onBatchDispatch={handleBatchDispatch}
+          onBatchReverter={handleBatchReverter}
+          onReverter={handleReverterStatus}
           onGerarLinkEntregador={gerarLinkEntregadorDaSeparacao}
           hubs={hubs}
           showHubBadge={selectedHubId === 'all'}
