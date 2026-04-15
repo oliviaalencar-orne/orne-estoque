@@ -178,10 +178,11 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
                 labels: barChartData.labels,
                 datasets: [{
                     data: barChartData.data,
-                    backgroundColor: '#F4B08A',
-                    borderRadius: 8,
-                    barThickness: 26,
-                    hoverBackgroundColor: '#EFA07A'
+                    backgroundColor: '#F8C4AC',
+                    borderRadius: 6,
+                    barThickness: 14,
+                    maxBarThickness: 18,
+                    hoverBackgroundColor: '#F0A988'
                 }]
             },
             options: {
@@ -341,16 +342,10 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
 
     return (
         <div>
-            {/* Header com Saudação */}
-            <div className="page-header" style={{marginBottom: '28px'}}>
-                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px'}}>
-                    <div>
-                        <p style={{fontSize: '14px', color: 'var(--text-muted)', marginBottom: '4px'}}>
-                            {saudacao}!
-                        </p>
-                        <h1 className="page-title">Dashboard</h1>
-                        <p className="page-subtitle">Visão geral do seu estoque em tempo real</p>
-                    </div>
+            {/* Header — título alinhado com logo da sidebar, sem saudação/subtítulo */}
+            <div className="page-header" style={{marginBottom: '24px'}}>
+                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px'}}>
+                    <h1 className="page-title" style={{marginBottom: 0}}>Dashboard</h1>
                     <div style={{
                         background: 'var(--bg-secondary)',
                         padding: '10px 16px',
