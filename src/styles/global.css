@@ -476,7 +476,7 @@ body.sidebar-expanded .main-content { margin-left: 224px; }
     color: rgba(255,255,255,0.75);
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow: visible; /* allow sb-toggle to extend beyond right edge */
     z-index: 1000;
     border-right: 1px solid rgba(255,255,255,0.06);
     transition: width 300ms ease;
@@ -486,7 +486,7 @@ body.sidebar-expanded .main-content { margin-left: 224px; }
 
 .sb-logo {
     flex-shrink: 0;
-    padding: 16px 12px;
+    padding: 12px;
     border-bottom: 1px solid rgba(255,255,255,0.06);
     display: flex;
     align-items: center;
@@ -495,14 +495,15 @@ body.sidebar-expanded .main-content { margin-left: 224px; }
     overflow: hidden;
 }
 .sb-logo img {
-    max-width: 100%;
+    display: block;
+    max-width: 120px;
     max-height: 40px;
     object-fit: contain;
     filter: brightness(0) invert(1);
     transition: opacity 200ms ease;
 }
-.sb--collapsed .sb-logo-icon { max-height: 32px; }
-.sb--expanded .sb-logo-full { max-height: 48px; }
+.sb--collapsed .sb-logo-icon { max-width: 32px; max-height: 32px; }
+.sb--expanded .sb-logo-full { max-width: 120px; max-height: 40px; }
 
 .sb-toggle {
     position: absolute;
@@ -640,6 +641,7 @@ body.sidebar-expanded .main-content { margin-left: 224px; }
     flex-shrink: 0;
     padding: 12px;
     border-top: 1px solid rgba(255,255,255,0.06);
+    text-align: center;
 }
 .sb-user-name {
     font-size: 12px;
@@ -649,6 +651,7 @@ body.sidebar-expanded .main-content { margin-left: 224px; }
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    text-align: center;
 }
 .sb-user-email {
     font-size: 11px;
@@ -657,6 +660,7 @@ body.sidebar-expanded .main-content { margin-left: 224px; }
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    text-align: center;
 }
 .sb-logout {
     width: 100%;
