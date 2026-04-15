@@ -253,7 +253,7 @@ body {
     text-align: center;
 }
 
-.login-logo { max-width: 100px; margin-bottom: 24px; }
+.login-logo { display: block; max-width: 100px; margin: 0 auto 24px; }
 .login-title { font-size: 24px; font-weight: 700; margin-bottom: 8px; color: var(--text-primary); letter-spacing: -0.3px; }
 .login-subtitle { color: var(--text-muted); margin-bottom: 32px; font-size: 14px; font-weight: 400; line-height: 1.5; }
 
