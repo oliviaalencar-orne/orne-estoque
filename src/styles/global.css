@@ -458,6 +458,7 @@ body {
 /* ===================== MAIN ===================== */
 .main-content {
     flex: 1;
+    min-width: 0; /* Permite encolher para caber em .app-container flex; evita overflow horizontal */
     margin-left: 64px;
     padding: 28px 32px;
     min-height: 100vh;

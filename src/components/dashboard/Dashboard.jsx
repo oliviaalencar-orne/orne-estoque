@@ -1,8 +1,14 @@
 /**
  * Dashboard.jsx — Main dashboard with stats, charts, and analytics
  *
- * Extracted from index-legacy.html L3083-3827
- * Uses Chart.js directly via useRef+useEffect (NOT react-chartjs-2)
+ * Fase 2.1 redesign: layout reorganizado em linhas claras
+ *   Linha 1: 4 metric cards
+ *   Linha 2: 5–6 cards de logística
+ *   Linha 3: Devoluções + Giro + Valor por Categoria
+ *   Categorias: scroll horizontal (chips-cards)
+ *   Gráficos: curvas mais suaves (tension 0.4), paleta pastel
+ *
+ * Dados/memos/hooks preservados integralmente — só o JSX mudou.
  */
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Chart } from 'chart.js/auto';
@@ -173,8 +179,9 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
                 datasets: [{
                     data: barChartData.data,
                     backgroundColor: '#F4B08A',
-                    borderRadius: 6,
-                    barThickness: 28
+                    borderRadius: 8,
+                    barThickness: 26,
+                    hoverBackgroundColor: '#EFA07A'
                 }]
             },
             options: {
@@ -187,18 +194,19 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
                         titleFont: { size: 12, weight: '600' },
                         bodyFont: { size: 11 },
                         padding: 12,
-                        cornerRadius: 8
+                        cornerRadius: 8,
+                        displayColors: false
                     }
                 },
                 scales: {
                     y: {
                         beginAtZero: true,
-                        grid: { color: '#F3F0EC', drawBorder: false },
-                        ticks: { font: { size: 11, family: 'Inter' }, color: '#7A7585' }
+                        grid: { color: 'rgba(0,0,0,0.04)', drawBorder: false },
+                        ticks: { font: { size: 11, family: 'Inter' }, color: '#9A95A5' }
                     },
                     x: {
                         grid: { display: false },
-                        ticks: { font: { size: 10, family: 'Inter' }, color: '#7A7585' }
+                        ticks: { font: { size: 10, family: 'Inter' }, color: '#9A95A5' }
                     }
                 }
             }
@@ -224,7 +232,7 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
         return { labels, entryData: Object.values(entryAgg), exitData: Object.values(exitAgg) };
     }, [entries, exits, period]);
 
-    // Grafico de linhas — movimentacoes por dia
+    // Grafico de linhas — movimentacoes por dia (suavizado)
     useEffect(() => {
         if (!isVisible || !lineChartRef.current || !lineChartData) return;
 
@@ -237,11 +245,11 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
             return;
         }
 
-        const rootStyles = getComputedStyle(document.documentElement);
-        const successColor = rootStyles.getPropertyValue('--accent-success').trim() || '#22c55e';
-        const errorColor = rootStyles.getPropertyValue('--accent-error').trim() || '#ef4444';
-        const gridColor = rootStyles.getPropertyValue('--border-default').trim() || '#e5e5e5';
-        const textColor = rootStyles.getPropertyValue('--text-tertiary').trim() || '#999';
+        // Paleta mais suave — verdes/laranjas dessaturados, fills translúcidos
+        const entryColor = '#7DB89C';      // verde sage
+        const entryFill = 'rgba(125, 184, 156, 0.15)';
+        const exitColor = '#E89B8B';       // coral pastel
+        const exitFill = 'rgba(232, 155, 139, 0.15)';
 
         lineChartInstance.current = new Chart(lineChartRef.current, {
             type: 'line',
@@ -251,26 +259,30 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
                     {
                         label: 'Entradas',
                         data: lineChartData.entryData,
-                        borderColor: successColor,
-                        backgroundColor: successColor + '18',
+                        borderColor: entryColor,
+                        backgroundColor: entryFill,
                         fill: true,
-                        tension: 0.3,
-                        borderWidth: 2,
+                        tension: 0.4,
+                        borderWidth: 2.5,
                         pointRadius: 0,
-                        pointHoverRadius: 4,
-                        pointHoverBackgroundColor: successColor
+                        pointHoverRadius: 5,
+                        pointHoverBackgroundColor: entryColor,
+                        pointHoverBorderColor: '#fff',
+                        pointHoverBorderWidth: 2
                     },
                     {
-                        label: 'Saidas',
+                        label: 'Saídas',
                         data: lineChartData.exitData,
-                        borderColor: errorColor,
-                        backgroundColor: errorColor + '18',
+                        borderColor: exitColor,
+                        backgroundColor: exitFill,
                         fill: true,
-                        tension: 0.3,
-                        borderWidth: 2,
+                        tension: 0.4,
+                        borderWidth: 2.5,
                         pointRadius: 0,
-                        pointHoverRadius: 4,
-                        pointHoverBackgroundColor: errorColor
+                        pointHoverRadius: 5,
+                        pointHoverBackgroundColor: exitColor,
+                        pointHoverBorderColor: '#fff',
+                        pointHoverBorderWidth: 2
                     }
                 ]
             },
@@ -284,9 +296,9 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
                         position: 'top',
                         align: 'end',
                         labels: {
-                            boxWidth: 12, boxHeight: 12, borderRadius: 3, useBorderRadius: true,
+                            boxWidth: 10, boxHeight: 10, borderRadius: 5, useBorderRadius: true,
                             font: { size: 11, family: 'Inter' },
-                            color: textColor,
+                            color: '#9A95A5',
                             padding: 16
                         }
                     },
@@ -301,14 +313,14 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
                 scales: {
                     y: {
                         beginAtZero: true,
-                        grid: { color: gridColor, drawBorder: false },
-                        ticks: { font: { size: 11, family: 'Inter' }, color: textColor }
+                        grid: { color: 'rgba(0,0,0,0.04)', drawBorder: false },
+                        ticks: { font: { size: 11, family: 'Inter' }, color: '#9A95A5' }
                     },
                     x: {
                         grid: { display: false },
                         ticks: {
                             font: { size: 10, family: 'Inter' },
-                            color: textColor,
+                            color: '#9A95A5',
                             maxTicksLimit: period <= 15 ? period : 10
                         }
                     }
@@ -324,37 +336,38 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
         };
     }, [lineChartData, isVisible]);
 
+    // Ordem fixa dos cards de logística (Fase 2.1)
+    const logisticsOrder = ['DESPACHADO', 'AGUARDANDO_COLETA', 'EM_TRANSITO', 'TENTATIVA_ENTREGA', 'ENTREGUE', 'DEVOLVIDO'];
+
     return (
         <div>
-            {/* Header com Saudacao */}
-            <div className="page-header" style={{marginBottom: '32px'}}>
-                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}}>
+            {/* Header com Saudação */}
+            <div className="page-header" style={{marginBottom: '28px'}}>
+                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px'}}>
                     <div>
                         <p style={{fontSize: '14px', color: 'var(--text-muted)', marginBottom: '4px'}}>
                             {saudacao}!
                         </p>
                         <h1 className="page-title">Dashboard</h1>
-                        <p className="page-subtitle">Visao geral do seu estoque em tempo real</p>
+                        <p className="page-subtitle">Visão geral do seu estoque em tempo real</p>
                     </div>
-                    <div style={{display: 'flex', gap: '12px'}}>
-                        <div style={{
-                            background: 'var(--bg-secondary)',
-                            padding: '10px 16px',
-                            borderRadius: 'var(--radius-lg)',
-                            fontSize: '13px',
-                            color: 'var(--text-secondary)',
-                            boxShadow: 'var(--shadow-card)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px'
-                        }}>
-                            {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'short' })}
-                        </div>
+                    <div style={{
+                        background: 'var(--bg-secondary)',
+                        padding: '10px 16px',
+                        borderRadius: 'var(--radius-lg)',
+                        fontSize: '13px',
+                        color: 'var(--text-secondary)',
+                        boxShadow: 'var(--shadow-card)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
+                    }}>
+                        {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'short' })}
                     </div>
                 </div>
             </div>
 
-            {/* Cards de Estatisticas */}
+            {/* LINHA 1 — 4 metric cards */}
             <div className="stats-grid">
                 <div className="stat-card accent">
                     <div className="stat-header">
@@ -395,68 +408,123 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
                             {totalValue > 0 ? `R$ ${formatBRL(totalValue)}` : 'R$ 0,00'}
                         </div>
                         <div className="stat-label">
-                            {totalValue > 0 ? 'Valor Total em Estoque' : 'Nenhum preco sincronizado via Tiny'}
+                            {totalValue > 0 ? 'Valor Total em Estoque' : 'Nenhum preço sincronizado via Tiny'}
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Resumo Logístico */}
-            {shippingStats.total > 0 && (
-                <div className="card" style={{marginBottom: '24px'}}>
-                    <h2 className="card-title" style={{marginBottom: '16px'}}>
-                        <Icon name="shipping" size={16} className="card-title-icon" />
-                        Resumo Logístico <span style={{fontWeight: 400, fontSize: '12px', color: 'var(--text-muted)'}}>(30 dias)</span>
-                    </h2>
-                    <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '12px'}}>
-                        {Object.entries(statusList).filter(([key]) => (shippingStats[key] || 0) > 0 || ['DESPACHADO', 'AGUARDANDO_COLETA', 'EM_TRANSITO', 'ENTREGUE', 'DEVOLVIDO'].includes(key)).map(([key, val]) => (
-                            <div key={key} style={{
-                                textAlign: 'center',
-                                padding: '12px 8px',
-                                borderRadius: 'var(--radius)',
-                                background: val.bg,
-                            }}>
-                                <div style={{fontSize: '24px', fontWeight: '700', color: val.color, fontVariantNumeric: 'tabular-nums'}}>
+            {/* LINHA 2 — Resumo Logístico (5–6 cards fixos) */}
+            <div className="card" style={{marginBottom: '20px'}}>
+                <h2 className="card-title" style={{marginBottom: '16px'}}>
+                    <Icon name="shipping" size={16} className="card-title-icon" />
+                    Resumo Logístico <span style={{fontWeight: 400, fontSize: '12px', color: 'var(--text-muted)'}}>(30 dias)</span>
+                </h2>
+                <div className="logistics-grid">
+                    {logisticsOrder.map(key => {
+                        const val = statusList[key];
+                        if (!val) return null;
+                        return (
+                            <div key={key} className="logistics-card" style={{background: val.bg}}>
+                                <div className="logistics-card-value" style={{color: val.color}}>
                                     {shippingStats[key] || 0}
                                 </div>
-                                <div style={{fontSize: '11px', fontWeight: '600', color: val.color, marginTop: '2px'}}>
+                                <div className="logistics-card-label" style={{color: val.color}}>
                                     {val.label}
                                 </div>
                             </div>
-                        ))}
-                    </div>
+                        );
+                    })}
                 </div>
-            )}
+            </div>
 
-            {/* Devoluções */}
-            {devolucaoStats.total > 0 && (
-                <div className="card" style={{marginBottom: '24px'}}>
-                    <h2 className="card-title" style={{marginBottom: '12px'}}>
+            {/* LINHA 3 — Devoluções + Giro de Estoque + Valor por Categoria */}
+            <div className="dash-line3-grid">
+                {/* Devoluções */}
+                <div className="card" style={{marginBottom: 0}}>
+                    <h2 className="card-title" style={{marginBottom: '14px'}}>
                         <Icon name="shipping" size={16} className="card-title-icon" />
                         Devoluções <span style={{fontWeight: 400, fontSize: '12px', color: 'var(--text-muted)'}}>(30 dias)</span>
                     </h2>
-                    <div style={{display: 'flex', gap: '16px', flexWrap: 'wrap'}}>
+                    <div style={{display: 'flex', gap: '12px', flexWrap: 'wrap'}}>
                         <div style={{
-                            textAlign: 'center', padding: '12px 20px',
+                            flex: 1, minWidth: '110px',
+                            textAlign: 'center', padding: '14px 10px',
                             borderRadius: 'var(--radius)', background: '#FEF3C7',
                         }}>
-                            <div style={{fontSize: '24px', fontWeight: '700', color: '#d97706'}}>{devolucaoStats.total}</div>
+                            <div style={{fontSize: '26px', fontWeight: '700', color: '#d97706', fontVariantNumeric: 'tabular-nums'}}>{devolucaoStats.total}</div>
                             <div style={{fontSize: '11px', fontWeight: '600', color: '#d97706', marginTop: '2px'}}>Total</div>
                         </div>
                         <div style={{
-                            textAlign: 'center', padding: '12px 20px',
+                            flex: 1, minWidth: '110px',
+                            textAlign: 'center', padding: '14px 10px',
                             borderRadius: 'var(--radius)', background: '#D1FAE5',
                         }}>
-                            <div style={{fontSize: '24px', fontWeight: '700', color: '#10b981'}}>{devolucaoStats.recebidas}</div>
+                            <div style={{fontSize: '26px', fontWeight: '700', color: '#10b981', fontVariantNumeric: 'tabular-nums'}}>{devolucaoStats.recebidas}</div>
                             <div style={{fontSize: '11px', fontWeight: '600', color: '#10b981', marginTop: '2px'}}>Recebidas no HUB</div>
                         </div>
                     </div>
                 </div>
-            )}
 
-            {/* Grid Principal */}
+                {/* Giro de Estoque */}
+                <div className="card" style={{marginBottom: 0}}>
+                    <h2 className="card-title" style={{marginBottom: '14px'}}>
+                        <Icon name="trendingUp" size={16} className="card-title-icon" />
+                        Giro de Estoque
+                    </h2>
+                    <div style={{textAlign: 'center', padding: '20px 0 8px'}}>
+                        <div style={{fontSize: '40px', fontWeight: '700', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', lineHeight: 1}}>
+                            {giroEstoque.toFixed(2)}
+                        </div>
+                        <div style={{fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '8px'}}>
+                            Saídas / Estoque atual em {period} dias
+                        </div>
+                    </div>
+                </div>
+
+                {/* Valor por Categoria */}
+                <div className="card" style={{marginBottom: 0}}>
+                    <h2 className="card-title" style={{marginBottom: '14px'}}>
+                        <Icon name="dollar" size={16} className="card-title-icon" />
+                        Valor por Categoria
+                    </h2>
+                    {categoryValues.length > 0 ? (
+                        <div style={{display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '220px', overflowY: 'auto'}}>
+                            {categoryValues.map((cat) => {
+                                const maxVal = categoryValues[0]?.value || 1;
+                                const pct = (cat.value / maxVal) * 100;
+                                return (
+                                    <div key={cat.id} style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
+                                        <div style={{width: '24px', height: '24px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                                            <CategoryIcon icon={cat.icon} size={16} color={cat.color} />
+                                        </div>
+                                        <div style={{flex: 1, minWidth: 0}}>
+                                            <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '4px'}}>
+                                                <span style={{fontSize: '12px', fontWeight: '500', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
+                                                    {cat.name}
+                                                </span>
+                                                <span style={{fontSize: '12px', fontWeight: '600', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', flexShrink: 0, marginLeft: '8px'}}>
+                                                    R$ {formatBRL(cat.value)}
+                                                </span>
+                                            </div>
+                                            <div style={{height: '4px', background: 'var(--border-default)', borderRadius: '2px', overflow: 'hidden'}}>
+                                                <div style={{height: '100%', width: `${pct}%`, background: cat.color, borderRadius: '2px', transition: 'width 0.5s ease'}}></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <div style={{textAlign: 'center', padding: '24px 0', color: 'var(--text-tertiary)', fontSize: '12px'}}>
+                            Sincronize os produtos via Tiny ERP
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Grid Principal — Produtos com maior estoque + Alertas */}
             <div className="dashboard-main-grid">
-                {/* Grafico de Barras */}
                 <div className="card">
                     <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
                         <h2 className="card-title" style={{marginBottom: 0}}>
@@ -469,11 +537,10 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
                     </div>
                 </div>
 
-                {/* Lista de Alertas */}
                 <div className="card">
                     <h2 className="card-title" style={{marginBottom: '20px'}}>
                         <Icon name="warning" size={16} className="card-title-icon" />
-                        Acoes Pendentes
+                        Ações Pendentes
                     </h2>
 
                     {alertProducts.length === 0 ? (
@@ -485,7 +552,7 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
                             <div style={{marginBottom: '12px'}}><Icon name="check" size={40} /></div>
                             <div style={{fontSize: '14px'}}>Tudo em ordem!</div>
                             <div style={{fontSize: '12px', marginTop: '4px', color: 'var(--text-tertiary)'}}>
-                                Nenhum produto com estoque critico
+                                Nenhum produto com estoque crítico
                             </div>
                         </div>
                     ) : (
@@ -501,25 +568,19 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
                                     borderRadius: 'var(--radius)'
                                 }}>
                                     <div style={{
-                                        width: '32px',
-                                        height: '32px',
+                                        width: '32px', height: '32px',
                                         borderRadius: 'var(--radius)',
                                         background: 'var(--accent-error-subtle)',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
                                         color: 'var(--accent-error)'
                                     }}>
                                         <Icon name="error" size={14} />
                                     </div>
                                     <div style={{flex: 1, minWidth: 0}}>
                                         <div style={{
-                                            fontSize: '13px',
-                                            fontWeight: '500',
+                                            fontSize: '13px', fontWeight: '500',
                                             color: 'var(--text-primary)',
-                                            whiteSpace: 'nowrap',
-                                            overflow: 'hidden',
-                                            textOverflow: 'ellipsis'
+                                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
                                         }}>
                                             {p.name}
                                         </div>
@@ -531,10 +592,8 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
                             ))}
                             {emptyStock > 5 && (
                                 <div style={{
-                                    textAlign: 'center',
-                                    marginTop: '4px',
-                                    fontSize: '12px',
-                                    color: 'var(--text-tertiary)'
+                                    textAlign: 'center', marginTop: '4px',
+                                    fontSize: '12px', color: 'var(--text-tertiary)'
                                 }}>
                                     +{emptyStock - 5} outros produtos
                                 </div>
@@ -544,12 +603,12 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
                 </div>
             </div>
 
-            {/* Movimentacoes */}
+            {/* Movimentações (linha suave) */}
             <div className="card">
                 <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px'}}>
                     <h2 className="card-title" style={{marginBottom: 0}}>
                         <Icon name="chart" size={16} className="card-title-icon" />
-                        Movimentacoes
+                        Movimentações
                     </h2>
                     <div className="period-toggle">
                         {[7, 15, 30, 90].map(d => (
@@ -565,28 +624,13 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
                     </div>
                 ) : (
                     <div style={{textAlign: 'center', padding: '40px', color: 'var(--text-tertiary)', fontSize: '13px'}}>
-                        Nenhuma movimentacao registrada
+                        Nenhuma movimentação registrada
                     </div>
                 )}
             </div>
 
-            {/* Metricas de Performance */}
+            {/* Produtos Parados + Últimas Movimentações */}
             <div className="dashboard-analytics-grid">
-                <div className="card" style={{marginBottom: 0}}>
-                    <h2 className="card-title">
-                        <Icon name="trendingUp" size={16} className="card-title-icon" />
-                        Giro de Estoque
-                    </h2>
-                    <div style={{textAlign: 'center', padding: '16px 0'}}>
-                        <div style={{fontSize: '36px', fontWeight: '700', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums'}}>
-                            {giroEstoque.toFixed(2)}
-                        </div>
-                        <div style={{fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '4px'}}>
-                            Saidas / Estoque atual em {period} dias
-                        </div>
-                    </div>
-                </div>
-
                 <div className="card" style={{marginBottom: 0}}>
                     <h2 className="card-title" style={{display: 'flex', alignItems: 'center'}}>
                         <Icon name="pause" size={16} className="card-title-icon" />
@@ -596,7 +640,7 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
                         </span>
                     </h2>
                     <div style={{fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '12px'}}>
-                        Sem entradas ou saidas nos ultimos 60 dias
+                        Sem entradas ou saídas nos últimos 60 dias
                     </div>
                     {stoppedProducts.length > 0 ? (
                         <div style={{display: 'flex', flexDirection: 'column', gap: '6px'}}>
@@ -613,18 +657,15 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
                         </div>
                     ) : (
                         <div style={{textAlign: 'center', padding: '16px', color: 'var(--accent-success)', fontSize: '13px'}}>
-                            Todos os produtos tiveram movimentacao recente
+                            Todos os produtos tiveram movimentação recente
                         </div>
                     )}
                 </div>
-            </div>
 
-            {/* Ultimas Movimentacoes + Valor por Categoria */}
-            <div className="dashboard-analytics-grid" style={{marginTop: '4px'}}>
                 <div className="card" style={{marginBottom: 0}}>
                     <h2 className="card-title">
                         <Icon name="history" size={16} className="card-title-icon" />
-                        Ultimas Movimentacoes
+                        Últimas Movimentações
                     </h2>
                     {allMovements.length > 0 ? (
                         <div className="table-container">
@@ -651,7 +692,7 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
                                                 </td>
                                                 <td>
                                                     <span className={`badge ${m.movType === 'entry' ? 'badge-success' : 'badge-danger'}`}>
-                                                        {m.movType === 'entry' ? 'ENTRADA' : 'SAIDA'}
+                                                        {m.movType === 'entry' ? 'ENTRADA' : 'SAÍDA'}
                                                     </span>
                                                 </td>
                                                 <td style={{maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
@@ -668,72 +709,33 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
                         </div>
                     ) : (
                         <div style={{textAlign: 'center', padding: '32px', color: 'var(--text-tertiary)', fontSize: '13px'}}>
-                            Nenhuma movimentacao registrada
-                        </div>
-                    )}
-                </div>
-
-                <div className="card" style={{marginBottom: 0}}>
-                    <h2 className="card-title">
-                        <Icon name="dollar" size={16} className="card-title-icon" />
-                        Valor por Categoria
-                    </h2>
-                    {categoryValues.length > 0 ? (
-                        <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
-                            {categoryValues.map((cat) => {
-                                const maxVal = categoryValues[0]?.value || 1;
-                                const pct = (cat.value / maxVal) * 100;
-                                return (
-                                    <div key={cat.id} style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
-                                        <div style={{width: '28px', height: '28px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-                                            <CategoryIcon icon={cat.icon} size={18} color={cat.color} />
-                                        </div>
-                                        <div style={{flex: 1, minWidth: 0}}>
-                                            <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '4px'}}>
-                                                <span style={{fontSize: '13px', fontWeight: '500', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
-                                                    {cat.name}
-                                                </span>
-                                                <span style={{fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', flexShrink: 0, marginLeft: '8px'}}>
-                                                    R$ {formatBRL(cat.value)}
-                                                </span>
-                                            </div>
-                                            <div style={{height: '4px', background: 'var(--border-default)', borderRadius: '2px', overflow: 'hidden'}}>
-                                                <div style={{height: '100%', width: `${pct}%`, background: cat.color, borderRadius: '2px', transition: 'width 0.5s ease'}}></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    ) : (
-                        <div style={{textAlign: 'center', padding: '32px', color: 'var(--text-tertiary)', fontSize: '13px'}}>
-                            Sincronize os produtos via Tiny ERP para ver os valores
+                            Nenhuma movimentação registrada
                         </div>
                     )}
                 </div>
             </div>
 
-            {/* Categorias */}
+            {/* Categorias — scroll horizontal */}
             <div className="card">
                 <h2 className="card-title">
                     <Icon name="categories" size={16} className="card-title-icon" />
                     Estoque por Categoria
                 </h2>
-                <div className="category-grid">
+                <div className="cat-scroll">
                     {categoryStats.map(cat => (
-                        <div key={cat.id} className="category-card">
-                            <div className="category-icon" style={{background: `${cat.color}08`}}>
-                                <CategoryIcon icon={cat.icon} size={20} color={cat.color} />
+                        <div key={cat.id} className="cat-scroll-card">
+                            <div className="cat-scroll-icon" style={{background: `${cat.color}12`}}>
+                                <CategoryIcon icon={cat.icon} size={22} color={cat.color} />
                             </div>
-                            <div className="category-name">{cat.name}</div>
-                            <div className="category-count">
+                            <div className="cat-scroll-name">{cat.name}</div>
+                            <div className="cat-scroll-value">
                                 {cat.totalStock.toLocaleString('pt-BR')}
                             </div>
-                            <div className="category-meta">
+                            <div className="cat-scroll-meta">
                                 {cat.productCount} produto{cat.productCount !== 1 ? 's' : ''}
                             </div>
                             {cat.alertCount > 0 && (
-                                <div className="category-alert">
+                                <div className="cat-scroll-alert">
                                     {cat.alertCount} alerta{cat.alertCount !== 1 ? 's' : ''}
                                 </div>
                             )}
@@ -756,60 +758,39 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
 
                         return (
                             <div key={idx} style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '16px',
+                                display: 'flex', alignItems: 'center', gap: '16px',
                                 padding: '16px',
                                 background: 'var(--bg-tertiary)',
                                 borderRadius: 'var(--radius-lg)',
                                 transition: 'var(--transition)'
                             }}>
                                 <div style={{
-                                    width: '36px',
-                                    height: '36px',
+                                    width: '36px', height: '36px',
                                     borderRadius: 'var(--radius)',
                                     background: idx === 0 ? 'var(--text-primary)' : 'var(--bg-tertiary)',
                                     color: idx === 0 ? 'white' : 'var(--text-tertiary)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    fontWeight: '700',
-                                    fontSize: '13px'
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    fontWeight: '700', fontSize: '13px'
                                 }}>
                                     #{idx + 1}
                                 </div>
                                 <div style={{flex: 1, minWidth: 0}}>
                                     <div style={{
-                                        fontWeight: '500',
-                                        fontSize: '14px',
-                                        marginBottom: '4px',
-                                        whiteSpace: 'nowrap',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis'
+                                        fontWeight: '500', fontSize: '14px', marginBottom: '4px',
+                                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
                                     }}>
                                         {p.name}
                                     </div>
-                                    <div style={{
-                                        height: '4px',
-                                        background: 'var(--border-default)',
-                                        borderRadius: '2px',
-                                        overflow: 'hidden'
-                                    }}>
+                                    <div style={{height: '4px', background: 'var(--border-default)', borderRadius: '2px', overflow: 'hidden'}}>
                                         <div style={{
-                                            height: '100%',
-                                            width: `${percentage}%`,
+                                            height: '100%', width: `${percentage}%`,
                                             background: idx === 0 ? 'var(--text-secondary)' : idx === 1 ? 'var(--text-tertiary)' : 'var(--border-strong)',
-                                            borderRadius: '2px',
-                                            transition: 'width 0.5s ease'
+                                            borderRadius: '2px', transition: 'width 0.5s ease'
                                         }}></div>
                                     </div>
                                 </div>
                                 <div style={{textAlign: 'right'}}>
-                                    <div style={{
-                                        fontWeight: '700',
-                                        fontSize: '20px',
-                                        color: 'var(--text-primary)'
-                                    }}>
+                                    <div style={{fontWeight: '700', fontSize: '20px', color: 'var(--text-primary)'}}>
                                         {p.currentQuantity.toLocaleString('pt-BR')}
                                     </div>
                                     <div style={{fontSize: '11px', color: 'var(--text-tertiary)'}}>
