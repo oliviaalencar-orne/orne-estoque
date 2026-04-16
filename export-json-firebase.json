@@ -1,0 +1,2103 @@
+{
+  "categories": {
+    "abajur": {
+      "color": "#28a745",
+      "icon": "🔮",
+      "id": "abajur",
+      "name": "Abajur",
+      "observations": ""
+    },
+    "arandelas": {
+      "color": "#dc3545",
+      "icon": "💡",
+      "id": "arandelas",
+      "name": "Arandelas"
+    },
+    "lustres": {
+      "color": "#fd7e14",
+      "icon": "✨",
+      "id": "lustres",
+      "name": "Lustres"
+    },
+    "outros": {
+      "color": "#6c757d",
+      "icon": "📦",
+      "id": "outros",
+      "name": "Outros"
+    },
+    "pendentes": {
+      "color": "#007bff",
+      "icon": "💡",
+      "id": "pendentes",
+      "name": "Pendentes",
+      "observations": ""
+    },
+    "plafons": {
+      "color": "#20c997",
+      "icon": "⭕",
+      "id": "plafons",
+      "name": "Plafons"
+    },
+    "spots": {
+      "color": "#6f42c1",
+      "icon": "🔦",
+      "id": "spots",
+      "name": "Spots"
+    }
+  },
+  "entries": {
+    "-OfG-Lzouf0UK1JvQuv-": {
+      "date": "2025-11-29T19:05:22.257Z",
+      "nf": "",
+      "notes": "",
+      "quantity": 1,
+      "sku": "100500725790123-CH-Green",
+      "supplier": "",
+      "type": "COMPRA",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-Of_q96iX4w2Tv66xMo1": {
+      "client": "",
+      "date": "2025-12-03T20:12:51.430Z",
+      "nf": "1175",
+      "notes": "NF-e 1175 - Luminaria Arandela Moderna Minimalista Madeira Lovacci - A - Nogueira - Madeira, Vidro e Aluminio - Branco Quente (3000K",
+      "quantity": 2,
+      "sku": "1005007392637392-A160mm.WN-CHINA-Warm light 3000K",
+      "supplier": "ORNE DECOR STUDIO LTDA",
+      "type": "entry",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OfoiXgEK1SuGN6SXvRC": {
+      "date": "2025-12-06T17:33:53.016Z",
+      "nf": "40",
+      "quantity": 1,
+      "sku": "1005006520650313-1Creamy-Warm White",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OfomzeAxiBnQjuucAwR": {
+      "date": "2025-12-06T17:53:20.245Z",
+      "nf": "56",
+      "quantity": 1,
+      "sku": "1005005362858729-White-43cm-Warm White (2700-3500K)",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-Ofon3M9aAqqrb3hx1Ry": {
+      "date": "2025-12-06T17:53:39.508Z",
+      "nf": "56",
+      "quantity": 2,
+      "sku": "1005006382188007-White lampshade-Copper lamp body",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-Ofon5b4TCLNGkURlcPT": {
+      "date": "2025-12-06T17:53:48.719Z",
+      "nf": "56",
+      "quantity": 1,
+      "sku": "1005007506632761-A golden",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OfonbWvtxxZYaA359TZ": {
+      "date": "2025-12-06T17:56:03.557Z",
+      "nf": "207",
+      "quantity": 5,
+      "sku": "4000295113481-white-Without bulb",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OfooIhPHYXX1A2B9ByD": {
+      "date": "2025-12-06T17:59:04.516Z",
+      "nf": "303",
+      "quantity": 1,
+      "sku": "1005007506632761-A golden",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OfoonGGCKWDYSuWhWYl": {
+      "date": "2025-12-06T18:01:13.787Z",
+      "nf": "304",
+      "quantity": 1,
+      "sku": "200000795:29#Amber color;180:200002571#warm white",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OfopMPPg_PISifur_BZ": {
+      "date": "2025-12-06T18:03:41.828Z",
+      "nf": "",
+      "quantity": 23,
+      "sku": "100500725790123-CH-White",
+      "supplier": "KLUZZI",
+      "type": "COMPRA",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OfopR8MnEf3CVfsgXTq": {
+      "date": "2025-12-06T18:04:01.217Z",
+      "nf": "",
+      "quantity": 10,
+      "sku": "100500725790123-CH-Red",
+      "supplier": "KLUZZI",
+      "type": "COMPRA",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OfopVHSxViUJ_iX8VXh": {
+      "date": "2025-12-06T18:04:18.183Z",
+      "nf": "",
+      "quantity": 21,
+      "sku": "100500725790123-CH-Pink",
+      "supplier": "KLUZZI",
+      "type": "COMPRA",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-Ofopc8wC_6EMMALRS8J": {
+      "date": "2025-12-06T18:04:50.406Z",
+      "nf": "",
+      "quantity": 23,
+      "sku": "100500725790123-CH-Yellow",
+      "supplier": "KLUZZI",
+      "type": "COMPRA",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-Ofopf28VNDtlSeT-I4D": {
+      "date": "2025-12-06T18:05:02.259Z",
+      "nf": "",
+      "quantity": 9,
+      "sku": "100500725790123-CH-Green",
+      "supplier": "KLUZZI",
+      "type": "COMPRA",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OfosZaM2fZpsvlSvK3a": {
+      "date": "2025-12-06T18:17:42.310Z",
+      "nf": "305",
+      "quantity": 1,
+      "sku": "1005006520650313-1Creamy-Warm White",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OfouOK3ezLyBGVUBHgR": {
+      "date": "2025-12-06T18:25:40.439Z",
+      "nf": "372",
+      "quantity": 1,
+      "sku": "1005006104607551-ORANGE-warm light",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OfouvL2CEE3F5n008P_": {
+      "date": "2025-12-06T18:27:59.766Z",
+      "nf": "373",
+      "quantity": 1,
+      "sku": "1005004255578084-B1-No bulb",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OfovNJzGN7mWiUEUR7I": {
+      "date": "2025-12-06T18:29:58.482Z",
+      "nf": "377",
+      "quantity": 1,
+      "sku": "1005007525219033-white-EU",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-Ofovy2SaaVuTLHnTGHz": {
+      "date": "2025-12-06T18:32:33.008Z",
+      "nf": "378",
+      "quantity": 1,
+      "sku": "1005006076120195-A-EU Plug",
+      "supplier": "",
+      "type": "COMPRA",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OfoxZZ_2kRYJXqD5aQU": {
+      "date": "2025-12-06T18:39:32.920Z",
+      "nf": "380",
+      "quantity": 3,
+      "sku": "1005005320153847-Amber-35cm-Warm White",
+      "supplier": "",
+      "type": "COMPRA",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OfozdIfiwrK67hdyxRg": {
+      "date": "2025-12-06T18:48:36.606Z",
+      "nf": "402",
+      "quantity": 2,
+      "sku": "1005006237200352-White-Warm white",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OfozgET7s-srX62i85j": {
+      "date": "2025-12-06T18:48:48.625Z",
+      "nf": "402",
+      "quantity": 1,
+      "sku": "1005007150054588-Diameter 60cm-Wood pole-warm light",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-Ofoziy-DUfWLszpYy89": {
+      "date": "2025-12-06T18:48:59.795Z",
+      "nf": "402",
+      "quantity": 1,
+      "sku": "100500725790123-CH-Yellow",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OfuHiRlndjFTMrxiUiG": {
+      "date": "2025-12-07T19:30:04.307Z",
+      "nf": "455",
+      "quantity": 1,
+      "sku": "136:173-RED-45CM",
+      "supplier": "",
+      "type": "COMPRA",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OfuJUV_1sQLHsQZjzfU": {
+      "date": "2025-12-07T19:37:47.406Z",
+      "nf": "489",
+      "quantity": 1,
+      "sku": "1005006104607551-BLUE-warm light",
+      "supplier": "",
+      "type": "COMPRA",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OfuJvUVkpZNOAo15HkC": {
+      "date": "2025-12-07T19:39:42.025Z",
+      "nf": "505",
+      "quantity": 3,
+      "sku": "arandela-linear-fine-preto-60",
+      "supplier": "",
+      "type": "COMPRA",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OfuK5_VFz2KwJJUrq0m": {
+      "date": "2025-12-07T19:40:27.465Z",
+      "nf": "506",
+      "quantity": 1,
+      "sku": "100500725790123-CH-Pink",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OfuKXd-hWUnTtmSb1oY": {
+      "date": "2025-12-07T19:42:22.376Z",
+      "nf": "507",
+      "quantity": 2,
+      "sku": "1005006382188007-Linen lampshade-Black lamp body",
+      "supplier": "",
+      "type": "COMPRA",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OfuRdJuNiVE85tEpUum": {
+      "date": "2025-12-07T20:13:24.771Z",
+      "nf": "562",
+      "quantity": 1,
+      "sku": "100500725790123-CH-Green",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OfuUJhB8acdvOYYdYZv": {
+      "date": "2025-12-07T20:25:06.741Z",
+      "nf": "579",
+      "quantity": 1,
+      "sku": "1005006092318020-Small Smoke gray-warm light",
+      "supplier": "",
+      "type": "COMPRA",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OfuV-uKLi5cfU3mTSxJ": {
+      "date": "2025-12-07T20:28:07.806Z",
+      "nf": "601",
+      "quantity": 13,
+      "sku": "136:29#Round white;200000531:193#Warm White 3000K;249:200002",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OfuVhBZQS5Zy7srBeSm": {
+      "date": "2025-12-07T20:31:09.197Z",
+      "nf": "602",
+      "quantity": 2,
+      "sku": "4001176351696-Golden-Warm White (2700-3500K)",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OfuVqBnXpPEHPCBrwYu": {
+      "date": "2025-12-07T20:31:46.076Z",
+      "nf": "602",
+      "quantity": 2,
+      "sku": "180:200002571#7W Warm White 3000K;200000795:691#Wall -White",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OfuW44g1POQ19oQbPgL": {
+      "date": "2025-12-07T20:32:47.061Z",
+      "nf": "603",
+      "quantity": 2,
+      "sku": "1005002008969209-WHITE-1 head-300cm wire-Lampshade Dia 18cm",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OfuWL_Hy8-cPtvmNM6Q": {
+      "date": "2025-12-07T20:33:58.715Z",
+      "nf": "634",
+      "quantity": 1,
+      "sku": "5:100014064#15x12.5x39cm;200000531:193#Pink;249:200006305;14",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OfuX5a7emRvSRhP_l8a": {
+      "date": "2025-12-07T20:37:15.377Z",
+      "nf": "635",
+      "quantity": 1,
+      "sku": "1005006738707980-Walnut Color 28cm-Warm White",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OfuY8f3JgDo-VAOWx94": {
+      "date": "2025-12-07T20:41:50.125Z",
+      "nf": "636",
+      "quantity": 1,
+      "sku": "200000795:173#2heads 120cm",
+      "supplier": "",
+      "type": "COMPRA",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OfuYh7JByVwLLbo5se3": {
+      "date": "2025-12-07T20:44:15.357Z",
+      "nf": "644",
+      "quantity": 2,
+      "sku": "4000685158571-Chrome-CHINA",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OfuYlPGJ-iNk89fbC4T": {
+      "date": "2025-12-07T20:44:32.890Z",
+      "nf": "644",
+      "quantity": 1,
+      "sku": "1005006501305098-Black lampbody",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OfuYo1fDr5kyqEvwkfW": {
+      "date": "2025-12-07T20:44:43.668Z",
+      "nf": "644",
+      "quantity": 1,
+      "sku": "100500725790123-CH-Pink",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OfuZXI7Cys03BPFhUqZ": {
+      "date": "2025-12-07T20:47:53.137Z",
+      "nf": "645",
+      "quantity": 1,
+      "sku": "32939673394-Amber color-C",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OfuZaJHhd4u8BURKjrU": {
+      "date": "2025-12-07T20:48:09.594Z",
+      "nf": "645",
+      "quantity": 1,
+      "sku": "32939673394-Amber color-B",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OfuZdqYo7AHEMUHvxZ_": {
+      "date": "2025-12-07T20:48:24.076Z",
+      "nf": "463",
+      "quantity": 1,
+      "sku": "1005008538785501-cloud stone",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-Ofu_DAL5vgieCKtukeS": {
+      "date": "2025-12-07T20:50:52.863Z",
+      "nf": "694",
+      "quantity": 1,
+      "sku": "1005005751448396-Copper-L400-5W No Dimmable-3000K Warm White",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-Ofu_eXKyeyu-6L3sNoY": {
+      "date": "2025-12-07T20:52:49.022Z",
+      "nf": "737",
+      "quantity": 1,
+      "sku": "1005007143017099-D35cmxH45cm-light yellow",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-Ofu_i9w9C8lfgpD9zrj": {
+      "date": "2025-12-07T20:53:03.909Z",
+      "nf": "738",
+      "quantity": 1,
+      "sku": "1005002607371695-Gold and white",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-Ofu_jsSyDYMFSQZY8Ri": {
+      "date": "2025-12-07T20:53:10.918Z",
+      "nf": "738",
+      "quantity": 1,
+      "sku": "1005007606474326-D40cm-Warm Light",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OfuaH05eFKURCSIIc-6": {
+      "date": "2025-12-07T20:55:30.735Z",
+      "nf": "744",
+      "quantity": 1,
+      "sku": "1005005881791136-YELLOW",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OfuaXJmyBdLljR39y2w": {
+      "date": "2025-12-07T20:56:37.531Z",
+      "nf": "749",
+      "quantity": 1,
+      "sku": "1005007126209440-Brown",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OfuagQij3AuK3VfC1zJ": {
+      "date": "2025-12-07T20:57:18.935Z",
+      "nf": "773",
+      "quantity": 1,
+      "sku": "100500725790123-CH-Green",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-Ofuaz3hVEHipzsPNshm": {
+      "date": "2025-12-07T20:58:35.286Z",
+      "nf": "791",
+      "quantity": 1,
+      "sku": "200000795:691#sand nickel;200007763:201336100;180:200002571",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-Ofuc_fnRq1k30zudQXG": {
+      "date": "2025-12-07T21:05:35.580Z",
+      "nf": "877",
+      "quantity": 1,
+      "sku": "100500725790123-CH-Green",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OfudC4PHNz2jglxqH17": {
+      "date": "2025-12-07T21:08:16.963Z",
+      "nf": "880",
+      "quantity": 2,
+      "sku": "1005005691697679-Black A-3W-Warm Light",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OfudFZCO7HaWOABak34": {
+      "date": "2025-12-07T21:08:31.222Z",
+      "nf": "880",
+      "quantity": 2,
+      "sku": "200000531:193#D50cm;136:200003938#warm light",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OfudSwG8ZCXxTwxhQ2_": {
+      "date": "2025-12-07T21:09:26.009Z",
+      "nf": "913",
+      "quantity": 1,
+      "sku": "4000873425363-White A3",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OfudeGffmWj_DU_FIl3": {
+      "date": "2025-12-07T21:10:16.531Z",
+      "nf": "914",
+      "quantity": 1,
+      "sku": "136:200006153#Warm Light;200000531:350852#Type C Black",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OfudpCI-OBUF3tV_OCM": {
+      "date": "2025-12-07T21:11:01.308Z",
+      "nf": "915",
+      "quantity": 1,
+      "sku": "4000295113481-black-Without bulb",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-Ofue94oBC0pzii-AveN": {
+      "date": "2025-12-07T21:12:26.845Z",
+      "nf": "1176",
+      "quantity": 2,
+      "sku": "1005007385834178-PINK",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-Ofuf1D3cbePQgIQNS8i": {
+      "date": "2025-12-07T21:16:16.749Z",
+      "nf": "1178",
+      "quantity": 1,
+      "sku": "1005007067528677-Red-A-Dia30cm-Warm light",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OfufojxdgJo4j8cPqaB": {
+      "date": "2025-12-07T21:19:43.718Z",
+      "nf": "1309",
+      "quantity": 2,
+      "sku": "1005003394311256-Grey-Without bulb",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OfugCcJ4YQy8Wai_8Vv": {
+      "date": "2025-12-07T21:21:25.629Z",
+      "nf": "1386",
+      "quantity": 2,
+      "sku": "1005005708872140-chrome-white shade-16-20W-Warm White",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OfugI-_IOxk021yOJO4": {
+      "date": "2025-12-07T21:21:47.662Z",
+      "nf": "1386",
+      "quantity": 1,
+      "sku": "200000795:29#Amber color;180:200002571#warm white",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-Og3pKyNMNHTV66z8xzm": {
+      "date": "2025-12-09T20:37:31.651Z",
+      "nf": "",
+      "quantity": 1,
+      "sku": "200000795:29#Amber color;180:200002571#warm white",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-Og3rbdshyxcW6lZZddK": {
+      "date": "2025-12-09T20:47:28.357Z",
+      "nf": "393",
+      "quantity": 5,
+      "sku": "200000795:29;180:200002571",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-Og3sEcMWqY7hFH5IIf0": {
+      "date": "2025-12-09T20:50:12.099Z",
+      "nf": "407",
+      "quantity": 5,
+      "sku": "1005005340598218-Be-Green Pink-Warm white",
+      "supplier": "",
+      "type": "COMPRA",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-Og3snggEDwFxmeF75AV": {
+      "date": "2025-12-09T20:52:39.833Z",
+      "nf": "411",
+      "quantity": 1,
+      "sku": "1005006990959497-Gold",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-Og3tOGvowxRqrWorE8e": {
+      "date": "2025-12-09T20:55:13.768Z",
+      "nf": "419",
+      "quantity": 1,
+      "sku": "200000531:350852#Beige-60CM;5:100014064#Neutral light(4500K)",
+      "supplier": "",
+      "type": "COMPRA",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-Og3tSLSh38jS_0092Cy": {
+      "date": "2025-12-09T20:55:30.442Z",
+      "nf": "419",
+      "quantity": 1,
+      "sku": "136:200003938#Warm white;200000531:365458#Chrome small",
+      "supplier": "",
+      "type": "COMPRA",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-Og3u8twFE0WitP40uJN": {
+      "date": "2025-12-09T20:58:32.937Z",
+      "nf": "435",
+      "quantity": 1,
+      "sku": "200000795:200006152#Gold 70cm",
+      "supplier": "",
+      "type": "COMPRA",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-Og3uEZgmw0E6mAmgdtr": {
+      "date": "2025-12-09T20:58:56.153Z",
+      "nf": "434",
+      "quantity": 1,
+      "sku": "100500725790123-CH-Green",
+      "supplier": "",
+      "type": "COMPRA",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-Og3vBbx3buEfXjj05Y8": {
+      "date": "2025-12-09T21:03:06.218Z",
+      "nf": "547",
+      "quantity": 3,
+      "sku": "200000795:193#gold;5:100014064#33cm",
+      "supplier": "",
+      "type": "COMPRA",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-Og3vwmi3K0WA_Dt3pi9": {
+      "date": "2025-12-09T21:06:23.515Z",
+      "nf": "743",
+      "quantity": 1,
+      "sku": "1005004171458205-60 cm-Warm White-black lamp body-1",
+      "supplier": "",
+      "type": "COMPRA",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-Og3wJox6s9OM15TZkaD": {
+      "date": "2025-12-09T21:08:01.962Z",
+      "nf": "1179",
+      "quantity": 1,
+      "sku": "1005007606474326-D50cm-Warm Light",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-Og3wV1Z8imr3gKMGgmL": {
+      "date": "2025-12-09T21:08:47.889Z",
+      "nf": "1183",
+      "quantity": 1,
+      "sku": "100500725790123-CH-Green",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-Og3whT3W2JxUzcD158F": {
+      "date": "2025-12-09T21:09:42.897Z",
+      "nf": "1183",
+      "quantity": 1,
+      "sku": "1005007001027262-A20CM-Without bulb",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-Og3wtJnoP0FIOqHl1lz": {
+      "date": "2025-12-09T21:10:31.456Z",
+      "nf": "1308",
+      "quantity": 1,
+      "sku": "136:200003938#Warm white;200000531:10#Red;5:361386#Diameter",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-Og3xZvi_ySq7G1PZSGz": {
+      "date": "2025-12-09T21:13:30.075Z",
+      "nf": "1382",
+      "quantity": 1,
+      "sku": "1005006332397349-A25CM-warm light",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-Og3xg-3Y3K-edJbiJkj": {
+      "date": "2025-12-09T21:13:59.025Z",
+      "nf": "1382",
+      "quantity": 1,
+      "sku": "1005006332397349-A20CM-warm light",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-Og3xjP2J7Ophibv4ru5": {
+      "date": "2025-12-09T21:14:12.976Z",
+      "nf": "1382",
+      "quantity": 1,
+      "sku": "1005006332397349-A20CM-warm light",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-Og3xoStUdl9xoww8AIX": {
+      "date": "2025-12-09T21:14:33.702Z",
+      "nf": "1382",
+      "quantity": 1,
+      "sku": "1005004282941108-Black-Type-C charging",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-Og3yCcAYBFTKbPML35t": {
+      "date": "2025-12-09T21:16:16.760Z",
+      "nf": "1044",
+      "quantity": 1,
+      "sku": "200000531:193#A PINK;249:200006305#EU Plug;5:100014065#No bu",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-Og40dI5SchQqLDV7iqH": {
+      "date": "2025-12-09T21:31:16.531Z",
+      "nf": "",
+      "quantity": 1,
+      "sku": "1005007385834178-PINK",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OgIfwPLTegbTncuifUr": {
+      "date": "2025-12-12T17:50:44.456Z",
+      "nf": "1406",
+      "quantity": 4,
+      "sku": "1005007506632761-B",
+      "supplier": "ORNE DECOR STUDIO LTDA",
+      "type": "COMPRA",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OgIg2844XURM4HT2lmL": {
+      "date": "2025-12-12T17:51:12.023Z",
+      "nf": "1503",
+      "quantity": 2,
+      "sku": "1005006621816154-Walnut wood-40cm-36w-white light",
+      "supplier": "ORNE DECOR STUDIO LTDA",
+      "type": "COMPRA",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OgIgBCrsf3vxqS8EtvX": {
+      "date": "2025-12-12T17:51:49.193Z",
+      "nf": "1636",
+      "quantity": 1,
+      "sku": "1005002494647914-one mode-Touch sensor",
+      "supplier": "ORNE DECOR STUDIO LTDA",
+      "type": "COMPRA",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-Ok-fmBTZ-eoV7YnLoJZ": {
+      "date": "2026-01-27T18:20:04.052Z",
+      "nf": "1616",
+      "quantity": 1,
+      "sku": "1005005245471998-C Black-Warm White (2700-3500K)",
+      "supplier": "",
+      "type": "COMPRA",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OkUlQBktsULUicejSGN": {
+      "date": "2026-02-02T19:12:56.840Z",
+      "nf": "121",
+      "quantity": 1,
+      "sku": "1005005232203762-RED-20CM",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-Ok_-7ZmHUKuPYw2tMGz": {
+      "date": "2026-02-03T19:35:18.187Z",
+      "nf": "1635",
+      "quantity": 1,
+      "sku": "1005005033245073-B White-D50cm-Warm light",
+      "supplier": "ORNE DECOR STUDIO LTDA",
+      "type": "COMPRA",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-Ok_-7biIW5L5_rf7wBD": {
+      "date": "2026-02-03T19:35:18.375Z",
+      "nf": "1635",
+      "quantity": 1,
+      "sku": "1005007824139076-USB tricolor-white",
+      "supplier": "ORNE DECOR STUDIO LTDA",
+      "type": "COMPRA",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OkdiTL0cUsKUp3VdnV3": {
+      "date": "2026-02-04T17:36:14.219Z",
+      "nf": "435",
+      "quantity": 1,
+      "sku": "200000795:691#Copper and Amber",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OkekPZviLKBSl0Ia2Fv": {
+      "date": "2026-02-04T22:24:20.529Z",
+      "nf": "1708",
+      "quantity": 2,
+      "sku": "1005007385834178-yellow",
+      "supplier": "",
+      "type": "DEVOLUCAO",
+      "userId": "representacao@ornestudio.com"
+    }
+  },
+  "exits": {
+    "-Ogho45G_-41gAZtHsH4": {
+      "client": "",
+      "date": "2025-12-17T19:36:25.591Z",
+      "nf": "1892",
+      "quantity": 1,
+      "sku": "4001176351696-Golden-Warm White (2700-3500K)",
+      "type": "VENDA",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OiOeBB5UlkyfiGMhz9V": {
+      "client": "",
+      "date": "2026-01-07T18:12:13.003Z",
+      "nf": "1253",
+      "quantity": 3,
+      "sku": "200000795:29#Amber color;180:200002571#warm white",
+      "type": "VENDA",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OjRR84KkcwDkVd4llWP": {
+      "client": "",
+      "date": "2026-01-20T17:25:22.649Z",
+      "nf": "2197",
+      "quantity": 1,
+      "sku": "1005007606474326-D40cm-Warm Light",
+      "type": "VENDA",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OjRfHd39p9WdnFGxg9P": {
+      "client": "",
+      "date": "2026-01-20T18:31:34.027Z",
+      "nf": "2073",
+      "quantity": 1,
+      "sku": "1005007385834178-PINK",
+      "type": "VENDA",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OjRf_r14nRp-rnQsq9D": {
+      "client": "",
+      "date": "2026-01-20T18:32:52.745Z",
+      "nf": "2193",
+      "quantity": 1,
+      "sku": "1005006382188007-White lampshade-Copper lamp body",
+      "type": "VENDA",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OjRwMOIhqLvef3yvz_z": {
+      "client": "Lorenca Duarte Rodrigues dos Santos Lauria",
+      "date": "2026-01-20T19:46:10.003Z",
+      "nf": "2254",
+      "quantity": 1,
+      "sku": "100500725790123-CH-Red",
+      "type": "VENDA",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-Ojg4N40adxOm5YnYpFs": {
+      "client": "Alessandra Ribeiro Tosta",
+      "date": "2026-01-23T18:19:50.734Z",
+      "nf": "2194",
+      "quantity": 1,
+      "sku": "100500725790123-CH-Pink",
+      "type": "VENDA",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-Ojg4VNahk6byerfY-W9": {
+      "client": "Felipe bezerra",
+      "date": "2026-01-23T18:20:24.755Z",
+      "nf": "2195",
+      "quantity": 1,
+      "sku": "100500725790123-CH-Pink",
+      "type": "VENDA",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OkZyFe11BNyJpeg5Ozr": {
+      "client": "",
+      "date": "2026-02-03T19:27:07.003Z",
+      "nf": "2533",
+      "nfOrigem": "562",
+      "quantity": 1,
+      "sku": "100500725790123-CH-Green",
+      "type": "VENDA",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OkZyTJhAby-xfwzWr0c": {
+      "client": "",
+      "date": "2026-02-03T19:28:02.982Z",
+      "nf": "",
+      "nfOrigem": "Sem NF",
+      "quantity": 10,
+      "sku": "100500725790123-CH-Green",
+      "type": "VENDA",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-Oke1J_O__sGkuud5Foc": {
+      "client": "",
+      "date": "2026-02-04T19:02:57.124Z",
+      "nf": "1142",
+      "nfOrigem": "378",
+      "quantity": 1,
+      "sku": "1005006076120195-A-EU Plug",
+      "type": "VENDA",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OkeBdQpXkaIGbSV7XCw": {
+      "client": "",
+      "date": "2026-02-04T19:48:04.088Z",
+      "nf": "1853",
+      "nfOrigem": "380",
+      "quantity": 2,
+      "sku": "1005005320153847-Amber-35cm-Warm White",
+      "type": "VENDA",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-Okei4EMhEdogTpkmf4m": {
+      "client": "",
+      "date": "2026-02-04T22:14:08.845Z",
+      "nf": "2422",
+      "nfOrigem": "877",
+      "quantity": 1,
+      "sku": "100500725790123-CH-Green",
+      "type": "VENDA",
+      "userId": "representacao@ornestudio.com"
+    },
+    "-OkeiBaQl7KGlLCXlu1G": {
+      "client": "",
+      "date": "2026-02-04T22:14:38.993Z",
+      "nf": "2423",
+      "nfOrigem": "773",
+      "quantity": 1,
+      "sku": "100500725790123-CH-Green",
+      "type": "VENDA",
+      "userId": "representacao@ornestudio.com"
+    }
+  },
+  "locaisOrigem": [
+    "G+SHIP VG",
+    "G+SHIP CWB",
+    "G+SHIP RJ"
+  ],
+  "products": {
+    "1": {
+      "category": "abajur",
+      "ean": "",
+      "id": "1",
+      "minStock": 3,
+      "name": "Luminária de Mesa Abajur Moderna Minimalista LED Acrílico Facino Colors - VERDE",
+      "quantity": 9,
+      "sku": "100500725790123-CH-Green"
+    },
+    "2": {
+      "category": "abajur",
+      "ean": "",
+      "id": "2",
+      "minStock": 3,
+      "name": "Luminária de Mesa Abajur Moderna Minimalista LED Acrílico Facino Colors - AMARELO",
+      "quantity": 12,
+      "sku": "100500725790123-CH-Yellow"
+    },
+    "3": {
+      "category": "abajur",
+      "ean": "",
+      "id": "3",
+      "minStock": 3,
+      "name": "Luminária de Mesa Abajur Moderna Minimalista LED Acrílico Facino Colors - ROSA",
+      "quantity": 12,
+      "sku": "100500725790123-CH-Pink"
+    },
+    "4": {
+      "category": "abajur",
+      "ean": "",
+      "id": "4",
+      "minStock": 3,
+      "name": "Luminária de Mesa Abajur Moderna Minimalista LED Acrílico Facino Colors - VERMELHO",
+      "quantity": 12,
+      "sku": "100500725790123-CH-Red"
+    },
+    "5": {
+      "category": "abajur",
+      "ean": "",
+      "id": "5",
+      "minStock": 3,
+      "name": "Luminária de Mesa Abajur Moderna Minimalista LED Acrílico Facino Colors - BRANCO",
+      "quantity": 12,
+      "sku": "100500725790123-CH-White"
+    },
+    "1h8aeh9yl": {
+      "category": "abajur",
+      "createdAt": "2025-12-09T21:14:29.113Z",
+      "ean": "",
+      "id": "1h8aeh9yl",
+      "name": "Luminária de Mesa Moderna Minimalista LED Bawe - Preto",
+      "observations": "",
+      "quantity": 0,
+      "sku": "1005004282941108-Black-Type-C charging"
+    },
+    "2ey7i66z9": {
+      "category": "arandelas",
+      "createdAt": "2026-01-20T19:24:21.605Z",
+      "ean": "",
+      "id": "2ey7i66z9",
+      "minStock": 1,
+      "name": "Luminaria Arandela Moderna Minimalista Globo Vidro Vox - Vermelho - 12cm",
+      "observations": "Cadastrado via NF 2250",
+      "quantity": 0,
+      "sku": "180:200002567Without light source;200000795:193Red"
+    },
+    "3g6ft3tdo": {
+      "category": "pendentes",
+      "createdAt": "2026-01-20T19:18:14.522Z",
+      "ean": "",
+      "id": "3g6ft3tdo",
+      "minStock": 1,
+      "name": "Luminaria Pendente Moderno Minimalista Metal LED Suit - Branco - 23cm - Branco Quente (3000K)",
+      "observations": "Cadastrado via NF 2253",
+      "quantity": 0,
+      "sku": "136:200003938Warm White  3000K;200000531:29White;5:361385"
+    },
+    "5o3n8jys9": {
+      "category": "pendentes",
+      "createdAt": "2025-12-09T20:54:45.277Z",
+      "ean": "",
+      "id": "5o3n8jys9",
+      "minStock": 3,
+      "name": "Luminária Pendente Moderna Minimalista Metal Aramado Cluster - Prata - Ø45cm - Branco Quente (3000K)",
+      "observations": "",
+      "quantity": 0,
+      "sku": "136:200003938#Warm white;200000531:365458#Chrome small"
+    },
+    "6iq94jn4m": {
+      "category": "pendentes",
+      "createdAt": "2025-12-09T21:13:14.626Z",
+      "ean": "",
+      "id": "6iq94jn4m",
+      "name": "Luminária Pendente Moderna Minimalista Vidro Zaera Lumi - Ø25cm - Incolor - Vidro e Alumínio",
+      "observations": "",
+      "quantity": 0,
+      "sku": "1005006332397349-A25CM-warm light"
+    },
+    "a81r9zt52": {
+      "category": "arandelas",
+      "createdAt": "2025-12-09T21:02:06.478Z",
+      "ean": "",
+      "id": "a81r9zt52",
+      "minStock": 3,
+      "name": "Luminária Arandela Moderna Minimalista Touch LED Metal Liteni - Dourado / Ø33cm",
+      "observations": "",
+      "quantity": 0,
+      "sku": "200000795:193#gold;5:100014064#33cm"
+    },
+    "aulhbs9ky": {
+      "category": "arandelas",
+      "createdAt": "2025-12-09T20:52:28.342Z",
+      "ean": "",
+      "id": "aulhbs9ky",
+      "minStock": 3,
+      "name": "Luminária Arandela Moderna Minimalista Metal Shives - Dourado",
+      "observations": "",
+      "quantity": 0,
+      "sku": "1005006990959497-Gold"
+    },
+    "auzzwax1w": {
+      "category": "arandelas",
+      "ean": "SEM GTIN",
+      "id": "auzzwax1w",
+      "name": "Luminaria Arandela Moderna Minimalista Articulada Tecido Kioma - Dourado e Branco",
+      "quantity": 0,
+      "sku": "1005007506632761-B"
+    },
+    "bbi2qj7v2": {
+      "category": "arandelas",
+      "ean": "",
+      "id": "bbi2qj7v2",
+      "minStock": 3,
+      "name": "Luminária Arandela Moderna Minimalista Spot Direcionável LED Handle - Branco - Branco Quente (3000K)",
+      "observations": "",
+      "quantity": 0,
+      "sku": "200000795:29;180:200002571"
+    },
+    "cyrj9qv54": {
+      "category": "pendentes",
+      "createdAt": "2025-12-09T21:13:48.483Z",
+      "ean": "",
+      "id": "cyrj9qv54",
+      "name": "Luminária Pendente Moderna Minimalista Vidro Zaera Lumi - Ø20cm - Incolor - Vidro e Alumínio",
+      "observations": "",
+      "quantity": 0,
+      "sku": "1005006332397349-A20CM-warm light"
+    },
+    "e826h7fqm": {
+      "category": "pendentes",
+      "createdAt": "2025-12-09T21:07:51.375Z",
+      "ean": "",
+      "id": "e826h7fqm",
+      "minStock": 3,
+      "name": "Luminária Pendente Moderna Minimalista Tecido Aster - Ø50cm - Tecido e Alumínio",
+      "observations": "",
+      "quantity": 0,
+      "sku": "1005007606474326-D50cm-Warm Light"
+    },
+    "f3p5jruii": {
+      "category": "pendentes",
+      "createdAt": "2025-12-09T21:10:21.711Z",
+      "ean": "",
+      "id": "f3p5jruii",
+      "name": "Luminária Pendente Moderna Minimalista Metal LED Mungo - Vermelho - Branco Quente (3000K) - Ø40cm",
+      "observations": "",
+      "quantity": 0,
+      "sku": "136:200003938#Warm white;200000531:10#Red;5:361386#Diameter"
+    },
+    "fyqvup9x9": {
+      "category": "arandelas",
+      "createdAt": "2026-02-02T18:59:38.099Z",
+      "ean": "",
+      "id": "fyqvup9x9",
+      "name": "Luminária Arandela Moderno Minimalista Acrílico Baloon - Vermelho - Ø20cm",
+      "nfOrigem": "121",
+      "observations": "",
+      "quantity": 0,
+      "sku": "1005005232203762-RED-20CM"
+    },
+    "g49vdo1n8": {
+      "category": "pendentes",
+      "createdAt": "2025-12-09T21:09:35.171Z",
+      "ean": "",
+      "id": "g49vdo1n8",
+      "name": "Luminária Pendente Moderna Minimalista Orgânico Metal Vidro Minsk - Orgânico - Ø20cm - Branco",
+      "observations": "",
+      "quantity": 0,
+      "sku": "1005007001027262-A20CM-Without bulb"
+    },
+    "i8ir5a5ed": {
+      "category": "arandelas",
+      "createdAt": "2026-01-20T19:23:46.258Z",
+      "ean": "",
+      "id": "i8ir5a5ed",
+      "minStock": 1,
+      "name": "Luminaria Arandela Moderna Minimalista Globo Vidro Vox - Bege - 12cm",
+      "observations": "Cadastrado via NF 2249",
+      "quantity": 0,
+      "sku": "180:200002567Without light source;200000795:175Beige"
+    },
+    "ip1z7ge9z": {
+      "category": "pendentes",
+      "createdAt": "2025-12-09T21:06:10.403Z",
+      "ean": "",
+      "id": "ip1z7ge9z",
+      "minStock": 3,
+      "name": "Luminária Pendente Moderno Minimalista Verve - Ø60cm - Preto",
+      "observations": "Estão faltando as peças de acabamento douradas que foram enviadas pra outra cliente.",
+      "quantity": 0,
+      "sku": "1005004171458205-60 cm-Warm White-black lamp body-1"
+    },
+    "iz80xkjjv": {
+      "category": "abajur",
+      "createdAt": "2026-01-20T19:38:27.996Z",
+      "ean": "",
+      "id": "iz80xkjjv",
+      "minStock": 1,
+      "name": "Luminaria De Mesa Abajur Moderna Minimalista Ceramica Tecido Emur - 30x31cm - Verde - Ceramica e Tecido",
+      "observations": "Cadastrado via NF 2217",
+      "quantity": 0,
+      "sku": "14:771EU Plug;200000795:10Green small"
+    },
+    "l9r4zq3z5": {
+      "category": "arandelas",
+      "createdAt": "2026-01-27T18:19:49.853Z",
+      "ean": "",
+      "id": "l9r4zq3z5",
+      "name": "Luminária Arandela Moderno Minimalista Avo - Preto",
+      "nfOrigem": "1616",
+      "observations": "Foi comprada uma un a mais, ficando então para estoque. Vila Guilherme - SP",
+      "quantity": 0,
+      "sku": "1005005245471998-C Black-Warm White (2700-3500K)"
+    },
+    "lqh8xnu2v": {
+      "category": "arandelas",
+      "createdAt": "2026-01-20T18:57:37.718Z",
+      "ean": "",
+      "id": "lqh8xnu2v",
+      "minStock": 1,
+      "name": "Luminaria Arandela Moderno Minimalista Ikso",
+      "observations": "Cadastrado via NF 2251",
+      "quantity": 0,
+      "sku": "1005004078629302-White-Warm White (2700-3500K)"
+    },
+    "mbnkm10n8": {
+      "category": "arandelas",
+      "createdAt": "2025-12-09T20:49:59.040Z",
+      "ean": "",
+      "id": "mbnkm10n8",
+      "minStock": 3,
+      "name": "Luminária Arandela Moderna Minimalista Retrô Metal Dust - Bege, Verde e Rosa - Branco Quente (3000K)",
+      "observations": "",
+      "quantity": 0,
+      "sku": "1005005340598218-Be-Green Pink-Warm white"
+    },
+    "miqg1p6ntjjc3ggfvt8": {
+      "category": "arandelas",
+      "ean": "SEM GTIN",
+      "id": "miqg1p6ntjjc3ggfvt8",
+      "minStock": 3,
+      "name": "Luminaria Arandela Moderna Minimalista Madeira Lovacci - A - Nogueira - Madeira, Vidro e Aluminio - Branco Quente (3000K",
+      "quantity": 0,
+      "sku": "1005007392637392-A160mm.WN-CHINA-Warm light 3000K"
+    },
+    "miukoa9brvkzfucawii": {
+      "category": "pendentes",
+      "ean": "",
+      "id": "miukoa9brvkzfucawii",
+      "minStock": 1,
+      "name": "Luminária Pendente Moderna Minimalista Metal Madeira Bergen - BEGE",
+      "quantity": 0,
+      "sku": "1005006520650313-1Creamy-Warm White"
+    },
+    "miul9osg85g8mle390o": {
+      "category": "arandelas",
+      "ean": "",
+      "id": "miul9osg85g8mle390o",
+      "minStock": 1,
+      "name": " Luminária Arandela Moderno Minimalista Articulada Piper - BRANCO E DOURADO",
+      "quantity": 0,
+      "sku": "1005005362858729-White-43cm-Warm White (2700-3500K)"
+    },
+    "miulbalrow13iy6c2qm": {
+      "category": "arandelas",
+      "ean": "",
+      "id": "miulbalrow13iy6c2qm",
+      "minStock": 3,
+      "name": "Luminária Arandela Moderna Clássica Metal Cúpula Tecido Gnoff - Branco e Dourado",
+      "quantity": 0,
+      "sku": "1005006382188007-White lampshade-Copper lamp body"
+    },
+    "miulcr599wovy4ieijb": {
+      "category": "arandelas",
+      "ean": "",
+      "id": "miulcr599wovy4ieijb",
+      "minStock": 1,
+      "name": "Luminária Arandela Moderna Minimalista Articulada Tecido Felpa - Dourado",
+      "quantity": 0,
+      "sku": "1005007506632761-A golden"
+    },
+    "miulgle6t5ooi2pgd8c": {
+      "category": "pendentes",
+      "ean": "",
+      "id": "miulgle6t5ooi2pgd8c",
+      "minStock": 1,
+      "name": " Luminária Pendente Moderna Industrial Vintage Retrô Colors - Branco",
+      "quantity": 0,
+      "sku": "4000295113481-white-Without bulb"
+    },
+    "miulnidlne2lrey354": {
+      "category": "arandelas",
+      "ean": "",
+      "id": "miulnidlne2lrey354",
+      "minStock": 1,
+      "name": "Luminária Arandela Moderno Minimalista Vidro LED Blaese - Ambar",
+      "quantity": 0,
+      "sku": "200000795:29#Amber color;180:200002571#warm white"
+    },
+    "miumiupzz3mfrejtqyq": {
+      "category": "abajur",
+      "ean": "",
+      "id": "miumiupzz3mfrejtqyq",
+      "minStock": 3,
+      "name": "Luminária de Mesa Abajur Moderna Minimalista LED Cerâmica Brillanza - Laranja",
+      "quantity": 0,
+      "sku": "1005006104607551-ORANGE-warm light"
+    },
+    "miumma9h2vm911our1j": {
+      "category": "arandelas",
+      "ean": "",
+      "id": "miumma9h2vm911our1j",
+      "minStock": 3,
+      "name": "Luminária Arandela Moderna Industrial Retrô Articulada Metal Liorah - 30 cm - Preto e Dourado",
+      "quantity": 0,
+      "sku": "1005004255578084-B1-No bulb"
+    },
+    "miumou0xpupfhxb8ed": {
+      "category": "abajur",
+      "ean": "",
+      "id": "miumou0xpupfhxb8ed",
+      "minStock": 3,
+      "name": "Luminária De Mesa Abajur Minimalista Vidro Cerâmica Melusi - Branco - Ø20x29cm",
+      "quantity": 0,
+      "sku": "1005007525219033-white-EU"
+    },
+    "miumroxouxipotkdkrk": {
+      "category": "abajur",
+      "ean": "",
+      "id": "miumroxouxipotkdkrk",
+      "minStock": 1,
+      "name": "Luminária de Mesa Abajur Moderna Minimalista LED Metal Gold Lux - Dourado - Ø12x37cm",
+      "quantity": 0,
+      "sku": "1005006076120195-A-EU Plug"
+    },
+    "miun0xzlgaowjwqzpg": {
+      "category": "pendentes",
+      "ean": "",
+      "id": "miun0xzlgaowjwqzpg",
+      "minStock": 3,
+      "name": "Luminária Pendente Moderna Minimalista Metal Vidro Gnitti - Âmbar - Ø35cm - Branco Quente (3000K)",
+      "quantity": 0,
+      "sku": "1005005320153847-Amber-35cm-Warm White"
+    },
+    "miunc1tnuz1qk0z11h": {
+      "category": "arandelas",
+      "ean": "",
+      "id": "miunc1tnuz1qk0z11h",
+      "minStock": 3,
+      "name": "Luminária Arandela Moderna Minimalista LED Metal Tagua - Branco - Branco Quente (3000K)",
+      "quantity": 0,
+      "sku": "1005006237200352-White-Warm white"
+    },
+    "miuncg4ilet8ur1jbh": {
+      "category": "pendentes",
+      "ean": "",
+      "id": "miuncg4ilet8ur1jbh",
+      "minStock": 3,
+      "name": "Luminária Pendente Moderna Minimalista Tecido Toliaza - Ø60cm - Tecido e Madeira - Branco Quente (3000K)",
+      "quantity": 0,
+      "sku": "1005007150054588-Diameter 60cm-Wood pole-warm light"
+    },
+    "miw49t2m7e9g4gsvoin": {
+      "category": "abajur",
+      "ean": "",
+      "id": "miw49t2m7e9g4gsvoin",
+      "minStock": 3,
+      "name": "Luminária de Mesa Moderna Minimalista Globo Vidro Orgânica Paint - Vermelho - 45cm - Ø17cm - Branco Quente (3000K)",
+      "quantity": 0,
+      "sku": "136:173-RED-45CM"
+    },
+    "miw4joh74dfcdz0vcsr": {
+      "category": "abajur",
+      "ean": "",
+      "id": "miw4joh74dfcdz0vcsr",
+      "minStock": 3,
+      "name": "Luminária de Mesa Abajur Moderna Minimalista LED Cerâmica Brillanza - Azul - Branco Quente (3000K)",
+      "quantity": 0,
+      "sku": "1005006104607551-BLUE-warm light"
+    },
+    "miw4m12f00vrni4ifkl4": {
+      "category": "arandelas",
+      "ean": "",
+      "id": "miw4m12f00vrni4ifkl4",
+      "minStock": 3,
+      "name": "Luminária Arandela Moderna Minimalista Linear Fine - Preto - 60cm",
+      "quantity": 0,
+      "sku": "arandela-linear-fine-preto-60"
+    },
+    "miw4ppqdovrpf5g9lo": {
+      "category": "arandelas",
+      "ean": "",
+      "id": "miw4ppqdovrpf5g9lo",
+      "minStock": 3,
+      "name": "Luminária Arandela Moderna Clássica Metal Cúpula Tecido Gnoff - Linho - Preto",
+      "quantity": 0,
+      "sku": "1005006382188007-Linen lampshade-Black lamp body"
+    },
+    "miw68ocqlbq5l5l9i3i": {
+      "category": "pendentes",
+      "ean": "",
+      "id": "miw68ocqlbq5l5l9i3i",
+      "minStock": 3,
+      "name": "Luminária Pendente Moderna Minimalista Vidro Bianc - 15x16cm - Cinza - Branco Quente (3000K)",
+      "quantity": 0,
+      "sku": "1005006092318020-Small Smoke gray-warm light"
+    },
+    "miw6blcas7plmw70lvc": {
+      "category": "spots",
+      "ean": "",
+      "id": "miw6blcas7plmw70lvc",
+      "minStock": 3,
+      "name": "Luminária Spot Sobrepor Redondo Antiofuscante Direcionável LED Holl - Branco - Branco Quente (3000K) - 12W",
+      "quantity": 0,
+      "sku": "136:29#Round white;200000531:193#Warm White 3000K;249:200002"
+    },
+    "miw6g20ducyu3yh7fx": {
+      "category": "arandelas",
+      "ean": "",
+      "id": "miw6g20ducyu3yh7fx",
+      "minStock": 3,
+      "name": "Luminária Arandela Moderna Minimalista Origami - Dourado",
+      "quantity": 0,
+      "sku": "4001176351696-Golden-Warm White (2700-3500K)"
+    },
+    "miw6ghvy7g3rfomcvbb": {
+      "category": "arandelas",
+      "ean": "",
+      "id": "miw6ghvy7g3rfomcvbb",
+      "minStock": 3,
+      "name": "Luminária Arandela Moderna Minimalista Articulável Metal Mini - Branco - Branco Quente (3000K)",
+      "quantity": 0,
+      "sku": "180:200002571#7W Warm White 3000K;200000795:691#Wall -White"
+    },
+    "miw6ijfzaktjoxk24cp": {
+      "category": "pendentes",
+      "ean": "",
+      "id": "miw6ijfzaktjoxk24cp",
+      "minStock": 3,
+      "name": "Luminária Pendente Moderna Minimalista Aim Fantasy - Branco - 1 cúpula - 300cm - Ø18cm",
+      "quantity": 0,
+      "sku": "1005002008969209-WHITE-1 head-300cm wire-Lampshade Dia 18cm"
+    },
+    "miw6k24d199jxyw0lem": {
+      "category": "abajur",
+      "ean": "",
+      "id": "miw6k24d199jxyw0lem",
+      "minStock": 3,
+      "name": "Luminária de Mesa Moderna Minimalista Articulada LED Flower - 15x12.5x39cm - Rosa - Dimerizável",
+      "quantity": 0,
+      "sku": "5:100014064#15x12.5x39cm;200000531:193#Pink;249:200006305;14"
+    },
+    "miw6o8pcf0hx2ixpm9l": {
+      "category": "plafons",
+      "ean": "",
+      "id": "miw6o8pcf0hx2ixpm9l",
+      "minStock": 3,
+      "name": "\tLuminária Plafon Moderna Minimalista Madeira Beam - Ø28cm - Nogueira - Madeira",
+      "quantity": 0,
+      "sku": "1005006738707980-Walnut Color 28cm-Warm White"
+    },
+    "miw6u3gwn76bpj9z2xq": {
+      "category": "arandelas",
+      "ean": "",
+      "id": "miw6u3gwn76bpj9z2xq",
+      "minStock": 3,
+      "name": "Luminária Arandela Moderna Minimalista Articulada Nerth - 2 cúpulas - 120cm x 65cm",
+      "quantity": 0,
+      "sku": "200000795:173#2heads 120cm"
+    },
+    "miw6wo1bcu3wr754zc9": {
+      "category": "arandelas",
+      "ean": "",
+      "id": "miw6wo1bcu3wr754zc9",
+      "minStock": 3,
+      "name": "Luminária Arandela Minimalista Tecido Metal Ace - Cromado - Ø16x54cm",
+      "quantity": 0,
+      "sku": "4000685158571-Chrome-CHINA"
+    },
+    "miw6x2wg8xu7qc1m5qk": {
+      "category": "pendentes",
+      "ean": "",
+      "id": "miw6x2wg8xu7qc1m5qk",
+      "minStock": 3,
+      "name": "Luminária Pendente Moderna Minimalista LED Metal Banciag - Preto",
+      "quantity": 0,
+      "sku": "1005006501305098-Black lampbody"
+    },
+    "miw713ioa9vpxyucvo": {
+      "category": "pendentes",
+      "ean": "",
+      "id": "miw713ioa9vpxyucvo",
+      "minStock": 3,
+      "name": "Luminária Pendente Moderno Minimalista Vidro Âmbar Knot - A",
+      "quantity": 0,
+      "sku": "32939673394-Amber color-C"
+    },
+    "miw71espiacbrz9624": {
+      "category": "pendentes",
+      "ean": "",
+      "id": "miw71espiacbrz9624",
+      "minStock": 3,
+      "name": "Luminária Pendente Moderno Minimalista Vidro Âmbar Knot - C",
+      "quantity": 0,
+      "sku": "32939673394-Amber color-B"
+    },
+    "miw71wq7fn6iy2f6eei": {
+      "category": "arandelas",
+      "ean": "",
+      "id": "miw71wq7fn6iy2f6eei",
+      "minStock": 3,
+      "name": "Luminária Arandela Minimalista Mármore Laxus - Bege",
+      "quantity": 0,
+      "sku": "1005008538785501-cloud stone"
+    },
+    "miw75pz7d4gn9tfc5yb": {
+      "category": "pendentes",
+      "ean": "",
+      "id": "miw75pz7d4gn9tfc5yb",
+      "minStock": 3,
+      "name": "Luminária Pendente Moderna Minimalista Metal Cristal Tubo Gota Shine - Cobre - 40cm - 5W | Branco Quente (3000K) | Níque",
+      "quantity": 0,
+      "sku": "1005005751448396-Copper-L400-5W No Dimmable-3000K Warm White"
+    },
+    "miw77557i54bk3c65i": {
+      "category": "pendentes",
+      "ean": "",
+      "id": "miw77557i54bk3c65i",
+      "minStock": 3,
+      "name": "Luminária Pendente Moderna Minimalista Metal Tecido Daccaro - Ø35x45cm - Branco Quente (3000K)",
+      "quantity": 0,
+      "sku": "1005007143017099-D35cmxH45cm-light yellow"
+    },
+    "miw77sntae9y8nc11k9": {
+      "category": "abajur",
+      "ean": "",
+      "id": "miw77sntae9y8nc11k9",
+      "minStock": 3,
+      "name": "Luminária de Mesa Moderna Minimalista Horseshoe",
+      "quantity": 0,
+      "sku": "1005002607371695-Gold and white"
+    },
+    "miw787fbgo1ugl5bmk": {
+      "category": "pendentes",
+      "ean": "",
+      "id": "miw787fbgo1ugl5bmk",
+      "minStock": 3,
+      "name": "Luminária Pendente Moderna Minimalista Tecido Aster - Ø40cm - Tecido e Alumínio",
+      "quantity": 0,
+      "sku": "1005007606474326-D40cm-Warm Light"
+    },
+    "miw7brto4x1ctzdkoj": {
+      "category": "abajur",
+      "ean": "",
+      "id": "miw7brto4x1ctzdkoj",
+      "minStock": 3,
+      "name": "Luminária de Mesa Abajur Moderna Minimalista LED Vidro Liora - Ø35x30cm - Branco Quente (3000K)",
+      "quantity": 0,
+      "sku": "1005005881791136-YELLOW"
+    },
+    "miw7d7agl4otmorxkgg": {
+      "category": "arandelas",
+      "ean": "",
+      "id": "miw7d7agl4otmorxkgg",
+      "minStock": 3,
+      "name": "Luminária Arandela Moderna Minimalista Articulada Madeira Mármore Travertino Zant - Nogueira",
+      "quantity": 0,
+      "sku": "1005007126209440-Brown"
+    },
+    "miw7fnyiqb0v3y17z9k": {
+      "category": "arandelas",
+      "ean": "",
+      "id": "miw7fnyiqb0v3y17z9k",
+      "minStock": 3,
+      "name": "\tLuminária Arandela Moderna Minimalista Articulada Okra - Níquel",
+      "quantity": 0,
+      "sku": "200000795:691#sand nickel;200007763:201336100;180:200002571"
+    },
+    "miw7rr12ik39tt4z2v": {
+      "category": "arandelas",
+      "ean": "",
+      "id": "miw7rr12ik39tt4z2v",
+      "minStock": 3,
+      "name": "Luminária Arandela Moderna Minimalista Articulada Direcionável Cora - Preto",
+      "quantity": 0,
+      "sku": "1005005691697679-Black A-3W-Warm Light"
+    },
+    "miw7s5j0nqxlyssr22": {
+      "category": "pendentes",
+      "ean": "",
+      "id": "miw7s5j0nqxlyssr22",
+      "minStock": 3,
+      "name": "Luminária Pendente Moderno Minimalista Litzy - Ø50cm - Branco Quente (3000K)",
+      "quantity": 0,
+      "sku": "200000531:193#D50cm;136:200003938#warm light"
+    },
+    "miw7tqreponxg4tsqy": {
+      "category": "pendentes",
+      "ean": "",
+      "id": "miw7tqreponxg4tsqy",
+      "minStock": 3,
+      "name": "Luminária Pendente Moderna Industrial Articulada Doopa - Preto",
+      "quantity": 0,
+      "sku": "4000873425363-White A3"
+    },
+    "miw7uoiqoqykzgp4zk": {
+      "category": "pendentes",
+      "ean": "",
+      "id": "miw7uoiqoqykzgp4zk",
+      "minStock": 3,
+      "name": "Luminária Pendente Moderno Minimalista Linear LED Linea - 150cm - Preto - Branco Quente (3000K)",
+      "quantity": 0,
+      "sku": "136:200006153#Warm Light;200000531:350852#Type C Black"
+    },
+    "miw7vubrm0tjy1d4k": {
+      "category": "pendentes",
+      "ean": "",
+      "id": "miw7vubrm0tjy1d4k",
+      "minStock": 3,
+      "name": "\tLuminária Pendente Moderna Industrial Vintage Retrô Colors - Preto",
+      "quantity": 0,
+      "sku": "4000295113481-black-Without bulb"
+    },
+    "miw7xj9mrsazdz315hc": {
+      "category": "arandelas",
+      "ean": "",
+      "id": "miw7xj9mrsazdz315hc",
+      "minStock": 3,
+      "name": "Luminária Arandela Moderna Minimalista LED Resina Flomu - Rosa",
+      "quantity": 0,
+      "sku": "1005007385834178-PINK"
+    },
+    "miw82fpyjtdqacbj0qo": {
+      "category": "pendentes",
+      "ean": "",
+      "id": "miw82fpyjtdqacbj0qo",
+      "minStock": 3,
+      "name": "Luminária Pendente Moderna Minimalista Metal LED Oslo - Vermelho - Globo - Ø30cm - Branco Quente (3000K)",
+      "observations": "O LED integrado não funciona.",
+      "quantity": 0,
+      "sku": "1005007067528677-Red-A-Dia30cm-Warm light"
+    },
+    "miw86w73021ny0ehg50c": {
+      "category": "arandelas",
+      "ean": "",
+      "id": "miw86w73021ny0ehg50c",
+      "minStock": 3,
+      "name": "Luminária Arandela Moderna Articulável Madeira Depth - CINZA",
+      "quantity": 0,
+      "sku": "1005003394311256-Grey-Without bulb"
+    },
+    "miw88pxyq2k7c175uf": {
+      "category": "pendentes",
+      "ean": "",
+      "id": "miw88pxyq2k7c175uf",
+      "minStock": 3,
+      "name": "Luminária Pendente Moderna Minimalista Vidro Metal Calizze - Branco e Cromado - Ø20x24cm - Branco Quente (3000K)",
+      "quantity": 0,
+      "sku": "1005005708872140-chrome-white shade-16-20W-Warm White"
+    },
+    "pai0qbvjf": {
+      "category": "abajur",
+      "ean": "SEM GTIN",
+      "id": "pai0qbvjf",
+      "name": "Luminaria de Mesa Moderna Minimalista Lynx",
+      "quantity": 0,
+      "sku": "1005002494647914-one mode-Touch sensor"
+    },
+    "qxznk2tqd": {
+      "category": "abajur",
+      "createdAt": "2025-12-09T21:15:35.294Z",
+      "ean": "",
+      "id": "qxznk2tqd",
+      "name": "Luminária de Mesa Abajur Moderna Leitura Articulada Metal Madeira Puppy - Rosa - Ø15x45cm - E27",
+      "observations": "",
+      "quantity": 0,
+      "sku": "200000531:193#A PINK;249:200006305#EU Plug;5:100014065#No bu"
+    },
+    "uzpek1tgi": {
+      "category": "plafons",
+      "ean": "SEM GTIN",
+      "id": "uzpek1tgi",
+      "name": "Luminaria Plafon Moderna Minimalista LED Madeira Gongy - 40cm - Nogueira - Branco Quente (3000K)",
+      "quantity": 0,
+      "sku": "1005006621816154-Walnut wood-40cm-36w-white light"
+    },
+    "vtd9awirp": {
+      "category": "arandelas",
+      "createdAt": "2026-02-04T17:35:59.854Z",
+      "ean": "",
+      "id": "vtd9awirp",
+      "name": "Luminária Arandela Moderna Minimalista Metal Vidro Myna - Dourado e Branco",
+      "nfOrigem": "435",
+      "observations": "pelo numero da NF deveriam ser 3, no entanto, uma un nao foi comprada e a outra foi barrada.",
+      "quantity": 0,
+      "sku": "200000795:691#Copper and Amber"
+    },
+    "w49lki7ks": {
+      "category": "pendentes",
+      "createdAt": "2025-12-09T20:55:03.232Z",
+      "ean": "",
+      "id": "w49lki7ks",
+      "minStock": 3,
+      "name": "Luminária Pendente Moderno Minimalista Tecido Whirl - Bege - Ø60cm - Branco Neutro (4000K)",
+      "observations": "",
+      "quantity": 0,
+      "sku": "200000531:350852#Beige-60CM;5:100014064#Neutral light(4500K)"
+    },
+    "w4i15oidz": {
+      "category": "arandelas",
+      "createdAt": "2026-02-04T22:24:05.877Z",
+      "ean": "",
+      "id": "w4i15oidz",
+      "name": "Luminária Arandela Moderna Minimalista LED Resina Flomu - Bege",
+      "nfOrigem": "1708",
+      "observations": "",
+      "quantity": 0,
+      "sku": "1005007385834178-yellow"
+    },
+    "xcggkmj5o": {
+      "category": "abajur",
+      "ean": "SEM GTIN",
+      "id": "xcggkmj5o",
+      "minStock": 3,
+      "name": "Luminaria de Mesa Abajur Moderna Minimalista LED Vidro Joulla - Branco",
+      "nfOrigem": "1635",
+      "observations": "G SHIP SP",
+      "quantity": 0,
+      "sku": "1005007824139076-USB tricolor-white"
+    },
+    "y01yptrax": {
+      "category": "pendentes",
+      "ean": "SEM GTIN",
+      "id": "y01yptrax",
+      "minStock": 3,
+      "name": "Luminaria Pendente Moderna Minimalista Iris - Modelo B - 50cm",
+      "nfOrigem": "1635",
+      "observations": "G SHIP SP\n",
+      "quantity": 0,
+      "sku": "1005005033245073-B White-D50cm-Warm light"
+    }
+  },
+  "shippings": {
+    "24au5wpdf": {
+      "cliente": "Brasil Bourgogne Ltda",
+      "codigoRastreio": "",
+      "date": "2026-01-20T19:18:31.536Z",
+      "destino": "RUA OLEGARIO MARIANO, S/N - PORTA DO SOL - MAIRINQUE/SP - CEP: 18120000",
+      "id": "24au5wpdf",
+      "linkRastreio": "",
+      "localOrigem": "VILA GUILHERME",
+      "nfNumero": "2253",
+      "observacoes": "NF ORIGINAL 1716",
+      "produtos": [
+        {
+          "autoVinculado": false,
+          "baixarEstoque": false,
+          "ean": "",
+          "nome": "Luminaria Pendente Moderno Minimalista Metal LED Suit - Branco - 23cm - Branco Quente (3000K)",
+          "produtoEstoque": {
+            "category": "pendentes",
+            "currentQuantity": 0,
+            "ean": "",
+            "id": "3g6ft3tdo",
+            "minStock": 1,
+            "name": "Luminaria Pendente Moderno Minimalista Metal LED Suit - Branco - 23cm - Branco Quente (3000K)",
+            "observations": "Cadastrado via NF 2253",
+            "sku": "136:200003938Warm White  3000K;200000531:29White;5:361385"
+          },
+          "quantidade": 2,
+          "sku": "136:200003938Warm White  3000K;200000531:29White;5:361385"
+        }
+      ],
+      "status": "PENDENTE",
+      "transportadora": "",
+      "userId": "representacao@ornestudio.com"
+    },
+    "3lnxu9ijf": {
+      "cliente": "Felipe bezerra",
+      "codigoRastreio": "",
+      "date": "2026-01-23T18:20:24.568Z",
+      "destino": "Avenida Doutor Mario Nunes Vieira, 149 - Jatiuca - Maceio/AL - CEP: 57035553",
+      "id": "3lnxu9ijf",
+      "linkRastreio": "",
+      "localOrigem": "VILA GUILHERME",
+      "nfNumero": "2195",
+      "observacoes": "",
+      "produtos": [
+        {
+          "autoVinculado": false,
+          "baixarEstoque": true,
+          "ean": "",
+          "nome": "Luminaria de Mesa Abajur Moderna Minimalista LED Acrilico Facino Colors - Rosa",
+          "produtoEstoque": {
+            "category": "abajur",
+            "currentQuantity": 22,
+            "ean": "",
+            "id": "3",
+            "minStock": 3,
+            "name": "Luminária de Mesa Abajur Moderna Minimalista LED Acrílico Facino Colors - ROSA",
+            "quantity": 12,
+            "sku": "100500725790123-CH-Pink",
+            "status": "ok"
+          },
+          "quantidade": 1,
+          "sku": "1005007257901231-CH-Pink"
+        }
+      ],
+      "status": "PENDENTE",
+      "transportadora": "",
+      "userId": "representacao@ornestudio.com"
+    },
+    "46f28pfrz": {
+      "cliente": "Lorenca Duarte Rodrigues dos Santos Lauria",
+      "codigoRastreio": "",
+      "date": "2026-01-20T19:46:09.813Z",
+      "destino": "Travessa Almirante Wandenkolk, 898 - Apt 2400 Ed Torre de Avila - Belem/PA - CEP: 66055030",
+      "id": "46f28pfrz",
+      "linkRastreio": "",
+      "localOrigem": "VILA GUILHERME",
+      "nfNumero": "2254",
+      "observacoes": "nf original 225",
+      "produtos": [
+        {
+          "autoVinculado": false,
+          "baixarEstoque": true,
+          "ean": "",
+          "nome": "Luminaria de Mesa Abajur Moderna Minimalista LED Acrilico Facino Colors - Vermelho",
+          "produtoEstoque": {
+            "category": "abajur",
+            "currentQuantity": 10,
+            "ean": "",
+            "id": "4",
+            "minStock": 3,
+            "name": "Luminária de Mesa Abajur Moderna Minimalista LED Acrílico Facino Colors - VERMELHO",
+            "quantity": 12,
+            "sku": "100500725790123-CH-Red",
+            "status": "ok"
+          },
+          "quantidade": 1,
+          "sku": "1005007257901231-RED"
+        }
+      ],
+      "status": "PENDENTE",
+      "transportadora": "",
+      "userId": "representacao@ornestudio.com"
+    },
+    "6uuxq7gz2": {
+      "cliente": "Alessandra Ribeiro Tosta",
+      "codigoRastreio": "",
+      "date": "2026-01-23T18:19:50.540Z",
+      "destino": "Rua 1, 008 - Vila Planalto - Brasilia/DF - CEP: 70803100",
+      "id": "6uuxq7gz2",
+      "linkRastreio": "",
+      "localOrigem": "VILA GUILHERME",
+      "nfNumero": "2194",
+      "observacoes": "",
+      "produtos": [
+        {
+          "autoVinculado": false,
+          "baixarEstoque": true,
+          "ean": "",
+          "nome": "Luminaria de Mesa Abajur Moderna Minimalista LED Acrilico Facino Colors - Rosa",
+          "produtoEstoque": {
+            "category": "abajur",
+            "currentQuantity": 23,
+            "ean": "",
+            "id": "3",
+            "minStock": 3,
+            "name": "Luminária de Mesa Abajur Moderna Minimalista LED Acrílico Facino Colors - ROSA",
+            "quantity": 12,
+            "sku": "100500725790123-CH-Pink",
+            "status": "ok"
+          },
+          "quantidade": 1,
+          "sku": "1005007257901231-CH-Pink"
+        }
+      ],
+      "status": "PENDENTE",
+      "transportadora": "",
+      "userId": "representacao@ornestudio.com"
+    },
+    "d4gyp2eds": {
+      "cliente": "Willian Fang",
+      "codigoRastreio": "LGI-ME2623JG9A2BR",
+      "date": "2026-01-20T18:57:46.943Z",
+      "destino": "Rua Martinico Prado, 242 - Vila Buarque - Sao Paulo/SP - CEP: 01224010",
+      "id": "d4gyp2eds",
+      "linkRastreio": "https://www.melhorrastreio.com.br/app/loggi/LGI-ME2623JG9A2BR",
+      "localOrigem": "VILA GUILHERME",
+      "nfNumero": "2251",
+      "observacoes": "NF original 1483",
+      "produtos": [
+        {
+          "autoVinculado": false,
+          "baixarEstoque": false,
+          "ean": "",
+          "nome": "Luminaria Arandela Moderno Minimalista Ikso",
+          "produtoEstoque": {
+            "category": "arandelas",
+            "currentQuantity": 0,
+            "ean": "",
+            "id": "lqh8xnu2v",
+            "minStock": 1,
+            "name": "Luminaria Arandela Moderno Minimalista Ikso",
+            "observations": "Cadastrado via NF 2251",
+            "sku": "1005004078629302-White-Warm White (2700-3500K)"
+          },
+          "quantidade": 1,
+          "sku": "1005004078629302-White-Warm White (2700-3500K)"
+        }
+      ],
+      "status": "ENTREGUE",
+      "status_ENTREGUE_date": "2026-02-03T19:18:45.581Z",
+      "transportadora": "Outro",
+      "updatedAt": "2026-01-20T19:35:19.193Z",
+      "userId": "representacao@ornestudio.com"
+    },
+    "lltzrb9w0": {
+      "cliente": "Victor Hugo Huguet Marques",
+      "codigoRastreio": "",
+      "date": "2026-01-20T19:24:00.004Z",
+      "destino": "Rua Otavio Correia, 420 - Urca - Rio de Janeiro/RJ - CEP: 22291180",
+      "id": "lltzrb9w0",
+      "linkRastreio": "",
+      "localOrigem": "RIO DE JANEIRO",
+      "nfNumero": "2249",
+      "observacoes": "NF ORIGINAL 1945",
+      "produtos": [
+        {
+          "autoVinculado": false,
+          "baixarEstoque": false,
+          "ean": "",
+          "nome": "Luminaria Arandela Moderna Minimalista Globo Vidro Vox - Bege - 12cm",
+          "produtoEstoque": {
+            "category": "arandelas",
+            "currentQuantity": 0,
+            "ean": "",
+            "id": "i8ir5a5ed",
+            "minStock": 1,
+            "name": "Luminaria Arandela Moderna Minimalista Globo Vidro Vox - Bege - 12cm",
+            "observations": "Cadastrado via NF 2249",
+            "sku": "180:200002567Without light source;200000795:175Beige"
+          },
+          "quantidade": 1,
+          "sku": "180:200002567Without light source;200000795:175Beige"
+        }
+      ],
+      "status": "PENDENTE",
+      "transportadora": "",
+      "userId": "representacao@ornestudio.com"
+    },
+    "lqaqboadt": {
+      "cliente": "Vitor Bertolucci",
+      "codigoRastreio": "",
+      "date": "2026-01-20T19:39:53.116Z",
+      "destino": "Alameda America, 101 - Tambore - Santana de Parnaiba/SP - CEP: 06543315",
+      "id": "lqaqboadt",
+      "linkRastreio": "",
+      "localOrigem": "VILA GUILHERME",
+      "nfNumero": "2217",
+      "observacoes": "original 1690",
+      "produtos": [
+        {
+          "autoVinculado": false,
+          "baixarEstoque": false,
+          "ean": "",
+          "nome": "Luminaria De Mesa Abajur Moderna Minimalista Ceramica Tecido Emur - 30x31cm - Verde - Ceramica e Tecido",
+          "produtoEstoque": {
+            "category": "abajur",
+            "currentQuantity": 0,
+            "ean": "",
+            "id": "iz80xkjjv",
+            "minStock": 1,
+            "name": "Luminaria De Mesa Abajur Moderna Minimalista Ceramica Tecido Emur - 30x31cm - Verde - Ceramica e Tecido",
+            "observations": "Cadastrado via NF 2217",
+            "sku": "14:771EU Plug;200000795:10Green small"
+          },
+          "quantidade": 1,
+          "sku": "14:771EU Plug;200000795:10Green small"
+        }
+      ],
+      "status": "PENDENTE",
+      "transportadora": "Outro",
+      "userId": "representacao@ornestudio.com"
+    },
+    "sely1u6jz": {
+      "cliente": "Willian Fang",
+      "codigoRastreio": "LGI-ME2623JGKV3BR",
+      "date": "2026-01-20T19:04:47.886Z",
+      "destino": "Rua Martinico Prado, 242 - Vila Buarque - Sao Paulo/SP - CEP: 01224010",
+      "id": "sely1u6jz",
+      "linkRastreio": "https://www.melhorrastreio.com.br/app/loggi/LGI-ME2623JGKV3BR",
+      "localOrigem": "VILA GUILHERME",
+      "nfNumero": "2252",
+      "observacoes": "NF original 1483",
+      "produtos": [
+        {
+          "autoVinculado": false,
+          "baixarEstoque": false,
+          "ean": "",
+          "nome": "Luminaria de Mesa Abajur Moderna Minimalista LED Acrilico Facino Colors - Vermelho",
+          "quantidade": 1,
+          "sku": "1005007257901231-CH-Red"
+        }
+      ],
+      "status": "ENTREGUE",
+      "status_ENTREGUE_date": "2026-02-03T19:18:40.807Z",
+      "transportadora": "Outro",
+      "updatedAt": "2026-01-20T19:36:22.999Z",
+      "userId": "representacao@ornestudio.com"
+    },
+    "ssb6z80yo": {
+      "cliente": "Luciana Campos",
+      "codigoRastreio": "",
+      "date": "2026-01-20T19:34:38.258Z",
+      "destino": "Avenida Jones dos Santos Neves, 324 - Centro - Sao Mateus/ES - CEP: 29930010",
+      "id": "ssb6z80yo",
+      "linkRastreio": "",
+      "localOrigem": "VILA GUILHERME",
+      "nfNumero": "1964",
+      "observacoes": "",
+      "produtos": [
+        {
+          "autoVinculado": false,
+          "baixarEstoque": false,
+          "ean": "",
+          "nome": "Luminaria de Mesa Abajur Moderna Minimalista LED Acrilico Facino Colors - Verde",
+          "quantidade": 1,
+          "sku": "1005007257901231-CH-Green"
+        }
+      ],
+      "status": "PENDENTE",
+      "transportadora": "",
+      "userId": "representacao@ornestudio.com"
+    },
+    "ye6kzf9tz": {
+      "cliente": "Victor Hugo Huguet Marques",
+      "codigoRastreio": "",
+      "date": "2026-01-20T19:24:27.700Z",
+      "destino": "Rua Otavio Correia, 420 - Urca - Rio de Janeiro/RJ - CEP: 22291180",
+      "id": "ye6kzf9tz",
+      "linkRastreio": "",
+      "localOrigem": "RIO DE JANEIRO",
+      "nfNumero": "2250",
+      "observacoes": "NF ORIGINAL 1945",
+      "produtos": [
+        {
+          "autoVinculado": false,
+          "baixarEstoque": false,
+          "ean": "",
+          "nome": "Luminaria Arandela Moderna Minimalista Globo Vidro Vox - Vermelho - 12cm",
+          "produtoEstoque": {
+            "category": "arandelas",
+            "currentQuantity": 0,
+            "ean": "",
+            "id": "2ey7i66z9",
+            "minStock": 1,
+            "name": "Luminaria Arandela Moderna Minimalista Globo Vidro Vox - Vermelho - 12cm",
+            "observations": "Cadastrado via NF 2250",
+            "sku": "180:200002567Without light source;200000795:193Red"
+          },
+          "quantidade": 1,
+          "sku": "180:200002567Without light source;200000795:193Red"
+        }
+      ],
+      "status": "PENDENTE",
+      "transportadora": "",
+      "userId": "representacao@ornestudio.com"
+    }
+  }
+}

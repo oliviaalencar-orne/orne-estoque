@@ -45,9 +45,6 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
     const [hideZeroStock, setHideZeroStock] = useState(true);
     const [tinySyncLoading, setTinySyncLoading] = useState(null); // product id being synced
 
-    // Quantas linhas de historico exibir no painel in-page antes de oferecer "Ver todas"
-    const HISTORY_PREVIEW_LIMIT = 5;
-
     const handleTinySync = async (product) => {
         if (!product.sku || tinySyncLoading) return;
         setTinySyncLoading(product.id);
@@ -455,7 +452,19 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
         );
     };
 
-    // Shared row renderer for the movements history table (used in panel and modal)
+    // Retorna apenas as ENTRADAs cujas NFs ainda possuem saldo no estoque
+    const getStockEntriesInfo = (sku) => {
+        const allEntries = (entries || []).filter(e => e.sku === sku);
+        const nfBalance = getNfBalance(sku); // NFs com saldo > 0
+        const nfsWithBalance = new Set(nfBalance.map(([nf]) => nf));
+        return allEntries
+            .filter(e => nfsWithBalance.has(e.nf || 'SEM_NF'))
+            .map(e => ({ ...e, movimento: 'ENTRADA' }))
+            .sort((a, b) => new Date(b.date) - new Date(a.date));
+    };
+
+    // Shared row renderer for the movements table (used in panel and modal)
+    // Column order: DATA | LOCAL | TIPO | NF ENTRADA | NF SAIDA | FORNECEDOR/CLIENTE | QTD | OBS
     const renderHistoryRow = (mov, idx, p, nfsComSaldo) => {
         const isEntrada = mov.movimento === 'ENTRADA';
         const isDefeitoObs = mov.defeito || (mov.observations || '').toLowerCase().includes('defeito');
@@ -464,6 +473,7 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
         return (
             <tr key={idx}>
                 <td style={{fontSize: '11px', whiteSpace: 'nowrap'}}>{formatDate(mov.date)}</td>
+                <td style={{fontSize: '11px'}}>{mov.localEntrada || '-'}</td>
                 <td>
                     <span className="stock-history-badge" style={{
                         color: isEntrada ? '#39845f' : '#893030',
@@ -471,10 +481,6 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                         {mov.movimento}
                     </span>
                 </td>
-                <td style={{fontWeight: 600, color: isEntrada ? '#39845f' : '#893030'}}>
-                    {isEntrada ? '+' : '-'}{mov.quantity}
-                </td>
-                <td style={{fontSize: '11px'}}>{mov.localEntrada || '-'}</td>
                 <td style={{fontFamily: 'monospace', fontSize: '11px'}}>
                     {nfEntrada}
                     {isEntrada && isNfDefeito && (
@@ -483,6 +489,9 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                 </td>
                 <td style={{fontFamily: 'monospace', fontSize: '11px'}}>{!isEntrada ? (mov.nf || '-') : '-'}</td>
                 <td style={{fontSize: '12px'}}>{mov.supplier || mov.client || '-'}</td>
+                <td style={{fontWeight: 600, color: isEntrada ? '#39845f' : '#893030'}}>
+                    {isEntrada ? '+' : '-'}{mov.quantity}
+                </td>
                 <td style={{fontSize: '11px', color: isDefeitoObs ? '#893030' : 'var(--text-muted)', fontWeight: isDefeitoObs ? 700 : 400, maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
                     {mov.observations || mov.defeitoDescricao || '-'}
                 </td>
@@ -493,9 +502,9 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
     // Render the inline detail panel (inserted as a spanning <tr> below the product row)
     const renderDetailPanel = (p) => {
         const history = !isEquipe ? getProductHistory(p.sku) : [];
+        const stockEntries = !isEquipe ? getStockEntriesInfo(p.sku) : [];
         const nfsComSaldo = !isEquipe ? getNfBalance(p.sku) : [];
-        const visibleHistory = history.slice(0, HISTORY_PREVIEW_LIMIT);
-        const hasMoreHistory = history.length > HISTORY_PREVIEW_LIMIT;
+        const hasMovements = history.length > 0;
         return (
             <tr className="stock-detail-row">
                 <td colSpan={5} style={{padding: 0, borderBottom: '1px solid var(--border-default)'}}>
@@ -539,80 +548,78 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                             <div className="stock-detail-category-header">
                                 {(getCategoryName(p.category) || 'SEM CATEGORIA').toUpperCase()} — {p.currentQuantity} UN.
                             </div>
-                            {!isEquipe && history.length > 0 ? (
+                            {!isEquipe && stockEntries.length > 0 ? (
                                 <div className="stock-detail-history">
                                     <table className="table stock-history-table">
                                         <thead>
                                             <tr>
                                                 <th>Data</th>
-                                                <th>Tipo</th>
-                                                <th>Qtd.</th>
                                                 <th>Local</th>
+                                                <th>Tipo</th>
                                                 <th>NF Entrada</th>
                                                 <th>NF Saída</th>
                                                 <th>Fornecedor/Cliente</th>
+                                                <th>Qtd.</th>
                                                 <th>Obs.:</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {visibleHistory.map((mov, idx) => renderHistoryRow(mov, idx, p, nfsComSaldo))}
-                                            {hasMoreHistory && (
+                                            {stockEntries.map((mov, idx) => renderHistoryRow(mov, idx, p, nfsComSaldo))}
+                                            {hasMovements && (
                                                 <tr className="stock-history-more-row">
                                                     <td colSpan={8}>
                                                         <button
                                                             type="button"
                                                             className="stock-history-more-btn"
                                                             onClick={(e) => { e.stopPropagation(); setFullHistoryProduct(p); }}
-                                                            title="Ver todas as movimentacoes"
+                                                            title="Ver historico de movimentacoes"
                                                         >
-                                                            + Ver todas as movimentações ({history.length})
+                                                            + Ver histórico de movimentações
                                                         </button>
                                                     </td>
                                                 </tr>
                                             )}
-                                            {/* Spacer row — empurra a linha SALDO para a base, alinhando com a margem inferior da imagem */}
+                                            {/* Spacer row — empurra a linha TOTAL para a base, alinhando com a margem inferior da imagem */}
                                             <tr className="stock-history-spacer"><td colSpan={8}></td></tr>
                                         </tbody>
-                                        {nfsComSaldo.length > 0 && (() => {
-                                            // Consolidar locais (únicos) e NFs com saldo
-                                            const locais = Array.from(new Set(
-                                                nfsComSaldo.map(([, d]) => d.local).filter(l => l && l !== '-')
-                                            )).join(', ');
-                                            return (
-                                                <tfoot>
-                                                    <tr className="stock-saldo-row">
-                                                        <td colSpan={2} style={{fontWeight: 700, letterSpacing: '0.04em'}}>SALDO</td>
-                                                        <td style={{fontWeight: 700, color: '#39845f'}}>
-                                                            {p.currentQuantity} un
-                                                        </td>
-                                                        <td style={{fontSize: '11px'}}>{locais || '-'}</td>
-                                                        <td style={{fontFamily: 'monospace', fontSize: '11px'}}>
-                                                            {nfsComSaldo.map(([nf], i) => (
-                                                                <span key={nf}>
-                                                                    {i > 0 && ', '}
-                                                                    {nf === 'SEM_NF' ? '(s/ NF)' : nf}
-                                                                    {p.defeito && (
-                                                                        <span title="Produto com defeito" style={{color: '#893030', marginLeft: 2}}>&#9888;</span>
-                                                                    )}
-                                                                </span>
-                                                            ))}
-                                                        </td>
-                                                        <td colSpan={3}></td>
-                                                    </tr>
-                                                </tfoot>
-                                            );
-                                        })()}
+                                        <tfoot>
+                                            <tr className="stock-total-row">
+                                                <td style={{fontWeight: 700, letterSpacing: '0.04em'}}>TOTAL</td>
+                                                <td colSpan={5}></td>
+                                                <td style={{fontWeight: 700, color: '#39845f'}}>
+                                                    {p.currentQuantity}
+                                                </td>
+                                                <td></td>
+                                            </tr>
+                                        </tfoot>
                                     </table>
                                 </div>
                             ) : (
                                 <div className="stock-detail-history-empty">
-                                    Nenhuma movimentação registrada
+                                    Nenhuma entrada em estoque registrada
+                                    {hasMovements && (
+                                        <div style={{marginTop: 12}}>
+                                            <button
+                                                type="button"
+                                                className="stock-history-more-btn"
+                                                onClick={(e) => { e.stopPropagation(); setFullHistoryProduct(p); }}
+                                            >
+                                                + Ver histórico de movimentações
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
                             <div className="stock-detail-close">
-                                <button className="btn-close-panel" onClick={(e) => { e.stopPropagation(); setDetailProduct(null); }}>
-                                    Fechar
+                                <button
+                                    type="button"
+                                    className="stock-detail-collapse-btn"
+                                    onClick={(e) => { e.stopPropagation(); setDetailProduct(null); }}
+                                    aria-label="Recolher painel"
+                                    title="Recolher"
+                                >
+                                    <Icon name="chevronUp" size={18} />
                                 </button>
                             </div>
                         </div>
@@ -911,7 +918,7 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                 </div>
             )}
 
-            {/* Full history modal — aberto quando historico excede o preview do painel */}
+            {/* Full history modal — todas entradas e saidas do produto */}
             {fullHistoryProduct && (() => {
                 const fullHistory = getProductHistory(fullHistoryProduct.sku);
                 const nfsComSaldo = getNfBalance(fullHistoryProduct.sku);
@@ -923,7 +930,7 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                         >
                             <div className="stock-full-history-header">
                                 <h3 className="stock-full-history-title">
-                                    Movimentações — {fullHistoryProduct.name}
+                                    Histórico de movimentações — {fullHistoryProduct.name}
                                 </h3>
                                 <button
                                     type="button"
@@ -940,12 +947,12 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                                     <thead>
                                         <tr>
                                             <th>Data</th>
-                                            <th>Tipo</th>
-                                            <th>Qtd.</th>
                                             <th>Local</th>
+                                            <th>Tipo</th>
                                             <th>NF Entrada</th>
                                             <th>NF Saída</th>
                                             <th>Fornecedor/Cliente</th>
+                                            <th>Qtd.</th>
                                             <th>Obs.:</th>
                                         </tr>
                                     </thead>
@@ -991,7 +998,7 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                 }
                 .stock-row:hover { background: #fafafa; }
                 .stock-row td { border-bottom: 1px solid #f0f0f0; }
-                .stock-row--expanded { background: #f9fafb; }
+                .stock-row--expanded { background: #FFFFFF; }
                 .stock-row--expanded td { border-bottom-color: transparent; }
                 .product-name { font-weight: 600; font-size: 14px; color: #1a1a2e; line-height: 1.3; }
                 .product-local { font-size: 12px; color: #9ca3af; margin-top: 2px; }
