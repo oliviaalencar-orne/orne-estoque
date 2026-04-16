@@ -246,11 +246,9 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
             return;
         }
 
-        // Paleta mais suave — verdes/laranjas dessaturados, fills translúcidos
-        const entryColor = '#7DB89C';      // verde sage
-        const entryFill = 'rgba(125, 184, 156, 0.15)';
-        const exitColor = '#E89B8B';       // coral pastel
-        const exitFill = 'rgba(232, 155, 139, 0.15)';
+        // Paleta oficial — sem fill, apenas linhas limpas + pontos visíveis
+        const entryColor = '#39845f';      // verde da paleta
+        const exitColor = '#893030';       // vermelho da paleta
 
         lineChartInstance.current = new Chart(lineChartRef.current, {
             type: 'line',
@@ -261,11 +259,14 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
                         label: 'Entradas',
                         data: lineChartData.entryData,
                         borderColor: entryColor,
-                        backgroundColor: entryFill,
-                        fill: true,
-                        tension: 0.4,
-                        borderWidth: 2.5,
-                        pointRadius: 0,
+                        backgroundColor: entryColor,
+                        fill: false,
+                        tension: 0.35,
+                        borderWidth: 2,
+                        pointRadius: 3,
+                        pointBackgroundColor: entryColor,
+                        pointBorderColor: entryColor,
+                        pointBorderWidth: 0,
                         pointHoverRadius: 5,
                         pointHoverBackgroundColor: entryColor,
                         pointHoverBorderColor: '#fff',
@@ -275,11 +276,14 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
                         label: 'Saídas',
                         data: lineChartData.exitData,
                         borderColor: exitColor,
-                        backgroundColor: exitFill,
-                        fill: true,
-                        tension: 0.4,
-                        borderWidth: 2.5,
-                        pointRadius: 0,
+                        backgroundColor: exitColor,
+                        fill: false,
+                        tension: 0.35,
+                        borderWidth: 2,
+                        pointRadius: 3,
+                        pointBackgroundColor: exitColor,
+                        pointBorderColor: exitColor,
+                        pointBorderWidth: 0,
                         pointHoverRadius: 5,
                         pointHoverBackgroundColor: exitColor,
                         pointHoverBorderColor: '#fff',
@@ -340,6 +344,19 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
     // Ordem fixa dos cards de logística (Fase 2.1)
     const logisticsOrder = ['DESPACHADO', 'AGUARDANDO_COLETA', 'EM_TRANSITO', 'TENTATIVA_ENTREGA', 'ENTREGUE', 'DEVOLVIDO'];
 
+    // Paleta Dashboard (override visual apenas — statusList global preservado)
+    // Cores sólidas para texto; backgrounds com 20% alpha
+    const dashPalette = {
+        DESPACHADO:         { label: 'Despachado',             color: '#8c52ff', bg: 'rgba(140, 82, 255, 0.2)' },
+        AGUARDANDO_COLETA:  { label: 'Aguardando Coleta',      color: '#8c52ff', bg: 'rgba(140, 82, 255, 0.2)' },
+        EM_TRANSITO:        { label: 'Em Trânsito',            color: '#004aad', bg: 'rgba(0, 74, 173, 0.2)' },
+        TENTATIVA_ENTREGA:  { label: 'Tentativa de Entrega',   color: '#d97706', bg: 'rgba(217, 119, 6, 0.2)' },
+        ENTREGUE:           { label: 'Entregue',               color: '#39845f', bg: 'rgba(57, 132, 95, 0.2)' },
+        DEVOLVIDO:          { label: 'Devolvido',              color: '#893030', bg: 'rgba(137, 48, 48, 0.2)' },
+    };
+    // Cores da paleta para quadradinhos de Valor por Categoria (ciclo)
+    const categoryPaletteColors = ['#8c52ff', '#004aad', '#39845f', '#893030', '#1800ad', '#b4b4b4'];
+
     return (
         <div>
             {/* Header — título alinhado com logo da sidebar, sem saudação/subtítulo */}
@@ -362,49 +379,33 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
                 </div>
             </div>
 
-            {/* LINHA 1 — 4 metric cards */}
+            {/* LINHA 1 — 4 metric cards: ícone sem fundo, número grande, label pequeno */}
             <div className="stats-grid">
-                <div className="stat-card accent">
-                    <div className="stat-header">
-                        <div className="stat-icon" style={{background: 'rgba(255,255,255,0.2)'}}><Icon name="stock" size={18} /></div>
-                    </div>
-                    <div className="stat-content">
-                        <div className="stat-value">{totalQty.toLocaleString('pt-BR')}</div>
-                        <div className="stat-label">Unidades em Estoque</div>
-                    </div>
+                <div className="stat-card stat-card--flat">
+                    <div className="stat-icon-flat"><Icon name="stock" size={18} /></div>
+                    <div className="stat-value">{totalQty.toLocaleString('pt-BR')}</div>
+                    <div className="stat-label">Unidades em Estoque</div>
                 </div>
 
-                <div className="stat-card">
-                    <div className="stat-header">
-                        <div className="stat-icon purple"><Icon name="categories" size={18} /></div>
-                    </div>
-                    <div className="stat-content">
-                        <div className="stat-value">{totalProducts}</div>
-                        <div className="stat-label">Produtos Cadastrados</div>
-                    </div>
+                <div className="stat-card stat-card--flat">
+                    <div className="stat-icon-flat"><Icon name="categories" size={18} /></div>
+                    <div className="stat-value">{totalProducts}</div>
+                    <div className="stat-label">Produtos Cadastrados</div>
                 </div>
 
-                <div className="stat-card danger">
-                    <div className="stat-header">
-                        <div className="stat-icon red"><Icon name="error" size={18} /></div>
-                    </div>
-                    <div className="stat-content">
-                        <div className="stat-value">{emptyStock}</div>
-                        <div className="stat-label">Sem Estoque</div>
-                    </div>
+                <div className="stat-card stat-card--flat">
+                    <div className="stat-icon-flat"><Icon name="error" size={18} /></div>
+                    <div className="stat-value">{emptyStock}</div>
+                    <div className="stat-label">Sem Estoque</div>
                 </div>
 
-                <div className="stat-card">
-                    <div className="stat-header">
-                        <div className="stat-icon green"><Icon name="dollar" size={18} /></div>
+                <div className="stat-card stat-card--flat">
+                    <div className="stat-icon-flat"><Icon name="dollar" size={18} /></div>
+                    <div className="stat-value" style={{fontSize: totalValue >= 100000 ? '22px' : '28px'}}>
+                        {totalValue > 0 ? `R$ ${formatBRL(totalValue)}` : 'R$ 0,00'}
                     </div>
-                    <div className="stat-content">
-                        <div className="stat-value" style={{fontSize: totalValue >= 100000 ? '22px' : '28px'}}>
-                            {totalValue > 0 ? `R$ ${formatBRL(totalValue)}` : 'R$ 0,00'}
-                        </div>
-                        <div className="stat-label">
-                            {totalValue > 0 ? 'Valor Total em Estoque' : 'Nenhum preço sincronizado via Tiny'}
-                        </div>
+                    <div className="stat-label">
+                        {totalValue > 0 ? 'Valor Total em Estoque' : 'Nenhum preço sincronizado via Tiny'}
                     </div>
                 </div>
             </div>
@@ -417,12 +418,12 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
                 </h2>
                 <div className="logistics-grid">
                     {logisticsOrder.map(key => {
-                        const val = statusList[key];
+                        const val = dashPalette[key];
                         if (!val) return null;
                         return (
                             <div key={key} className="logistics-card" style={{background: val.bg}}>
                                 <div className="logistics-card-value" style={{color: val.color}}>
-                                    {shippingStats[key] || 0}
+                                    {String(shippingStats[key] || 0).padStart(2, '0')}
                                 </div>
                                 <div className="logistics-card-label" style={{color: val.color}}>
                                     {val.label}
@@ -445,18 +446,18 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
                         <div style={{
                             flex: 1, minWidth: '110px',
                             textAlign: 'center', padding: '14px 10px',
-                            borderRadius: 'var(--radius)', background: '#FEF3C7',
+                            borderRadius: 'var(--radius)', background: 'rgba(140, 82, 255, 0.2)',
                         }}>
-                            <div style={{fontSize: '26px', fontWeight: '700', color: '#d97706', fontVariantNumeric: 'tabular-nums'}}>{devolucaoStats.total}</div>
-                            <div style={{fontSize: '11px', fontWeight: '600', color: '#d97706', marginTop: '2px'}}>Total</div>
+                            <div style={{fontSize: '26px', fontWeight: '700', color: '#8c52ff', fontVariantNumeric: 'tabular-nums'}}>{devolucaoStats.total}</div>
+                            <div style={{fontSize: '11px', fontWeight: '600', color: '#8c52ff', marginTop: '2px'}}>Total</div>
                         </div>
                         <div style={{
                             flex: 1, minWidth: '110px',
                             textAlign: 'center', padding: '14px 10px',
-                            borderRadius: 'var(--radius)', background: '#D1FAE5',
+                            borderRadius: 'var(--radius)', background: 'rgba(57, 132, 95, 0.2)',
                         }}>
-                            <div style={{fontSize: '26px', fontWeight: '700', color: '#10b981', fontVariantNumeric: 'tabular-nums'}}>{devolucaoStats.recebidas}</div>
-                            <div style={{fontSize: '11px', fontWeight: '600', color: '#10b981', marginTop: '2px'}}>Recebidas no HUB</div>
+                            <div style={{fontSize: '26px', fontWeight: '700', color: '#39845f', fontVariantNumeric: 'tabular-nums'}}>{devolucaoStats.recebidas}</div>
+                            <div style={{fontSize: '11px', fontWeight: '600', color: '#39845f', marginTop: '2px'}}>Recebidas no HUB</div>
                         </div>
                     </div>
                 </div>
@@ -485,14 +486,13 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
                     </h2>
                     {categoryValues.length > 0 ? (
                         <div style={{display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '220px', overflowY: 'auto'}}>
-                            {categoryValues.map((cat) => {
+                            {categoryValues.map((cat, idx) => {
                                 const maxVal = categoryValues[0]?.value || 1;
                                 const pct = (cat.value / maxVal) * 100;
+                                const swatch = categoryPaletteColors[idx % categoryPaletteColors.length];
                                 return (
                                     <div key={cat.id} style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
-                                        <div style={{width: '24px', height: '24px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-                                            <CategoryIcon icon={cat.icon} size={16} color={cat.color} />
-                                        </div>
+                                        <div style={{width: '12px', height: '12px', flexShrink: 0, borderRadius: '2px', background: swatch}} aria-hidden="true"></div>
                                         <div style={{flex: 1, minWidth: 0}}>
                                             <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '4px'}}>
                                                 <span style={{fontSize: '12px', fontWeight: '500', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
@@ -502,8 +502,8 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
                                                     R$ {formatBRL(cat.value)}
                                                 </span>
                                             </div>
-                                            <div style={{height: '4px', background: 'var(--border-default)', borderRadius: '2px', overflow: 'hidden'}}>
-                                                <div style={{height: '100%', width: `${pct}%`, background: cat.color, borderRadius: '2px', transition: 'width 0.5s ease'}}></div>
+                                            <div style={{height: '3px', background: 'var(--border-default)', borderRadius: '2px', overflow: 'hidden'}}>
+                                                <div style={{height: '100%', width: `${pct}%`, background: swatch, borderRadius: '2px', transition: 'width 0.5s ease'}}></div>
                                             </div>
                                         </div>
                                     </div>
@@ -513,86 +513,6 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
                     ) : (
                         <div style={{textAlign: 'center', padding: '24px 0', color: 'var(--text-tertiary)', fontSize: '12px'}}>
                             Sincronize os produtos via Tiny ERP
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            {/* Grid Principal — Produtos com maior estoque + Alertas */}
-            <div className="dashboard-main-grid">
-                <div className="card">
-                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
-                        <h2 className="card-title" style={{marginBottom: 0}}>
-                            <span className="card-title-icon">{'\u25A5'}</span>
-                            Produtos com Maior Estoque
-                        </h2>
-                    </div>
-                    <div style={{height: '280px'}}>
-                        <canvas ref={chartRef}></canvas>
-                    </div>
-                </div>
-
-                <div className="card">
-                    <h2 className="card-title" style={{marginBottom: '20px'}}>
-                        <Icon name="warning" size={16} className="card-title-icon" />
-                        Ações Pendentes
-                    </h2>
-
-                    {alertProducts.length === 0 ? (
-                        <div style={{
-                            textAlign: 'center',
-                            padding: '40px 20px',
-                            color: 'var(--text-tertiary)'
-                        }}>
-                            <div style={{marginBottom: '12px'}}><Icon name="check" size={40} /></div>
-                            <div style={{fontSize: '14px'}}>Tudo em ordem!</div>
-                            <div style={{fontSize: '12px', marginTop: '4px', color: 'var(--text-tertiary)'}}>
-                                Nenhum produto com estoque crítico
-                            </div>
-                        </div>
-                    ) : (
-                        <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
-                            {alertProducts.map((p, idx) => (
-                                <div key={idx} style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '12px',
-                                    padding: '12px',
-                                    background: 'var(--bg-secondary)',
-                                    border: '1px solid var(--border-default)',
-                                    borderRadius: 'var(--radius)'
-                                }}>
-                                    <div style={{
-                                        width: '32px', height: '32px',
-                                        borderRadius: 'var(--radius)',
-                                        background: 'var(--accent-error-subtle)',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        color: 'var(--accent-error)'
-                                    }}>
-                                        <Icon name="error" size={14} />
-                                    </div>
-                                    <div style={{flex: 1, minWidth: 0}}>
-                                        <div style={{
-                                            fontSize: '13px', fontWeight: '500',
-                                            color: 'var(--text-primary)',
-                                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
-                                        }}>
-                                            {p.name}
-                                        </div>
-                                        <div style={{fontSize: '12px', color: 'var(--text-tertiary)'}}>
-                                            Sem estoque
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                            {emptyStock > 5 && (
-                                <div style={{
-                                    textAlign: 'center', marginTop: '4px',
-                                    fontSize: '12px', color: 'var(--text-tertiary)'
-                                }}>
-                                    +{emptyStock - 5} outros produtos
-                                </div>
-                            )}
                         </div>
                     )}
                 </div>
@@ -624,39 +544,8 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
                 )}
             </div>
 
-            {/* Produtos Parados + Últimas Movimentações */}
+            {/* Últimas Movimentações + Top 5 Produtos (50/50) */}
             <div className="dashboard-analytics-grid">
-                <div className="card" style={{marginBottom: 0}}>
-                    <h2 className="card-title" style={{display: 'flex', alignItems: 'center'}}>
-                        <Icon name="pause" size={16} className="card-title-icon" />
-                        Produtos Parados
-                        <span style={{marginLeft: 'auto', fontSize: '20px', fontWeight: '700', color: stoppedProducts.length > 0 ? 'var(--accent-warning)' : 'var(--accent-success)'}}>
-                            {stoppedProducts.length}
-                        </span>
-                    </h2>
-                    <div style={{fontSize: '12px', color: 'var(--text-tertiary)', marginBottom: '12px'}}>
-                        Sem entradas ou saídas nos últimos 60 dias
-                    </div>
-                    {stoppedProducts.length > 0 ? (
-                        <div style={{display: 'flex', flexDirection: 'column', gap: '6px'}}>
-                            {stoppedProducts.slice(0, 5).map((p, idx) => (
-                                <div key={idx} style={{fontSize: '13px', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', padding: '6px 10px', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-sm)'}}>
-                                    {p.name}
-                                </div>
-                            ))}
-                            {stoppedProducts.length > 5 && (
-                                <div style={{fontSize: '12px', color: 'var(--text-tertiary)', textAlign: 'center', marginTop: '4px'}}>
-                                    +{stoppedProducts.length - 5} outros
-                                </div>
-                            )}
-                        </div>
-                    ) : (
-                        <div style={{textAlign: 'center', padding: '16px', color: 'var(--accent-success)', fontSize: '13px'}}>
-                            Todos os produtos tiveram movimentação recente
-                        </div>
-                    )}
-                </div>
-
                 <div className="card" style={{marginBottom: 0}}>
                     <h2 className="card-title">
                         <Icon name="history" size={16} className="card-title-icon" />
@@ -708,89 +597,92 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
                         </div>
                     )}
                 </div>
+
+                <div className="card" style={{marginBottom: 0}}>
+                    <h2 className="card-title">
+                        <span className="card-title-icon">{'\u25C6'}</span>
+                        Top 5 Produtos em Estoque
+                    </h2>
+                    <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
+                        {topProducts.map((p, idx) => {
+                            const maxQty = topProducts[0]?.currentQuantity || 1;
+                            const percentage = (p.currentQuantity / maxQty) * 100;
+                            return (
+                                <div key={idx} style={{
+                                    display: 'flex', alignItems: 'center', gap: '14px',
+                                    padding: '12px 14px',
+                                    background: 'var(--bg-tertiary)',
+                                    borderRadius: 'var(--radius)',
+                                    transition: 'var(--transition)'
+                                }}>
+                                    <div style={{
+                                        width: '28px', height: '28px',
+                                        borderRadius: 'var(--radius-sm)',
+                                        background: idx === 0 ? '#1F2937' : 'transparent',
+                                        border: idx === 0 ? 'none' : '1px solid var(--border-default)',
+                                        color: idx === 0 ? 'white' : 'var(--text-tertiary)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        fontWeight: '700', fontSize: '12px',
+                                        flexShrink: 0
+                                    }}>
+                                        #{idx + 1}
+                                    </div>
+                                    <div style={{flex: 1, minWidth: 0}}>
+                                        <div style={{
+                                            fontWeight: '500', fontSize: '13px', marginBottom: '4px',
+                                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                                            color: 'var(--text-primary)'
+                                        }}>
+                                            {p.name}
+                                        </div>
+                                        <div style={{height: '3px', background: 'var(--border-default)', borderRadius: '2px', overflow: 'hidden'}}>
+                                            <div style={{
+                                                height: '100%', width: `${percentage}%`,
+                                                background: '#1F2937',
+                                                borderRadius: '2px', transition: 'width 0.5s ease'
+                                            }}></div>
+                                        </div>
+                                    </div>
+                                    <div style={{textAlign: 'right', flexShrink: 0}}>
+                                        <div style={{fontWeight: '700', fontSize: '16px', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums'}}>
+                                            {p.currentQuantity.toLocaleString('pt-BR')}
+                                        </div>
+                                        <div style={{fontSize: '10px', color: 'var(--text-tertiary)'}}>
+                                            unidades
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
             </div>
 
-            {/* Categorias — scroll horizontal */}
+            {/* Categorias — scroll horizontal (Estoque por Categoria) */}
             <div className="card">
                 <h2 className="card-title">
                     <Icon name="categories" size={16} className="card-title-icon" />
                     Estoque por Categoria
                 </h2>
                 <div className="cat-scroll">
-                    {categoryStats.map(cat => (
-                        <div key={cat.id} className="cat-scroll-card">
-                            <div className="cat-scroll-icon" style={{background: `${cat.color}12`}}>
-                                <CategoryIcon icon={cat.icon} size={22} color={cat.color} />
-                            </div>
-                            <div className="cat-scroll-name">{cat.name}</div>
-                            <div className="cat-scroll-value">
-                                {cat.totalStock.toLocaleString('pt-BR')}
-                            </div>
-                            <div className="cat-scroll-meta">
-                                {cat.productCount} produto{cat.productCount !== 1 ? 's' : ''}
-                            </div>
-                            {cat.alertCount > 0 && (
-                                <div className="cat-scroll-alert">
-                                    {cat.alertCount} alerta{cat.alertCount !== 1 ? 's' : ''}
-                                </div>
-                            )}
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            {/* Top 5 Produtos */}
-            <div className="card">
-                <h2 className="card-title">
-                    <span className="card-title-icon">{'\u25C6'}</span>
-                    Top 5 Produtos em Estoque
-                </h2>
-                <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
-                    {topProducts.map((p, idx) => {
-                        const cat = categories.find(c => c.id === p.category);
-                        const maxQty = topProducts[0]?.currentQuantity || 1;
-                        const percentage = (p.currentQuantity / maxQty) * 100;
-
+                    {categoryStats.map((cat, idx) => {
+                        const swatch = categoryPaletteColors[idx % categoryPaletteColors.length];
                         return (
-                            <div key={idx} style={{
-                                display: 'flex', alignItems: 'center', gap: '16px',
-                                padding: '16px',
-                                background: 'var(--bg-tertiary)',
-                                borderRadius: 'var(--radius-lg)',
-                                transition: 'var(--transition)'
-                            }}>
-                                <div style={{
-                                    width: '36px', height: '36px',
-                                    borderRadius: 'var(--radius)',
-                                    background: idx === 0 ? 'var(--text-primary)' : 'var(--bg-tertiary)',
-                                    color: idx === 0 ? 'white' : 'var(--text-tertiary)',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    fontWeight: '700', fontSize: '13px'
-                                }}>
-                                    #{idx + 1}
+                            <div key={cat.id} className="cat-scroll-card">
+                                <div className="cat-scroll-value">
+                                    {cat.totalStock.toLocaleString('pt-BR')}
                                 </div>
-                                <div style={{flex: 1, minWidth: 0}}>
-                                    <div style={{
-                                        fontWeight: '500', fontSize: '14px', marginBottom: '4px',
-                                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
-                                    }}>
-                                        {p.name}
-                                    </div>
-                                    <div style={{height: '4px', background: 'var(--border-default)', borderRadius: '2px', overflow: 'hidden'}}>
-                                        <div style={{
-                                            height: '100%', width: `${percentage}%`,
-                                            background: idx === 0 ? 'var(--text-secondary)' : idx === 1 ? 'var(--text-tertiary)' : 'var(--border-strong)',
-                                            borderRadius: '2px', transition: 'width 0.5s ease'
-                                        }}></div>
-                                    </div>
+                                <div className="cat-scroll-meta">
+                                    {cat.productCount} produto{cat.productCount !== 1 ? 's' : ''}
                                 </div>
-                                <div style={{textAlign: 'right'}}>
-                                    <div style={{fontWeight: '700', fontSize: '20px', color: 'var(--text-primary)'}}>
-                                        {p.currentQuantity.toLocaleString('pt-BR')}
+                                {cat.alertCount > 0 && (
+                                    <div className="cat-scroll-alert">
+                                        {cat.alertCount} alerta{cat.alertCount !== 1 ? 's' : ''}
                                     </div>
-                                    <div style={{fontSize: '11px', color: 'var(--text-tertiary)'}}>
-                                        unidades
-                                    </div>
+                                )}
+                                <div className="cat-scroll-footer">
+                                    <span className="cat-scroll-swatch" style={{background: swatch}} aria-hidden="true"></span>
+                                    <span className="cat-scroll-name">{cat.name}</span>
                                 </div>
                             </div>
                         );

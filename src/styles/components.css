@@ -106,6 +106,42 @@
 .stat-icon.blue { background: var(--accent-info-subtle); color: var(--accent-info); }
 .stat-icon.purple { background: rgba(123,110,237,0.08); color: #7B6EED; }
 
+/* Flat stat card — ícone sem fundo, número grande, label pequeno */
+.stat-card--flat {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+}
+.stat-card--flat .stat-icon-flat {
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #1F2937;
+    margin-bottom: 8px;
+    background: transparent;
+}
+.stat-card--flat .stat-icon-flat svg {
+    width: 18px;
+    height: 18px;
+}
+.stat-card--flat .stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: #1F2937;
+    line-height: 1.05;
+    margin: 0;
+}
+.stat-card--flat .stat-label {
+    font-size: 13px;
+    color: #6B7280;
+    font-weight: 500;
+    margin: 0;
+}
+
 .stat-trend {
     display: inline-flex;
     align-items: center;
