@@ -360,9 +360,9 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
     return (
         <div>
             {/* Header — título alinhado com logo da sidebar, sem saudação/subtítulo */}
-            <div className="page-header" style={{marginBottom: '24px'}}>
+            <div className="page-header" style={{marginBottom: '20px'}}>
                 <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px'}}>
-                    <h1 className="page-title" style={{marginBottom: 0}}>Dashboard</h1>
+                    <h1 className="page-title" style={{marginBottom: 0, fontSize: '24px', fontWeight: 700, color: '#1F2937'}}>Dashboard</h1>
                     <div style={{
                         background: 'var(--bg-secondary)',
                         padding: '10px 16px',
@@ -442,37 +442,29 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
                         <Icon name="shipping" size={16} className="card-title-icon" />
                         Devoluções <span style={{fontWeight: 400, fontSize: '12px', color: 'var(--text-muted)'}}>(30 dias)</span>
                     </h2>
-                    <div style={{display: 'flex', gap: '12px', flexWrap: 'wrap'}}>
-                        <div style={{
-                            flex: 1, minWidth: '110px',
-                            textAlign: 'center', padding: '14px 10px',
-                            borderRadius: 'var(--radius)', background: 'rgba(140, 82, 255, 0.2)',
-                        }}>
-                            <div style={{fontSize: '26px', fontWeight: '700', color: '#8c52ff', fontVariantNumeric: 'tabular-nums'}}>{devolucaoStats.total}</div>
-                            <div style={{fontSize: '11px', fontWeight: '600', color: '#8c52ff', marginTop: '2px'}}>Total</div>
+                    <div className="devolucoes-subgrid">
+                        <div className="devolucoes-subcard" style={{background: 'rgba(140, 82, 255, 0.2)'}}>
+                            <div className="devolucoes-subcard-value" style={{color: '#8c52ff'}}>{devolucaoStats.total}</div>
+                            <div className="devolucoes-subcard-label" style={{color: '#8c52ff'}}>Total</div>
                         </div>
-                        <div style={{
-                            flex: 1, minWidth: '110px',
-                            textAlign: 'center', padding: '14px 10px',
-                            borderRadius: 'var(--radius)', background: 'rgba(57, 132, 95, 0.2)',
-                        }}>
-                            <div style={{fontSize: '26px', fontWeight: '700', color: '#39845f', fontVariantNumeric: 'tabular-nums'}}>{devolucaoStats.recebidas}</div>
-                            <div style={{fontSize: '11px', fontWeight: '600', color: '#39845f', marginTop: '2px'}}>Recebidas no HUB</div>
+                        <div className="devolucoes-subcard" style={{background: 'rgba(57, 132, 95, 0.2)'}}>
+                            <div className="devolucoes-subcard-value" style={{color: '#39845f'}}>{devolucaoStats.recebidas}</div>
+                            <div className="devolucoes-subcard-label" style={{color: '#39845f'}}>Recebidas no HUB</div>
                         </div>
                     </div>
                 </div>
 
                 {/* Giro de Estoque */}
-                <div className="card" style={{marginBottom: 0}}>
+                <div className="card giro-estoque-card" style={{marginBottom: 0}}>
                     <h2 className="card-title" style={{marginBottom: '14px'}}>
                         <Icon name="trendingUp" size={16} className="card-title-icon" />
                         Giro de Estoque
                     </h2>
-                    <div style={{textAlign: 'center', padding: '20px 0 8px'}}>
-                        <div style={{fontSize: '40px', fontWeight: '700', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', lineHeight: 1}}>
+                    <div className="giro-estoque-body">
+                        <div className="giro-estoque-numero">
                             {giroEstoque.toFixed(2)}
                         </div>
-                        <div style={{fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '8px'}}>
+                        <div className="giro-estoque-subtitulo">
                             Saídas / Estoque atual em {period} dias
                         </div>
                     </div>
@@ -485,25 +477,21 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
                         Valor por Categoria
                     </h2>
                     {categoryValues.length > 0 ? (
-                        <div style={{display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '220px', overflowY: 'auto'}}>
+                        <div className="valor-categoria-list">
                             {categoryValues.map((cat, idx) => {
                                 const maxVal = categoryValues[0]?.value || 1;
                                 const pct = (cat.value / maxVal) * 100;
                                 const swatch = categoryPaletteColors[idx % categoryPaletteColors.length];
                                 return (
-                                    <div key={cat.id} style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
-                                        <div style={{width: '12px', height: '12px', flexShrink: 0, borderRadius: '2px', background: swatch}} aria-hidden="true"></div>
-                                        <div style={{flex: 1, minWidth: 0}}>
-                                            <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '4px'}}>
-                                                <span style={{fontSize: '12px', fontWeight: '500', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
-                                                    {cat.name}
-                                                </span>
-                                                <span style={{fontSize: '12px', fontWeight: '600', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', flexShrink: 0, marginLeft: '8px'}}>
-                                                    R$ {formatBRL(cat.value)}
-                                                </span>
+                                    <div key={cat.id} className="valor-categoria-item">
+                                        <span className="valor-categoria-swatch" style={{background: swatch}} aria-hidden="true"></span>
+                                        <div className="valor-categoria-body">
+                                            <div className="valor-categoria-row">
+                                                <span className="valor-categoria-nome">{cat.name}</span>
+                                                <span className="valor-categoria-valor">R$ {formatBRL(cat.value)}</span>
                                             </div>
-                                            <div style={{height: '3px', background: 'var(--border-default)', borderRadius: '2px', overflow: 'hidden'}}>
-                                                <div style={{height: '100%', width: `${pct}%`, background: swatch, borderRadius: '2px', transition: 'width 0.5s ease'}}></div>
+                                            <div className="valor-categoria-track">
+                                                <div className="valor-categoria-bar" style={{width: `${pct}%`, background: swatch}}></div>
                                             </div>
                                         </div>
                                     </div>

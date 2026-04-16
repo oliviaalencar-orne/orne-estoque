@@ -213,34 +213,39 @@
 .logistics-card {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 14px 14px;
+    justify-content: flex-start;
+    gap: 12px;
+    padding: 20px 24px;
     border-radius: 8px;
     min-width: 0;
-    min-height: 58px;
+    min-height: 80px;
 }
 .logistics-card-value {
-    font-size: 22px;
+    font-size: 28px;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
     line-height: 1;
     flex-shrink: 0;
 }
 .logistics-card-label {
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.1px;
-    line-height: 1.25;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0;
+    line-height: 1.2;
     min-width: 0;
     overflow: hidden;
+    text-align: left;
 }
 @media (max-width: 1279px) {
     .logistics-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .logistics-card { padding: 16px 18px; gap: 10px; }
+    .logistics-card-value { font-size: 26px; }
 }
 @media (max-width: 639px) {
     .logistics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-    .logistics-card-value { font-size: 20px; }
-    .logistics-card-label { font-size: 11px; }
+    .logistics-card { padding: 14px 14px; min-height: 68px; }
+    .logistics-card-value { font-size: 22px; }
+    .logistics-card-label { font-size: 12px; }
 }
 
 .dash-line3-grid {
@@ -250,8 +255,133 @@
     margin-bottom: 24px;
     width: 100%;
 }
+.dash-line3-grid > .card {
+    min-height: 220px;
+    display: flex;
+    flex-direction: column;
+}
 @media (max-width: 1023px) {
     .dash-line3-grid { grid-template-columns: minmax(0, 1fr); }
+    .dash-line3-grid > .card { min-height: 0; }
+}
+
+/* Devoluções sub-cards — ampliados para preencher o card externo */
+.devolucoes-subgrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    flex: 1;
+    min-height: 140px;
+}
+.devolucoes-subcard {
+    padding: 20px 18px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 6px;
+    min-height: 120px;
+}
+.devolucoes-subcard-value {
+    font-size: 36px;
+    font-weight: 700;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+.devolucoes-subcard-label {
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.2;
+}
+@media (max-width: 479px) {
+    .devolucoes-subcard-value { font-size: 30px; }
+}
+
+/* Valor por Categoria — quadradinhos sólidos (não checkbox) + nome + valor */
+.valor-categoria-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    flex: 1;
+    max-height: 240px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+.valor-categoria-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.valor-categoria-swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    flex-shrink: 0;
+    display: inline-block;
+}
+.valor-categoria-body {
+    flex: 1;
+    min-width: 0;
+}
+.valor-categoria-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+.valor-categoria-nome {
+    font-size: 14px;
+    font-weight: 500;
+    color: #1F2937;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+.valor-categoria-valor {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1F2937;
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+}
+.valor-categoria-track {
+    height: 2px;
+    background: var(--border-default);
+    border-radius: 1px;
+    overflow: hidden;
+}
+.valor-categoria-bar {
+    height: 100%;
+    border-radius: 1px;
+    transition: width 0.5s ease;
+}
+
+/* Giro de Estoque — número grande centralizado */
+.giro-estoque-card .giro-estoque-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 12px 0;
+}
+.giro-estoque-numero {
+    font-size: 48px;
+    font-weight: 700;
+    line-height: 1;
+    color: #1F2937;
+    font-variant-numeric: tabular-nums;
+    margin-bottom: 10px;
+}
+.giro-estoque-subtitulo {
+    font-size: 13px;
+    color: #6B7280;
+    font-weight: 400;
 }
 
 .cat-scroll {

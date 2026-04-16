@@ -106,13 +106,17 @@
 .stat-icon.blue { background: var(--accent-info-subtle); color: var(--accent-info); }
 .stat-icon.purple { background: rgba(123,110,237,0.08); color: #7B6EED; }
 
-/* Flat stat card — ícone sem fundo, número grande, label pequeno */
+/* Flat stat card — ícone sem fundo (apenas contorno), número grande, label pequeno */
 .stat-card--flat {
     padding: 20px;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
     gap: 4px;
+    background: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+    box-shadow: none;
 }
 .stat-card--flat .stat-icon-flat {
     width: 20px;
@@ -120,13 +124,18 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: #1F2937;
+    color: #6B7280;
     margin-bottom: 8px;
     background: transparent;
+    padding: 0;
+    border: none;
 }
 .stat-card--flat .stat-icon-flat svg {
-    width: 18px;
-    height: 18px;
+    width: 20px;
+    height: 20px;
+    stroke-width: 1.5;
+    fill: none;
+    stroke: currentColor;
 }
 .stat-card--flat .stat-value {
     font-size: 28px;
