@@ -433,8 +433,8 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                             </div>
                         )}
                     </td>
-                    <td className="hide-mobile product-sku">{p.sku}</td>
-                    <td>
+                    <td className="hide-mobile product-sku col-center">{p.sku}</td>
+                    <td className="col-center">
                         <span style={{
                             fontWeight: 600, fontSize: '14px',
                             color: p.currentQuantity > 0 ? '#39845f' : '#893030',
@@ -442,7 +442,7 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                             {p.currentQuantity}
                         </span>
                     </td>
-                    <td className="hide-mobile" style={{fontSize: '12px', color: 'var(--text-secondary)'}}>
+                    <td className="hide-mobile col-center" style={{fontSize: '12px', color: 'var(--text-secondary)'}}>
                         {p.unitPrice > 0 ? `R$ ${formatBRL(p.unitPrice)}` : '\u2014'}
                     </td>
                 </tr>
@@ -460,50 +460,14 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                 <td colSpan={5} style={{padding: 0, borderBottom: '1px solid var(--border-default)'}}>
                     <div className="stock-detail-panel">
                         <div className="stock-detail-left">
-                            <div className="stock-detail-left-top">
-                                <div className="stock-detail-image">
-                                    {p.imagemUrl && p.imagemUrl !== 'sem-imagem' ? (
-                                        <img src={p.imagemUrl} alt={p.name} loading="lazy" />
-                                    ) : (
-                                        <div className="stock-detail-image-fallback">
-                                            <Icon name="boxOpen" size={48} style={{opacity: 0.25}} />
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="stock-detail-info">
-                                    <div className="stock-detail-category-header">
-                                        {(getCategoryName(p.category) || 'SEM CATEGORIA').toUpperCase()} — {p.currentQuantity} UN.
+                            <div className="stock-detail-image">
+                                {p.imagemUrl && p.imagemUrl !== 'sem-imagem' ? (
+                                    <img src={p.imagemUrl} alt={p.name} loading="lazy" />
+                                ) : (
+                                    <div className="stock-detail-image-fallback">
+                                        <Icon name="boxOpen" size={48} style={{opacity: 0.25}} />
                                     </div>
-                                {!isEquipe && (
-                                <div className="stock-detail-nfs">
-                                    <div className="stock-detail-section-title">Estoque por NF de entrada</div>
-                                    {nfsComSaldo.length === 0 ? (
-                                        <div style={{fontSize: '12px', color: 'var(--text-muted)', padding: '8px 0'}}>Sem NFs registradas</div>
-                                    ) : (
-                                        <div className="stock-nf-list">
-                                            {nfsComSaldo.map(([nf, dados]) => {
-                                                const saldo = dados.entradas - dados.saidas;
-                                                return (
-                                                    <div key={nf} className={`stock-nf-item ${p.defeito ? 'stock-nf-item--defeito' : ''}`}>
-                                                        <span className="stock-nf-label">
-                                                            NF {nf === 'SEM_NF' ? '(sem NF)' : nf}: {saldo} un.
-                                                            {dados.local && dados.local !== '-' && <span className="stock-nf-local"> {dados.local}</span>}
-                                                        </span>
-                                                        {p.defeito && (
-                                                            <span className="stock-nf-defeito-badge">
-                                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                                                                Produto com defeito
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                                </div>
+                                )}
                             </div>
 
                             <div className="stock-detail-actions">
@@ -531,6 +495,9 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                         </div>
 
                         <div className="stock-detail-right">
+                            <div className="stock-detail-category-header">
+                                {(getCategoryName(p.category) || 'SEM CATEGORIA').toUpperCase()} — {p.currentQuantity} UN.
+                            </div>
                             {!isEquipe && history.length > 0 ? (
                                 <div className="stock-detail-history">
                                     <table className="table">
@@ -538,7 +505,7 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                                             <tr>
                                                 <th>Data</th>
                                                 <th>Tipo</th>
-                                                <th>Qtd</th>
+                                                <th>Qtd.</th>
                                                 <th>Local</th>
                                                 <th>NF Entrada</th>
                                                 <th>NF Saída</th>
@@ -550,6 +517,8 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                                             {history.map((mov, idx) => {
                                                 const isEntrada = mov.movimento === 'ENTRADA';
                                                 const isDefeitoObs = mov.defeito || (mov.observations || '').toLowerCase().includes('defeito');
+                                                const nfEntrada = isEntrada ? (mov.nf || '-') : (mov.nfOrigem || '-');
+                                                const isNfDefeito = p.defeito && nfsComSaldo.some(([nfKey]) => nfKey === nfEntrada);
                                                 return (
                                                     <tr key={idx}>
                                                         <td style={{fontSize: '11px', whiteSpace: 'nowrap'}}>{formatDate(mov.date)}</td>
@@ -564,7 +533,12 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                                                             {isEntrada ? '+' : '-'}{mov.quantity}
                                                         </td>
                                                         <td style={{fontSize: '11px'}}>{mov.localEntrada || '-'}</td>
-                                                        <td style={{fontFamily: 'monospace', fontSize: '11px'}}>{isEntrada ? (mov.nf || '-') : (mov.nfOrigem || '-')}</td>
+                                                        <td style={{fontFamily: 'monospace', fontSize: '11px'}}>
+                                                            {nfEntrada}
+                                                            {isEntrada && isNfDefeito && (
+                                                                <span title="Produto com defeito" style={{color: '#893030', marginLeft: 3}}>&#9888;</span>
+                                                            )}
+                                                        </td>
                                                         <td style={{fontFamily: 'monospace', fontSize: '11px'}}>{!isEntrada ? (mov.nf || '-') : '-'}</td>
                                                         <td style={{fontSize: '12px'}}>{mov.supplier || mov.client || '-'}</td>
                                                         <td style={{fontSize: '11px', color: isDefeitoObs ? '#893030' : 'var(--text-muted)', fontWeight: isDefeitoObs ? 700 : 400, maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
@@ -574,10 +548,39 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                                                 );
                                             })}
                                         </tbody>
+                                        {nfsComSaldo.length > 0 && (() => {
+                                            // Consolidar locais (únicos) e NFs com saldo
+                                            const locais = Array.from(new Set(
+                                                nfsComSaldo.map(([, d]) => d.local).filter(l => l && l !== '-')
+                                            )).join(', ');
+                                            return (
+                                                <tfoot>
+                                                    <tr className="stock-saldo-row">
+                                                        <td colSpan={2} style={{fontWeight: 700, letterSpacing: '0.04em'}}>SALDO</td>
+                                                        <td style={{fontWeight: 700, color: '#39845f'}}>
+                                                            {p.currentQuantity} un
+                                                        </td>
+                                                        <td style={{fontSize: '11px'}}>{locais || '-'}</td>
+                                                        <td style={{fontFamily: 'monospace', fontSize: '11px'}}>
+                                                            {nfsComSaldo.map(([nf], i) => (
+                                                                <span key={nf}>
+                                                                    {i > 0 && ', '}
+                                                                    {nf === 'SEM_NF' ? '(s/ NF)' : nf}
+                                                                    {p.defeito && (
+                                                                        <span title="Produto com defeito" style={{color: '#893030', marginLeft: 2}}>&#9888;</span>
+                                                                    )}
+                                                                </span>
+                                                            ))}
+                                                        </td>
+                                                        <td colSpan={3}></td>
+                                                    </tr>
+                                                </tfoot>
+                                            );
+                                        })()}
                                     </table>
                                 </div>
                             ) : (
-                                <div style={{textAlign: 'center', padding: '24px', color: 'var(--text-muted)', fontSize: '13px'}}>
+                                <div className="stock-detail-history-empty">
                                     Nenhuma movimentação registrada
                                 </div>
                             )}
@@ -840,14 +843,14 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                 </div>
             ) : (
                 <div className="card stock-flat-list" style={{padding: 0}}>
-                    <table className="table">
+                    <table className="table stock-main-table">
                         <thead>
                             <tr>
                                 <th style={{width: '48px'}}></th>
                                 <SortHeader field="name">Produto</SortHeader>
-                                <SortHeader field="sku" className="hide-mobile">SKU</SortHeader>
-                                <SortHeader field="quantity">Estoque</SortHeader>
-                                <SortHeader field="price" className="hide-mobile">Preço</SortHeader>
+                                <SortHeader field="sku" className="hide-mobile col-center">SKU</SortHeader>
+                                <SortHeader field="quantity" className="col-center">Estoque</SortHeader>
+                                <SortHeader field="price" className="hide-mobile col-center">Preço</SortHeader>
                             </tr>
                         </thead>
                         <tbody>
