@@ -500,7 +500,7 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                             </div>
                             {!isEquipe && history.length > 0 ? (
                                 <div className="stock-detail-history">
-                                    <table className="table">
+                                    <table className="table stock-history-table">
                                         <thead>
                                             <tr>
                                                 <th>Data</th>
@@ -547,6 +547,8 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                                                     </tr>
                                                 );
                                             })}
+                                            {/* Spacer row — empurra a linha SALDO para a base, alinhando com a margem inferior da imagem */}
+                                            <tr className="stock-history-spacer"><td colSpan={8}></td></tr>
                                         </tbody>
                                         {nfsComSaldo.length > 0 && (() => {
                                             // Consolidar locais (únicos) e NFs com saldo

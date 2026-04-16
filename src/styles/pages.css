@@ -727,13 +727,18 @@
 }
 .stock-detail-actions {
     display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
+    flex-wrap: nowrap;
+    gap: 6px;
     padding-top: 4px;
 }
 .stock-detail-actions .btn-sm {
-    font-size: 12px;
-    padding: 6px 14px;
+    font-size: 11px;
+    padding: 6px 8px;
+    white-space: nowrap;
+    flex: 1 1 0;
+    min-width: 0;
+    text-align: center;
+    line-height: 1.2;
 }
 .stock-detail-delete {
     background: #893030 !important;
@@ -750,18 +755,23 @@
     flex-direction: column;
     min-width: 0;
     gap: 8px;
+    /* grid item stretches by default to fill row height = matches image height */
 }
 .stock-detail-history {
-    max-height: 300px;
     overflow-y: auto;
     border: 1px solid var(--border-default);
     border-radius: 6px;
     background: #FFFFFF;
     flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
 }
 .stock-detail-history .table {
     margin-bottom: 0;
     font-size: 12px;
+    height: 100%;
+    width: 100%;
 }
 .stock-detail-history th {
     position: sticky;
@@ -770,7 +780,7 @@
     z-index: 1;
     font-size: 11px;
     white-space: nowrap;
-    text-align: left;
+    text-align: center;
     padding: 8px 10px;
     font-weight: 600;
     color: var(--text-secondary);
@@ -779,6 +789,15 @@
 }
 .stock-detail-history td {
     padding: 8px 10px;
+    text-align: center;
+    vertical-align: middle;
+}
+/* Spacer row — empurra o SALDO para a base, alinhando com a margem inferior da imagem */
+.stock-history-spacer td {
+    height: 100%;
+    padding: 0 !important;
+    border: none !important;
+    background: transparent;
 }
 .stock-history-badge {
     font-size: 11px;
