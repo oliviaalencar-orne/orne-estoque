@@ -730,15 +730,24 @@
     flex-wrap: nowrap;
     gap: 6px;
     padding-top: 4px;
+    align-items: stretch;
 }
 .stock-detail-actions .btn-sm {
     font-size: 11px;
     padding: 6px 8px;
     white-space: nowrap;
-    flex: 1 1 0;
     min-width: 0;
     text-align: center;
     line-height: 1.2;
+}
+/* "Atualizar do Tiny" (1o botao) ocupa o espaco restante */
+.stock-detail-actions .btn-sm:first-child {
+    flex: 1 1 auto;
+}
+/* "Editar" / "Excluir" encolhem ate caber o conteudo */
+.stock-detail-actions .btn-sm:not(:first-child) {
+    flex: 0 0 auto;
+    padding: 6px 10px;
 }
 .stock-detail-delete {
     background: #893030 !important;
