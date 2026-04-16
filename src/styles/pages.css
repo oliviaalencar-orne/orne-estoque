@@ -212,13 +212,13 @@
 }
 .logistics-card {
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     justify-content: flex-start;
-    gap: 12px;
-    padding: 20px 24px;
+    gap: 10px;
+    padding: 14px 18px;
     border-radius: 8px;
     min-width: 0;
-    min-height: 80px;
+    min-height: 72px;
 }
 .logistics-card-value {
     font-size: 28px;
@@ -231,10 +231,11 @@
     font-size: 14px;
     font-weight: 500;
     letter-spacing: 0;
-    line-height: 1.2;
+    line-height: 1.1;
     min-width: 0;
     overflow: hidden;
     text-align: left;
+    padding-bottom: 2px;
 }
 @media (max-width: 1279px) {
     .logistics-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -274,14 +275,14 @@
     min-height: 140px;
 }
 .devolucoes-subcard {
-    padding: 20px 18px;
+    padding: 18px 18px 16px;
     border-radius: 8px;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    gap: 6px;
+    align-items: flex-start;
+    justify-content: flex-end;
+    text-align: left;
+    gap: 4px;
     min-height: 120px;
 }
 .devolucoes-subcard-value {
@@ -360,15 +361,15 @@
     transition: width 0.5s ease;
 }
 
-/* Giro de Estoque — número grande centralizado */
+/* Giro de Estoque — número grande alinhado inferior esquerda */
 .giro-estoque-card .giro-estoque-body {
     flex: 1;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: 12px 0;
+    align-items: flex-start;
+    justify-content: flex-end;
+    text-align: left;
+    padding: 12px 0 4px;
 }
 .giro-estoque-numero {
     font-size: 48px;
@@ -376,7 +377,7 @@
     line-height: 1;
     color: #1F2937;
     font-variant-numeric: tabular-nums;
-    margin-bottom: 10px;
+    margin-bottom: 6px;
 }
 .giro-estoque-subtitulo {
     font-size: 13px;
@@ -384,77 +385,75 @@
     font-weight: 400;
 }
 
-.cat-scroll {
-    display: flex;
+/* Estoque por Categoria — grid horizontal 100%, conteúdo centralizado */
+.cat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
     gap: 12px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    padding: 4px 2px 12px;
-    scroll-snap-type: x mandatory;
-    scrollbar-width: thin;
+    width: 100%;
 }
-.cat-scroll::-webkit-scrollbar { height: 6px; }
-.cat-scroll::-webkit-scrollbar-track { background: transparent; }
-.cat-scroll::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 3px; }
-.cat-scroll-card {
-    flex: 0 0 140px;
-    scroll-snap-align: start;
+.cat-grid-card {
     background: var(--bg-secondary);
     border: 1px solid var(--border);
     border-radius: 8px;
-    padding: 14px 14px 12px;
+    padding: 16px 10px;
     transition: var(--transition);
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
-    min-height: 120px;
+    align-items: center;
+    justify-content: flex-start;
+    text-align: center;
+    gap: 4px;
+    min-height: 150px;
+    min-width: 0;
 }
-.cat-scroll-card:hover { border-color: var(--border-strong); }
-.cat-scroll-value {
+.cat-grid-card:hover { border-color: var(--border-strong); }
+.cat-grid-value {
     font-size: 26px;
     font-weight: 700;
     color: var(--text-primary);
     line-height: 1;
     font-variant-numeric: tabular-nums;
 }
-.cat-scroll-meta {
+.cat-grid-meta {
     font-size: 11px;
     color: var(--text-muted);
     font-weight: 500;
-    margin-top: 4px;
 }
-.cat-scroll-alert {
+.cat-grid-alert {
     font-size: 10px;
-    color: #9A6B00;
-    background: #FEF3C7;
-    padding: 2px 6px;
-    border-radius: 10px;
-    margin-top: 6px;
     font-weight: 600;
+    background: transparent;
+    padding: 0;
+    line-height: 1.2;
+    min-height: 12px;
 }
-.cat-scroll-footer {
-    margin-top: auto;
-    padding-top: 10px;
-    display: flex;
+.cat-grid-icon {
+    display: inline-flex;
     align-items: center;
-    gap: 6px;
-    width: 100%;
-    min-width: 0;
+    justify-content: center;
+    margin-top: 6px;
+    line-height: 1;
 }
-.cat-scroll-swatch {
-    width: 10px;
-    height: 10px;
-    border-radius: 2px;
-    flex-shrink: 0;
+.cat-grid-icon svg {
+    width: 20px;
+    height: 20px;
 }
-.cat-scroll-name {
+.cat-grid-name {
     font-size: 12px;
     font-weight: 600;
     color: var(--text-primary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    max-width: 100%;
     min-width: 0;
+}
+@media (max-width: 1023px) {
+    .cat-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (max-width: 639px) {
+    .cat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 /* ===================== PERFORMANCE ===================== */

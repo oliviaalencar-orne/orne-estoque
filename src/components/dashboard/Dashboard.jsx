@@ -379,33 +379,41 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
                 </div>
             </div>
 
-            {/* LINHA 1 — 4 metric cards: ícone sem fundo, número grande, label pequeno */}
+            {/* LINHA 1 — 4 metric cards: número grande no topo, ícone + label no rodapé */}
             <div className="stats-grid">
                 <div className="stat-card stat-card--flat">
-                    <div className="stat-icon-flat"><Icon name="stock" size={18} /></div>
                     <div className="stat-value">{totalQty.toLocaleString('pt-BR')}</div>
-                    <div className="stat-label">Unidades em Estoque</div>
+                    <div className="stat-flat-footer">
+                        <div className="stat-icon-flat"><Icon name="stock" size={18} /></div>
+                        <div className="stat-label">Unidades em Estoque</div>
+                    </div>
                 </div>
 
                 <div className="stat-card stat-card--flat">
-                    <div className="stat-icon-flat"><Icon name="categories" size={18} /></div>
                     <div className="stat-value">{totalProducts}</div>
-                    <div className="stat-label">Produtos Cadastrados</div>
+                    <div className="stat-flat-footer">
+                        <div className="stat-icon-flat"><Icon name="categories" size={18} /></div>
+                        <div className="stat-label">Produtos Cadastrados</div>
+                    </div>
                 </div>
 
                 <div className="stat-card stat-card--flat">
-                    <div className="stat-icon-flat"><Icon name="error" size={18} /></div>
                     <div className="stat-value">{emptyStock}</div>
-                    <div className="stat-label">Sem Estoque</div>
+                    <div className="stat-flat-footer">
+                        <div className="stat-icon-flat"><Icon name="error" size={18} /></div>
+                        <div className="stat-label">Sem Estoque</div>
+                    </div>
                 </div>
 
                 <div className="stat-card stat-card--flat">
-                    <div className="stat-icon-flat"><Icon name="dollar" size={18} /></div>
                     <div className="stat-value" style={{fontSize: totalValue >= 100000 ? '22px' : '28px'}}>
                         {totalValue > 0 ? `R$ ${formatBRL(totalValue)}` : 'R$ 0,00'}
                     </div>
-                    <div className="stat-label">
-                        {totalValue > 0 ? 'Valor Total em Estoque' : 'Nenhum preço sincronizado via Tiny'}
+                    <div className="stat-flat-footer">
+                        <div className="stat-icon-flat"><Icon name="dollar" size={18} /></div>
+                        <div className="stat-label">
+                            {totalValue > 0 ? 'Valor Total em Estoque' : 'Nenhum preço sincronizado via Tiny'}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -652,26 +660,24 @@ export default function Dashboard({ stock, categories, isVisible, entries, exits
                     <Icon name="categories" size={16} className="card-title-icon" />
                     Estoque por Categoria
                 </h2>
-                <div className="cat-scroll">
+                <div className="cat-grid" style={{gridTemplateColumns: `repeat(${categoryStats.length}, minmax(0, 1fr))`}}>
                     {categoryStats.map((cat, idx) => {
                         const swatch = categoryPaletteColors[idx % categoryPaletteColors.length];
                         return (
-                            <div key={cat.id} className="cat-scroll-card">
-                                <div className="cat-scroll-value">
+                            <div key={cat.id} className="cat-grid-card">
+                                <div className="cat-grid-value">
                                     {cat.totalStock.toLocaleString('pt-BR')}
                                 </div>
-                                <div className="cat-scroll-meta">
-                                    {cat.productCount} produto{cat.productCount !== 1 ? 's' : ''}
+                                <div className="cat-grid-meta">
+                                    {cat.productCount} Produto{cat.productCount !== 1 ? 's' : ''}
                                 </div>
-                                {cat.alertCount > 0 && (
-                                    <div className="cat-scroll-alert">
-                                        {cat.alertCount} alerta{cat.alertCount !== 1 ? 's' : ''}
-                                    </div>
-                                )}
-                                <div className="cat-scroll-footer">
-                                    <span className="cat-scroll-swatch" style={{background: swatch}} aria-hidden="true"></span>
-                                    <span className="cat-scroll-name">{cat.name}</span>
+                                <div className="cat-grid-alert" style={{color: cat.alertCount > 0 ? '#D97706' : 'transparent'}}>
+                                    {cat.alertCount > 0 ? `${cat.alertCount} Alerta${cat.alertCount !== 1 ? 's' : ''}` : '\u00A0'}
                                 </div>
+                                <div className="cat-grid-icon" style={{color: swatch}}>
+                                    <CategoryIcon iconName={cat.icon} size={20} />
+                                </div>
+                                <div className="cat-grid-name">{cat.name}</div>
                             </div>
                         );
                     })}
