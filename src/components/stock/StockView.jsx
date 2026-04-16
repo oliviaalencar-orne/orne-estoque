@@ -460,17 +460,22 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                 <td colSpan={5} style={{padding: 0, borderBottom: '1px solid var(--border-default)'}}>
                     <div className="stock-detail-panel">
                         <div className="stock-detail-left">
-                            <div className="stock-detail-image">
-                                {p.imagemUrl && p.imagemUrl !== 'sem-imagem' ? (
-                                    <img src={p.imagemUrl} alt={p.name} loading="lazy" />
-                                ) : (
-                                    <div className="stock-detail-image-fallback">
-                                        <Icon name="boxOpen" size={48} style={{opacity: 0.25}} />
-                                    </div>
-                                )}
-                            </div>
+                            <div className="stock-detail-left-top">
+                                <div className="stock-detail-image">
+                                    {p.imagemUrl && p.imagemUrl !== 'sem-imagem' ? (
+                                        <img src={p.imagemUrl} alt={p.name} loading="lazy" />
+                                    ) : (
+                                        <div className="stock-detail-image-fallback">
+                                            <Icon name="boxOpen" size={48} style={{opacity: 0.25}} />
+                                        </div>
+                                    )}
+                                </div>
 
-                            {!isEquipe && (
+                                <div className="stock-detail-info">
+                                    <div className="stock-detail-category-header">
+                                        {(getCategoryName(p.category) || 'SEM CATEGORIA').toUpperCase()} — {p.currentQuantity} UN.
+                                    </div>
+                                {!isEquipe && (
                                 <div className="stock-detail-nfs">
                                     <div className="stock-detail-section-title">Estoque por NF de entrada</div>
                                     {nfsComSaldo.length === 0 ? (
@@ -498,6 +503,8 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                                     )}
                                 </div>
                             )}
+                                </div>
+                            </div>
 
                             <div className="stock-detail-actions">
                                 {isStockAdmin && p.sku && (
@@ -516,17 +523,14 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                                 )}
                                 {!isEquipe && isStockAdmin && (
                                     <>
-                                        <button className="btn btn-secondary btn-sm" onClick={(e) => { e.stopPropagation(); openEditModal(p); }}>Editar</button>
-                                        <button className="btn btn-secondary btn-sm stock-detail-delete" onClick={(e) => { e.stopPropagation(); handleDelete(p); setDetailProduct(null); }}>Excluir</button>
+                                        <button className="btn btn-primary btn-sm" onClick={(e) => { e.stopPropagation(); openEditModal(p); }}>Editar</button>
+                                        <button className="btn btn-sm stock-detail-delete" onClick={(e) => { e.stopPropagation(); handleDelete(p); setDetailProduct(null); }}>Excluir</button>
                                     </>
                                 )}
                             </div>
                         </div>
 
                         <div className="stock-detail-right">
-                            <div className="stock-detail-header">
-                                {(getCategoryName(p.category) || 'SEM CATEGORIA').toUpperCase()} — {p.currentQuantity} UN.
-                            </div>
                             {!isEquipe && history.length > 0 ? (
                                 <div className="stock-detail-history">
                                     <table className="table">
@@ -539,7 +543,7 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                                                 <th>NF Entrada</th>
                                                 <th>NF Saída</th>
                                                 <th>Fornecedor/Cliente</th>
-                                                <th>Obs</th>
+                                                <th>Obs.:</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -551,13 +555,14 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                                                         <td style={{fontSize: '11px', whiteSpace: 'nowrap'}}>{formatDate(mov.date)}</td>
                                                         <td>
                                                             <span className="stock-history-badge" style={{
-                                                                background: isEntrada ? 'rgba(57, 132, 95, 0.15)' : 'rgba(137, 48, 48, 0.15)',
                                                                 color: isEntrada ? '#39845f' : '#893030',
                                                             }}>
                                                                 {mov.movimento}
                                                             </span>
                                                         </td>
-                                                        <td style={{fontWeight: 600}}>{mov.quantity}</td>
+                                                        <td style={{fontWeight: 600, color: isEntrada ? '#39845f' : '#893030'}}>
+                                                            {isEntrada ? '+' : '-'}{mov.quantity}
+                                                        </td>
                                                         <td style={{fontSize: '11px'}}>{mov.localEntrada || '-'}</td>
                                                         <td style={{fontFamily: 'monospace', fontSize: '11px'}}>{isEntrada ? (mov.nf || '-') : (mov.nfOrigem || '-')}</td>
                                                         <td style={{fontFamily: 'monospace', fontSize: '11px'}}>{!isEntrada ? (mov.nf || '-') : '-'}</td>
@@ -593,7 +598,6 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
         <div>
             <div className="page-header">
                 <h1 className="page-title">Estoque</h1>
-                <p className="page-subtitle">Visualize e gerencie seus produtos</p>
             </div>
 
             {successMsg && <div className="alert alert-success">{successMsg}</div>}
@@ -747,6 +751,7 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
             {/* CATEGORIA — chips horizontais (+ gear para gerenciar) */}
             <div className="stock-category-section-wrap">
                 <div className="stock-category-title-row">
+                    <Icon name="folder" size={16} className="stock-category-title-icon" />
                     <h3 className="stock-category-title">Categoria</h3>
                     {isStockAdmin && (
                         <button
@@ -771,16 +776,14 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                             onClick={() => toggleCategoryChip(chip.id)}
                         >
                             <span className="stock-chip-name">{chip.name}</span>
-                            <span className="stock-chip-count">({chip.count})</span>
+                            <span className="stock-chip-count">({String(chip.count).padStart(2, '0')})</span>
                         </button>
                     ))}
                 </div>
-            </div>
 
-            {/* Sub-filtros + busca */}
-            <div className="card" style={{marginBottom: '12px'}}>
+                {/* Sub-filtros + busca (mesma largura dos chips, sem card extra) */}
                 <div className="stock-subfilter-row">
-                    <div className="filter-tabs" style={{marginBottom: 0, borderBottom: 'none', flex: 1}}>
+                    <div className="filter-tabs stock-filter-tabs">
                         <button className={`filter-tab ${filter === 'all' ? 'active' : ''}`} onClick={() => setFilter('all')}>
                             Todos ({String(statusCounts.all).padStart(3, '0')})
                         </button>
@@ -797,7 +800,7 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                             Produtos com defeito ({String(statusCounts.defeito).padStart(3, '0')})
                         </button>
                     </div>
-                    <div className="search-box" style={{maxWidth: '320px'}}>
+                    <div className="search-box stock-search-box">
                         <span className="search-icon"><Icon name="search" size={14} /></span>
                         <input
                             type="text"
@@ -812,9 +815,9 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                     </div>
                 </div>
 
-                {/* Hide zero stock toggle */}
-                <div style={{ display: 'flex', alignItems: 'center', padding: '8px 0 0' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                {/* Hide zero stock toggle — abaixo dos sub-filtros, alinhado à esquerda */}
+                <div className="stock-hide-zero-row">
+                    <label>
                         <input type="checkbox" checked={hideZeroStock} onChange={e => setHideZeroStock(e.target.checked)} />
                         Ocultar produtos zerados
                     </label>
