@@ -38,11 +38,15 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
     const [selectedCategoryId, setSelectedCategoryId] = useState(null); // null = all categories
     const [showCategoryManager, setShowCategoryManager] = useState(false);
     const [detailProduct, setDetailProduct] = useState(null); // product with inline panel expanded
+    const [fullHistoryProduct, setFullHistoryProduct] = useState(null); // modal with full history
     const [editingProduct, setEditingProduct] = useState(null);
     const [editForm, setEditForm] = useState({});
     const [successMsg, setSuccessMsg] = useState('');
     const [hideZeroStock, setHideZeroStock] = useState(true);
     const [tinySyncLoading, setTinySyncLoading] = useState(null); // product id being synced
+
+    // Quantas linhas de historico exibir no painel in-page antes de oferecer "Ver todas"
+    const HISTORY_PREVIEW_LIMIT = 5;
 
     const handleTinySync = async (product) => {
         if (!product.sku || tinySyncLoading) return;
@@ -451,10 +455,47 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
         );
     };
 
+    // Shared row renderer for the movements history table (used in panel and modal)
+    const renderHistoryRow = (mov, idx, p, nfsComSaldo) => {
+        const isEntrada = mov.movimento === 'ENTRADA';
+        const isDefeitoObs = mov.defeito || (mov.observations || '').toLowerCase().includes('defeito');
+        const nfEntrada = isEntrada ? (mov.nf || '-') : (mov.nfOrigem || '-');
+        const isNfDefeito = p.defeito && nfsComSaldo.some(([nfKey]) => nfKey === nfEntrada);
+        return (
+            <tr key={idx}>
+                <td style={{fontSize: '11px', whiteSpace: 'nowrap'}}>{formatDate(mov.date)}</td>
+                <td>
+                    <span className="stock-history-badge" style={{
+                        color: isEntrada ? '#39845f' : '#893030',
+                    }}>
+                        {mov.movimento}
+                    </span>
+                </td>
+                <td style={{fontWeight: 600, color: isEntrada ? '#39845f' : '#893030'}}>
+                    {isEntrada ? '+' : '-'}{mov.quantity}
+                </td>
+                <td style={{fontSize: '11px'}}>{mov.localEntrada || '-'}</td>
+                <td style={{fontFamily: 'monospace', fontSize: '11px'}}>
+                    {nfEntrada}
+                    {isEntrada && isNfDefeito && (
+                        <span title="Produto com defeito" style={{color: '#893030', marginLeft: 3}}>&#9888;</span>
+                    )}
+                </td>
+                <td style={{fontFamily: 'monospace', fontSize: '11px'}}>{!isEntrada ? (mov.nf || '-') : '-'}</td>
+                <td style={{fontSize: '12px'}}>{mov.supplier || mov.client || '-'}</td>
+                <td style={{fontSize: '11px', color: isDefeitoObs ? '#893030' : 'var(--text-muted)', fontWeight: isDefeitoObs ? 700 : 400, maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
+                    {mov.observations || mov.defeitoDescricao || '-'}
+                </td>
+            </tr>
+        );
+    };
+
     // Render the inline detail panel (inserted as a spanning <tr> below the product row)
     const renderDetailPanel = (p) => {
         const history = !isEquipe ? getProductHistory(p.sku) : [];
         const nfsComSaldo = !isEquipe ? getNfBalance(p.sku) : [];
+        const visibleHistory = history.slice(0, HISTORY_PREVIEW_LIMIT);
+        const hasMoreHistory = history.length > HISTORY_PREVIEW_LIMIT;
         return (
             <tr className="stock-detail-row">
                 <td colSpan={5} style={{padding: 0, borderBottom: '1px solid var(--border-default)'}}>
@@ -514,39 +555,21 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {history.map((mov, idx) => {
-                                                const isEntrada = mov.movimento === 'ENTRADA';
-                                                const isDefeitoObs = mov.defeito || (mov.observations || '').toLowerCase().includes('defeito');
-                                                const nfEntrada = isEntrada ? (mov.nf || '-') : (mov.nfOrigem || '-');
-                                                const isNfDefeito = p.defeito && nfsComSaldo.some(([nfKey]) => nfKey === nfEntrada);
-                                                return (
-                                                    <tr key={idx}>
-                                                        <td style={{fontSize: '11px', whiteSpace: 'nowrap'}}>{formatDate(mov.date)}</td>
-                                                        <td>
-                                                            <span className="stock-history-badge" style={{
-                                                                color: isEntrada ? '#39845f' : '#893030',
-                                                            }}>
-                                                                {mov.movimento}
-                                                            </span>
-                                                        </td>
-                                                        <td style={{fontWeight: 600, color: isEntrada ? '#39845f' : '#893030'}}>
-                                                            {isEntrada ? '+' : '-'}{mov.quantity}
-                                                        </td>
-                                                        <td style={{fontSize: '11px'}}>{mov.localEntrada || '-'}</td>
-                                                        <td style={{fontFamily: 'monospace', fontSize: '11px'}}>
-                                                            {nfEntrada}
-                                                            {isEntrada && isNfDefeito && (
-                                                                <span title="Produto com defeito" style={{color: '#893030', marginLeft: 3}}>&#9888;</span>
-                                                            )}
-                                                        </td>
-                                                        <td style={{fontFamily: 'monospace', fontSize: '11px'}}>{!isEntrada ? (mov.nf || '-') : '-'}</td>
-                                                        <td style={{fontSize: '12px'}}>{mov.supplier || mov.client || '-'}</td>
-                                                        <td style={{fontSize: '11px', color: isDefeitoObs ? '#893030' : 'var(--text-muted)', fontWeight: isDefeitoObs ? 700 : 400, maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
-                                                            {mov.observations || mov.defeitoDescricao || '-'}
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
+                                            {visibleHistory.map((mov, idx) => renderHistoryRow(mov, idx, p, nfsComSaldo))}
+                                            {hasMoreHistory && (
+                                                <tr className="stock-history-more-row">
+                                                    <td colSpan={8}>
+                                                        <button
+                                                            type="button"
+                                                            className="stock-history-more-btn"
+                                                            onClick={(e) => { e.stopPropagation(); setFullHistoryProduct(p); }}
+                                                            title="Ver todas as movimentacoes"
+                                                        >
+                                                            + Ver todas as movimentações ({history.length})
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            )}
                                             {/* Spacer row — empurra a linha SALDO para a base, alinhando com a margem inferior da imagem */}
                                             <tr className="stock-history-spacer"><td colSpan={8}></td></tr>
                                         </tbody>
@@ -887,6 +910,54 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                     }} />
                 </div>
             )}
+
+            {/* Full history modal — aberto quando historico excede o preview do painel */}
+            {fullHistoryProduct && (() => {
+                const fullHistory = getProductHistory(fullHistoryProduct.sku);
+                const nfsComSaldo = getNfBalance(fullHistoryProduct.sku);
+                return (
+                    <div className="modal-overlay" onClick={() => setFullHistoryProduct(null)}>
+                        <div
+                            className="modal-content stock-full-history-modal"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <div className="stock-full-history-header">
+                                <h3 className="stock-full-history-title">
+                                    Movimentações — {fullHistoryProduct.name}
+                                </h3>
+                                <button
+                                    type="button"
+                                    className="btn btn-icon btn-secondary"
+                                    onClick={() => setFullHistoryProduct(null)}
+                                    aria-label="Fechar"
+                                    title="Fechar"
+                                >
+                                    <Icon name="close" size={16} />
+                                </button>
+                            </div>
+                            <div className="stock-full-history-body">
+                                <table className="table stock-history-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Data</th>
+                                            <th>Tipo</th>
+                                            <th>Qtd.</th>
+                                            <th>Local</th>
+                                            <th>NF Entrada</th>
+                                            <th>NF Saída</th>
+                                            <th>Fornecedor/Cliente</th>
+                                            <th>Obs.:</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {fullHistory.map((mov, idx) => renderHistoryRow(mov, idx, fullHistoryProduct, nfsComSaldo))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
 
             {obsTooltip && (
                 <div style={{
