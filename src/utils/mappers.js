@@ -21,6 +21,7 @@ export const mapProductFromDB = (row) => ({
   defeito: row.defeito || false,
   defeitoDescricao: row.defeito_descricao || '',
   defeitoData: row.defeito_data || null,
+  defeitosPorNf: Array.isArray(row.defeitos_por_nf) ? row.defeitos_por_nf : [],
 });
 
 export const mapEntryFromDB = (row) => ({
@@ -33,6 +34,8 @@ export const mapEntryFromDB = (row) => ({
   localEntrada: row.local_entrada || '',
   date: row.date,
   userId: row.user_id || '',
+  defeito: row.defeito || false,
+  defeitoDescricao: row.defeito_descricao || '',
 });
 
 export const mapExitFromDB = (row) => ({

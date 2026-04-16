@@ -11,6 +11,7 @@ import CategorySelectInline from '@/components/ui/CategorySelectInline';
 import CategoryManager from '@/components/categories/CategoryManager';
 import { callTinyFunction } from '@/services/tinyService';
 import { supabaseClient } from '@/config/supabase';
+import { syncProductDefeito, setDefeitoForNf, setDefeitoForAllEntries } from '@/utils/defeitoSync';
 
 export default function StockView({ stock, categories, onUpdate, onDelete, searchTerm, setSearchTerm, entries, exits, locaisOrigem, onAddCategory, onUpdateCategory, onDeleteCategory, products, isEquipe, isStockAdmin, equipeProducts, equipeLoading, equipeHasMore, onEquipeLoadMore, onEquipeSearch, equipeTotalCount }) {
     // Loading state
@@ -281,6 +282,33 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
         return Object.values(nfMap).sort((a, b) => new Date(b.date) - new Date(a.date));
     };
 
+    // Product NFs + defeito state agregado por NF (OR de todas as entries dessa NF)
+    const getProductNFsWithDefeito = (sku) => {
+        const productEntries = (entries || []).filter(e => e.sku === sku && e.nf && e.nf.trim() !== '');
+        const nfMap = {};
+        productEntries.forEach(e => {
+            if (!nfMap[e.nf]) {
+                nfMap[e.nf] = {
+                    nf: e.nf,
+                    date: e.date,
+                    quantity: e.quantity,
+                    defeito: !!e.defeito,
+                    defeitoDescricao: e.defeitoDescricao || '',
+                };
+            } else {
+                nfMap[e.nf].quantity += e.quantity;
+                if (new Date(e.date) > new Date(nfMap[e.nf].date)) nfMap[e.nf].date = e.date;
+                if (e.defeito) {
+                    nfMap[e.nf].defeito = true;
+                    if (!nfMap[e.nf].defeitoDescricao && e.defeitoDescricao) {
+                        nfMap[e.nf].defeitoDescricao = e.defeitoDescricao;
+                    }
+                }
+            }
+        });
+        return Object.values(nfMap).sort((a, b) => new Date(b.date) - new Date(a.date));
+    };
+
     // Product history
     const getProductHistory = (sku) => {
         const productEntries = (entries || []).filter(e => e.sku === sku).map(e => ({...e, movimento: 'ENTRADA'}));
@@ -295,6 +323,7 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
     };
 
     const openEditModal = (product) => {
+        const nfsWithDefeito = getProductNFsWithDefeito(product.sku);
         setEditForm({
             name: product.name || '',
             sku: product.sku || '',
@@ -303,20 +332,83 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
             minStock: product.minStock || 3,
             observations: product.observations || '',
             local: product.local || '',
+            // Fallback legado (so usado quando nao ha entries com NF)
             defeito: product.defeito || false,
             defeitoDescricao: product.defeitoDescricao || '',
+            // Novo: controle de defeito por NF
+            defeitosPorNfEditable: nfsWithDefeito.map(nf => ({
+                nf: nf.nf,
+                defeito: nf.defeito,
+                descricao: nf.defeitoDescricao,
+                // guarda estado inicial para comparacao no save
+                _initialDefeito: nf.defeito,
+                _initialDescricao: nf.defeitoDescricao,
+            })),
         });
         setEditingProduct(product);
     };
 
     const handleSaveEdit = async () => {
         if (!editForm.name || !editForm.sku) return;
-        const saveData = { ...editForm };
-        // Set defeito_data on first mark, preserve on unmark
-        if (saveData.defeito && !editingProduct.defeitoData) {
-            saveData.defeitoData = new Date().toISOString();
+
+        // 1. Salva campos basicos do produto (sem defeito — sera recalculado via sync)
+        const productUpdate = {
+            name: editForm.name,
+            sku: editForm.sku,
+            ean: editForm.ean,
+            category: editForm.category,
+            minStock: editForm.minStock,
+            observations: editForm.observations,
+            local: editForm.local,
+        };
+        await onUpdate(editingProduct.id, productUpdate);
+
+        const hasNfEditable = Array.isArray(editForm.defeitosPorNfEditable) && editForm.defeitosPorNfEditable.length > 0;
+
+        try {
+            if (hasNfEditable) {
+                // 2a. Per-NF: aplica apenas as NFs que mudaram
+                const changedNfs = editForm.defeitosPorNfEditable.filter(nf =>
+                    nf.defeito !== nf._initialDefeito ||
+                    (nf.descricao || '') !== (nf._initialDescricao || '')
+                );
+                for (const nf of changedNfs) {
+                    await setDefeitoForNf(editForm.sku, nf.nf, nf.defeito, nf.descricao);
+                }
+                if (changedNfs.length > 0) {
+                    const synced = await syncProductDefeito(editForm.sku);
+                    // propaga ao state local
+                    if (onUpdate) {
+                        await onUpdate(editingProduct.id, {
+                            defeito: synced.defeito,
+                            defeitosPorNf: synced.defeitosPorNf,
+                            defeitoData: synced.defeitoData,
+                            defeitoDescricao: synced.defeitoDescricao,
+                        });
+                    }
+                }
+            } else {
+                // 2b. Sem NFs registradas: aplica bulk (todas as entries ou generico)
+                const changed = editForm.defeito !== !!editingProduct.defeito ||
+                    (editForm.defeitoDescricao || '') !== (editingProduct.defeitoDescricao || '');
+                if (changed) {
+                    await setDefeitoForAllEntries(editForm.sku, editForm.defeito, editForm.defeitoDescricao);
+                    const synced = await syncProductDefeito(editForm.sku);
+                    if (onUpdate) {
+                        await onUpdate(editingProduct.id, {
+                            defeito: synced.defeito,
+                            defeitosPorNf: synced.defeitosPorNf,
+                            defeitoData: synced.defeitoData,
+                            defeitoDescricao: synced.defeitoDescricao,
+                        });
+                    }
+                }
+            }
+        } catch (err) {
+            console.error('[handleSaveEdit] falha ao sincronizar defeito:', err);
+            alert('Produto atualizado, mas houve erro ao sincronizar defeito: ' + err.message);
         }
-        await onUpdate(editingProduct.id, saveData);
+
         setEditingProduct(null);
         setSuccessMsg('Produto atualizado!');
         setTimeout(() => setSuccessMsg(''), 3000);
@@ -716,24 +808,66 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                         )}
 
                         <div className="form-group">
-                            <label className="form-label">Notas Fiscais de Entrada</label>
+                            <label className="form-label">Notas Fiscais de Entrada — defeitos por NF</label>
                             {(() => {
-                                const nfs = getProductNFs(editingProduct.sku);
+                                const nfs = editForm.defeitosPorNfEditable || [];
                                 if (nfs.length === 0) {
-                                    return <div style={{ padding: '8px 12px', fontSize: '13px', color: 'var(--text-muted)', background: 'var(--bg-secondary)', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>Nenhuma NF registrada para este produto</div>;
+                                    return (
+                                        <div style={{ padding: '8px 12px', fontSize: '13px', color: 'var(--text-muted)', background: 'var(--bg-secondary)', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
+                                            Nenhuma NF registrada. Registre uma entrada primeiro para controlar defeito por NF.
+                                        </div>
+                                    );
                                 }
                                 return (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                        {nfs.map((nfInfo, idx) => (
-                                            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 12px', fontSize: '13px', background: 'var(--bg-secondary)', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
-                                                <span style={{ fontWeight: 500 }}>NF {nfInfo.nf}</span>
-                                                <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{nfInfo.quantity} un. — {new Date(nfInfo.date).toLocaleDateString('pt-BR')}</span>
-                                            </div>
-                                        ))}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                        {nfs.map((nfInfo, idx) => {
+                                            const updateNf = (patch) => {
+                                                setEditForm({
+                                                    ...editForm,
+                                                    defeitosPorNfEditable: editForm.defeitosPorNfEditable.map((n, i) => i === idx ? { ...n, ...patch } : n),
+                                                });
+                                            };
+                                            return (
+                                                <div key={idx} style={{
+                                                    padding: '8px 12px',
+                                                    fontSize: '13px',
+                                                    background: nfInfo.defeito ? '#FEF2F2' : 'var(--bg-secondary)',
+                                                    borderRadius: 'var(--radius)',
+                                                    border: nfInfo.defeito ? '1px solid #FCA5A5' : '1px solid var(--border)',
+                                                }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                                                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', flex: 1 }}>
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={!!nfInfo.defeito}
+                                                                onChange={(e) => updateNf({ defeito: e.target.checked })}
+                                                                style={{ width: '16px', height: '16px', accentColor: '#DC2626' }}
+                                                            />
+                                                            <span style={{ fontWeight: 500 }}>NF {nfInfo.nf}</span>
+                                                            {nfInfo.defeito && (
+                                                                <span style={{ fontSize: '10px', fontWeight: 600, color: '#893030', background: '#FCE7E7', padding: '1px 6px', borderRadius: '4px' }}>Defeito</span>
+                                                            )}
+                                                        </label>
+                                                    </div>
+                                                    {nfInfo.defeito && (
+                                                        <div style={{ marginTop: '8px' }}>
+                                                            <textarea
+                                                                className="form-textarea"
+                                                                value={nfInfo.descricao || ''}
+                                                                onChange={(e) => updateNf({ descricao: e.target.value })}
+                                                                placeholder="Descrição do defeito desta NF..."
+                                                                rows={2}
+                                                                style={{ fontSize: '12px' }}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 );
                             })()}
-                            <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>NFs registradas via Entradas de estoque</span>
+                            <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>Marque a checkbox para registrar defeito em todas as unidades dessa NF.</span>
                         </div>
 
                         <div className="form-group">
@@ -741,7 +875,8 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                             <textarea className="form-textarea" value={editForm.observations} onChange={(e) => setEditForm({...editForm, observations: e.target.value})} placeholder="Informacoes adicionais sobre o produto..." />
                         </div>
 
-                        {/* Defeito */}
+                        {/* Defeito (fallback — so exibido quando nao ha NFs para controlar per-NF) */}
+                        {(!editForm.defeitosPorNfEditable || editForm.defeitosPorNfEditable.length === 0) && (
                         <div style={{
                             border: editForm.defeito ? '1px solid #FCA5A5' : '1px solid var(--border)',
                             background: editForm.defeito ? '#FEF2F2' : 'transparent',
@@ -769,6 +904,7 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                                 </div>
                             )}
                         </div>
+                        )}
 
                         <div style={{background: 'var(--bg-primary)', padding: '12px', borderRadius: 'var(--radius)', marginBottom: '16px', fontSize: '13px'}}>
                             <strong>Estoque atual:</strong> {editingProduct.currentQuantity} unidades

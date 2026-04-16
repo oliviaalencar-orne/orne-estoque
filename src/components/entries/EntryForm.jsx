@@ -39,18 +39,19 @@ export default function EntryForm({ products, onSubmit, onAddProduct, onUpdatePr
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        onSubmit({ type, sku, quantity: parseInt(quantity), supplier, nf, localEntrada, category });
-        // Mark product as defeituoso if checked
-        if (defeito && sku && onUpdateProduct) {
-            const product = products.find(p => p.sku === sku);
-            if (product) {
-                await onUpdateProduct(product.id, {
-                    defeito: true,
-                    defeitoDescricao: defeitoDescricao.trim(),
-                    defeitoData: product.defeitoData || new Date().toISOString(),
-                });
-            }
-        }
+        // Defeito agora e persistido na ENTRY (fonte da verdade); o hook addEntry
+        // sincroniza products.defeito e defeitos_por_nf automaticamente.
+        await onSubmit({
+            type,
+            sku,
+            quantity: parseInt(quantity),
+            supplier,
+            nf,
+            localEntrada,
+            category,
+            defeito,
+            defeitoDescricao: defeito ? defeitoDescricao.trim() : '',
+        });
         setSuccess(true);
         setSku('');
         setQuantity('');

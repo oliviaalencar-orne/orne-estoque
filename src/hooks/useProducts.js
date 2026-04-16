@@ -102,6 +102,7 @@ export function useProducts(user, isStockAdmin) {
       if (data.defeito !== undefined) mapped.defeito = data.defeito;
       if (data.defeitoDescricao !== undefined) mapped.defeito_descricao = data.defeitoDescricao;
       if (data.defeitoData !== undefined) mapped.defeito_data = data.defeitoData;
+      if (data.defeitosPorNf !== undefined) mapped.defeitos_por_nf = Array.isArray(data.defeitosPorNf) ? data.defeitosPorNf : [];
       const { error } = await supabaseClient.from('products').update(mapped).eq('id', productId);
       if (error) {
         console.error('Erro ao atualizar produto:', error);
