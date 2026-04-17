@@ -45,6 +45,23 @@ export function hubShortCode(rawName) {
 }
 
 /**
+ * Cor distinta por HUB, derivada da paleta do sistema.
+ * Reserva-se #39845f para "Entrega Local"; HUBs usam azul / roxo / índigo.
+ *
+ * @param {string} rawName
+ * @returns {{color: string, bg: string}} cor para texto e fundo (20% opacity)
+ */
+export function hubColor(rawName) {
+  const canonical = formatHubName(rawName);
+  const MAP = {
+    'G+SHIP VG':  { color: '#8c52ff', bg: 'rgba(140,82,255,0.20)' }, // roxo
+    'G+SHIP CWB': { color: '#004aad', bg: 'rgba(0,74,173,0.20)'  }, // azul
+    'G+SHIP RJ':  { color: '#1800ad', bg: 'rgba(24,0,173,0.18)'  }, // índigo
+  };
+  return MAP[canonical] || { color: '#6B7280', bg: 'rgba(180,180,180,0.25)' };
+}
+
+/**
  * Default HUB usado em novos registros.
  */
 export const DEFAULT_HUB_NAME = 'G+SHIP VG';

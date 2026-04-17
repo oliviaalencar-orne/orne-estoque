@@ -6,7 +6,7 @@ import { Icon } from '@/utils/icons';
 import { buildSeparationMessage, openWhatsAppWithMessage, copyToClipboard } from '@/utils/separationMessage';
 import { useEscapeDeselect } from '@/hooks/useEscapeDeselect';
 import { classificarTransporte } from '@/utils/transportadora';
-import { formatHubName } from '@/utils/hubs';
+import { formatHubName, hubColor } from '@/utils/hubs';
 
 // Paleta aplicada (20% opacity bg, cor pura no texto)
 const STATUS_CONFIG = {
@@ -495,14 +495,16 @@ export default function SeparationList({
                       </span>
                       {showHubBadge && sep.hubId && (() => {
                         const hub = (hubs || []).find(h => h.id === sep.hubId);
-                        return hub ? (
+                        if (!hub) return null;
+                        const palette = hubColor(hub.name);
+                        return (
                           <span className="badge" style={{
-                            background: 'rgba(57,132,95,0.20)', color: '#39845f',
+                            background: palette.bg, color: palette.color,
                             fontSize: '11px', fontWeight: 600,
                           }}>
                             {formatHubName(hub.name)}
                           </span>
-                        ) : null;
+                        );
                       })()}
                       {sep.transportadora && (() => {
                         const tipo = classificarTransporte(sep);
