@@ -5,6 +5,7 @@
  */
 import React, { useState } from 'react';
 import { Icon } from '@/utils/icons';
+import { formatHubName, DEFAULT_HUB_NAME } from '@/utils/hubs';
 import CategorySelectInline from '@/components/ui/CategorySelectInline';
 import LocaisModal from '@/components/ui/LocaisModal';
 import TinyNFeImport from '@/components/import/TinyNFeImport';
@@ -17,7 +18,7 @@ export default function EntryForm({ products, onSubmit, onAddProduct, onUpdatePr
     const [quantity, setQuantity] = useState('');
     const [supplier, setSupplier] = useState('');
     const [nf, setNf] = useState('');
-    const [localEntrada, setLocalEntrada] = useState(locaisOrigem?.[0] || 'Loja Principal');
+    const [localEntrada, setLocalEntrada] = useState(locaisOrigem?.[0] || DEFAULT_HUB_NAME);
     const [category, setCategory] = useState('');
     const [success, setSuccess] = useState(false);
     const [showNewProductModal, setShowNewProductModal] = useState(false);
@@ -306,8 +307,8 @@ export default function EntryForm({ products, onSubmit, onAddProduct, onUpdatePr
                                 required
                                 style={{flex: 1}}
                             >
-                                {(locaisOrigem || ['Loja Principal', 'Deposito 1', 'Deposito 2']).map((local, idx) => (
-                                    <option key={idx} value={local}>{local}</option>
+                                {(locaisOrigem || ['G+SHIP VG', 'G+SHIP CWB', 'G+SHIP RJ']).map((local, idx) => (
+                                    <option key={idx} value={local}>{formatHubName(local)}</option>
                                 ))}
                             </select>
                             <button

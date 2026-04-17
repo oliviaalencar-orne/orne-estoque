@@ -8,8 +8,11 @@
  */
 import { useState, useCallback } from 'react';
 import { supabaseClient } from '@/config/supabase';
+import { DEFAULT_HUBS } from '@/utils/hubs';
 
-const DEFAULT_LOCAIS = ['Loja Principal', 'Depósito 1', 'Depósito 2'];
+// Novos ambientes começam com os HUBs canônicos; instalações existentes
+// mantêm seus registros atuais (a migração é manual via modal de HUBs).
+const DEFAULT_LOCAIS = [...DEFAULT_HUBS];
 
 /**
  * Hook for locais de origem state and update.
