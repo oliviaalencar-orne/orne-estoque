@@ -5,6 +5,7 @@
  */
 import React, { useState } from 'react';
 import { Icon } from '@/utils/icons';
+import { formatHubName, DEFAULT_HUB_NAME } from '@/utils/hubs';
 import CategorySelectInline from '@/components/ui/CategorySelectInline';
 import LocaisModal from '@/components/ui/LocaisModal';
 import TinyNFeImport from '@/components/import/TinyNFeImport';
@@ -17,7 +18,7 @@ export default function EntryForm({ products, onSubmit, onAddProduct, onUpdatePr
     const [quantity, setQuantity] = useState('');
     const [supplier, setSupplier] = useState('');
     const [nf, setNf] = useState('');
-    const [localEntrada, setLocalEntrada] = useState(locaisOrigem?.[0] || 'Loja Principal');
+    const [localEntrada, setLocalEntrada] = useState(locaisOrigem?.[0] || DEFAULT_HUB_NAME);
     const [category, setCategory] = useState('');
     const [success, setSuccess] = useState(false);
     const [showNewProductModal, setShowNewProductModal] = useState(false);
@@ -39,18 +40,19 @@ export default function EntryForm({ products, onSubmit, onAddProduct, onUpdatePr
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        onSubmit({ type, sku, quantity: parseInt(quantity), supplier, nf, localEntrada, category });
-        // Mark product as defeituoso if checked
-        if (defeito && sku && onUpdateProduct) {
-            const product = products.find(p => p.sku === sku);
-            if (product) {
-                await onUpdateProduct(product.id, {
-                    defeito: true,
-                    defeitoDescricao: defeitoDescricao.trim(),
-                    defeitoData: product.defeitoData || new Date().toISOString(),
-                });
-            }
-        }
+        // Defeito agora e persistido na ENTRY (fonte da verdade); o hook addEntry
+        // sincroniza products.defeito e defeitos_por_nf automaticamente.
+        await onSubmit({
+            type,
+            sku,
+            quantity: parseInt(quantity),
+            supplier,
+            nf,
+            localEntrada,
+            category,
+            defeito,
+            defeitoDescricao: defeito ? defeitoDescricao.trim() : '',
+        });
         setSuccess(true);
         setSku('');
         setQuantity('');
@@ -305,8 +307,8 @@ export default function EntryForm({ products, onSubmit, onAddProduct, onUpdatePr
                                 required
                                 style={{flex: 1}}
                             >
-                                {(locaisOrigem || ['Loja Principal', 'Deposito 1', 'Deposito 2']).map((local, idx) => (
-                                    <option key={idx} value={local}>{local}</option>
+                                {(locaisOrigem || ['G+SHIP VG', 'G+SHIP CWB', 'G+SHIP RJ']).map((local, idx) => (
+                                    <option key={idx} value={local}>{formatHubName(local)}</option>
                                 ))}
                             </select>
                             <button

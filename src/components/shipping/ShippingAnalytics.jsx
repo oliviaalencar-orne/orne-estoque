@@ -7,27 +7,12 @@
  */
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Chart } from 'chart.js/auto';
-
-// HUB normalization map
-const HUB_MAP = {
-    'HUB VG': 'VG (Vila Guilherme - SP)',
-    'G+SHIP VG': 'VG (Vila Guilherme - SP)',
-    'VILA GUILHERME': 'VG (Vila Guilherme - SP)',
-    'Loja Principal': 'VG (Vila Guilherme - SP)',
-    'HUB RJ': 'RJ (Rio de Janeiro)',
-    'G+SHIP RJ': 'RJ (Rio de Janeiro)',
-    'RIO DE JANEIRO': 'RJ (Rio de Janeiro)',
-    'HUB CWB': 'CWB (Curitiba)',
-    'G+SHIP CWB': 'CWB (Curitiba)',
-};
+import { Icon } from '@/utils/icons';
+import { formatHubName, DEFAULT_HUBS } from '@/utils/hubs';
 
 function normalizeHub(localOrigem) {
     if (!localOrigem) return 'Sem HUB';
-    const upper = localOrigem.trim().toUpperCase();
-    for (const [key, value] of Object.entries(HUB_MAP)) {
-        if (key.toUpperCase() === upper) return value;
-    }
-    return localOrigem;
+    return formatHubName(localOrigem);
 }
 
 function getMeioEnvio(shipping) {
@@ -41,6 +26,15 @@ function getMeioEnvio(shipping) {
     return 'Outro';
 }
 
+// Classifica o meio em uma das 4 colunas fixas da tabela "detalhada".
+function categorizarMeio(meio) {
+    const m = String(meio || '').toLowerCase();
+    if (m === 'entrega local') return 'Local';
+    if (m === 'loggi') return 'Loggi';
+    if (m === 'correios') return 'Correios';
+    return 'Outro';
+}
+
 // Period presets
 const PERIOD_OPTIONS = [
     { value: '7d', label: 'Últimos 7 dias' },
@@ -51,7 +45,7 @@ const PERIOD_OPTIONS = [
     { value: 'custom', label: 'Personalizado' },
 ];
 
-const HUB_OPTIONS = ['Todos', 'VG (Vila Guilherme - SP)', 'RJ (Rio de Janeiro)', 'CWB (Curitiba)'];
+const HUB_OPTIONS = ['Todos', ...DEFAULT_HUBS];
 
 function getDateRange(periodValue) {
     const now = new Date();
@@ -95,13 +89,15 @@ function weekLabel(d) {
     return `${formatDate(d)} - ${formatDate(end)}`;
 }
 
-// Chart style constants — copied from Dashboard.jsx
+// Chart style constants — alinhado com paleta do sistema
+// Paleta: #8c52ff (roxo), #004aad (azul), #39845f (verde), #893030 (vermelho), #1800ad, #b4b4b4
 const CHART = {
     tooltipBg: '#2C2640',
     gridColor: '#F3F0EC',
     tickColor: '#7A7585',
-    barColor: '#F4B08A',        // Dashboard peach
-    barColorAlt: '#C4B5A4',     // Muted complement
+    barColor:     '#004aad',              // Via transportadora — azul escuro
+    barColorAlt:  'rgba(0,74,173,0.30)',  // Entrega local — azul claro
+    carrierPurple: '#8c52ff',             // Ranking de transportadoras
     barRadius: 6,
     barThickness: 20,
     cornerRadius: 8,
@@ -109,15 +105,15 @@ const CHART = {
     fontFamily: 'Inter',
 };
 
-// Status colors — match statusList from ShippingManager
+// Status colors — match statusList from ShippingManager (paleta)
 const STATUS_COLORS = {
-    'DESPACHADO': '#d97706',
-    'AGUARDANDO_COLETA': '#f59e0b',
-    'EM_TRANSITO': '#3b82f6',
-    'SAIU_ENTREGA': '#7c3aed',
-    'TENTATIVA_ENTREGA': '#ea580c',
-    'ENTREGUE': '#10b981',
-    'DEVOLVIDO': '#ef4444',
+    'DESPACHADO':        '#8c52ff',
+    'AGUARDANDO_COLETA': '#b07dff',
+    'EM_TRANSITO':       '#004aad',
+    'SAIU_ENTREGA':      '#1800ad',
+    'TENTATIVA_ENTREGA': '#d97706',
+    'ENTREGUE':          '#39845f',
+    'DEVOLVIDO':         '#893030',
 };
 
 const STATUS_LABELS = {
@@ -262,14 +258,15 @@ export default function ShippingAnalytics({ shippings }) {
         };
     }, [filtered]);
 
-    // Volume by HUB
+    // Volume by HUB — usa mesmo categorizador da tabela detalhada para consistência
     const hubData = useMemo(() => {
         const hubs = {};
         filtered.forEach(s => {
             const hub = normalizeHub(s.localOrigem || s.local_origem);
+            const cat = categorizarMeio(getMeioEnvio(s));
             if (!hubs[hub]) hubs[hub] = { total: 0, local: 0, transp: 0 };
             hubs[hub].total++;
-            if (s.entregaLocal || s.entrega_local) {
+            if (cat === 'Local') {
                 hubs[hub].local++;
             } else {
                 hubs[hub].transp++;
@@ -302,30 +299,24 @@ export default function ShippingAnalytics({ shippings }) {
             }));
     }, [filtered]);
 
-    // Hub × Carrier matrix
+    // Hub × Carrier matrix (com categorização fixa em 4 colunas: Local/Loggi/Correios/Outro)
     const matrixData = useMemo(() => {
-        const carriers = new Set();
-        const hubs = {};
+        const fixed = {}; // { hubName: { Local: n, Loggi: n, Correios: n, Outro: n } }
         filtered.forEach(s => {
             const hub = normalizeHub(s.localOrigem || s.local_origem);
             const meio = getMeioEnvio(s);
-            carriers.add(meio);
-            if (!hubs[hub]) hubs[hub] = {};
-            hubs[hub][meio] = (hubs[hub][meio] || 0) + 1;
+            const cat = categorizarMeio(meio);
+            if (!fixed[hub]) fixed[hub] = { Local: 0, Loggi: 0, Correios: 0, Outro: 0 };
+            fixed[hub][cat]++;
         });
-        const carrierList = [...carriers].sort((a, b) => {
-            const totalA = Object.values(hubs).reduce((s, h) => s + (h[a] || 0), 0);
-            const totalB = Object.values(hubs).reduce((s, h) => s + (h[b] || 0), 0);
-            return totalB - totalA;
-        });
-        const hubList = Object.entries(hubs)
+        const hubList = Object.entries(fixed)
             .sort((a, b) => {
-                const totalA = Object.values(a[1]).reduce((s, v) => s + v, 0);
-                const totalB = Object.values(b[1]).reduce((s, v) => s + v, 0);
+                const totalA = a[1].Local + a[1].Loggi + a[1].Correios + a[1].Outro;
+                const totalB = b[1].Local + b[1].Loggi + b[1].Correios + b[1].Outro;
                 return totalB - totalA;
             })
             .map(([hub]) => hub);
-        return { carriers: carrierList, hubs: hubList, data: hubs };
+        return { hubs: hubList, fixed };
     }, [filtered]);
 
     // Shared tooltip config (matches Dashboard.jsx)
@@ -417,13 +408,19 @@ export default function ShippingAnalytics({ shippings }) {
         if (!carrierChartRef.current || carrierData.labels.length === 0) return;
         if (carrierChartInstance.current) carrierChartInstance.current.destroy();
 
+        // Gradient de roxos — do mais escuro (topo) ao mais claro (base)
+        const purpleShades = carrierData.labels.map((_, i) => {
+            const opacity = 1 - (i * 0.12);
+            return `rgba(140,82,255,${Math.max(0.35, opacity).toFixed(2)})`;
+        });
+
         carrierChartInstance.current = new Chart(carrierChartRef.current, {
             type: 'bar',
             data: {
                 labels: carrierData.labels,
                 datasets: [{
                     data: carrierData.values,
-                    backgroundColor: CHART.barColor,
+                    backgroundColor: purpleShades,
                     borderRadius: CHART.barRadius,
                     barThickness: 16,
                 }],
@@ -684,102 +681,82 @@ export default function ShippingAnalytics({ shippings }) {
                 </div>
             </div>
 
-            {/* Section 4: Volume by HUB */}
-            <div className="card" style={{ marginBottom: '24px' }}>
-                <h2 className="card-title" style={{ marginBottom: '16px' }}>
-                    <span className="card-title-icon">{'\u25A3'}</span>
-                    Volume por HUB
-                </h2>
-                {hubData.length > 0 ? (
-                    <div className="table-container">
-                        <table className="table">
-                            <thead>
-                                <tr>
-                                    <th style={{ textAlign: 'left' }}>HUB</th>
-                                    <th style={{ textAlign: 'center' }}>Total</th>
-                                    <th style={{ textAlign: 'center' }}>Entrega Local</th>
-                                    <th style={{ textAlign: 'center' }}>Transportadora</th>
-                                    <th style={{ textAlign: 'left', minWidth: '150px' }}>% Entrega Local</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {hubData.map(h => (
-                                    <tr key={h.hub}>
-                                        <td style={{ fontWeight: 500 }}>{h.hub}</td>
-                                        <td style={{ textAlign: 'center', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{h.total}</td>
-                                        <td style={{ textAlign: 'center', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>{h.local}</td>
-                                        <td style={{ textAlign: 'center', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>{h.transp}</td>
-                                        <td>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                <div style={{
-                                                    flex: 1,
-                                                    height: '4px',
-                                                    background: 'var(--border-default)',
-                                                    borderRadius: '2px',
-                                                    overflow: 'hidden',
-                                                }}>
-                                                    <div style={{
-                                                        width: `${h.pctLocal}%`,
-                                                        height: '100%',
-                                                        background: 'var(--text-secondary)',
-                                                        borderRadius: '2px',
-                                                        transition: 'width 0.5s ease',
-                                                    }} />
-                                                </div>
-                                                <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-tertiary)', minWidth: '36px', fontVariantNumeric: 'tabular-nums' }}>
-                                                    {h.pctLocal}%
-                                                </span>
-                                            </div>
-                                        </td>
+            {/* Section 4: Volume por HUB — DUAS tabelas lado a lado */}
+            <div className="dashboard-analytics-grid" style={{ marginBottom: '24px' }}>
+                {/* Tabela simples: HUB | LOCAL | TRANSPORTADORA | TOTAL */}
+                <div className="card" style={{ marginBottom: 0 }}>
+                    <h2 className="card-title" style={{ marginBottom: '16px' }}>Volume por HUB</h2>
+                    {hubData.length > 0 ? (
+                        <div className="table-container">
+                            <table className="table">
+                                <thead>
+                                    <tr>
+                                        <th style={{ textAlign: 'left' }}>HUB</th>
+                                        <th style={{ textAlign: 'center' }}>Entrega Local</th>
+                                        <th style={{ textAlign: 'center' }}>Transportadora</th>
+                                        <th style={{ textAlign: 'center', fontWeight: 700 }}>Total</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                ) : (
-                    <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: '32px', fontSize: '13px' }}>Sem dados no período</div>
-                )}
-            </div>
-
-            {/* Section 6: HUB × Carrier matrix */}
-            <div className="card">
-                <h2 className="card-title" style={{ marginBottom: '16px' }}>
-                    <span className="card-title-icon">{'\u229E'}</span>
-                    Desempenho por HUB × Transportadora
-                </h2>
-                {matrixData.hubs.length > 0 ? (
-                    <div className="table-container">
-                        <table className="table">
-                            <thead>
-                                <tr>
-                                    <th style={{ textAlign: 'left' }}></th>
-                                    {matrixData.carriers.map(c => (
-                                        <th key={c} style={{ textAlign: 'center', fontSize: '12px' }}>{c}</th>
-                                    ))}
-                                    <th style={{ textAlign: 'center', fontWeight: 700 }}>Total</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {matrixData.hubs.map(hub => {
-                                    const hubTotal = Object.values(matrixData.data[hub]).reduce((s, v) => s + v, 0);
-                                    return (
-                                        <tr key={hub}>
-                                            <td style={{ fontWeight: 500, whiteSpace: 'nowrap' }}>{hub}</td>
-                                            {matrixData.carriers.map(c => (
-                                                <td key={c} style={{ textAlign: 'center', fontVariantNumeric: 'tabular-nums', color: matrixData.data[hub][c] ? 'var(--text-primary)' : 'var(--text-tertiary)' }}>
-                                                    {matrixData.data[hub][c] || '-'}
-                                                </td>
-                                            ))}
-                                            <td style={{ textAlign: 'center', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{hubTotal}</td>
+                                </thead>
+                                <tbody>
+                                    {hubData.map(h => (
+                                        <tr key={h.hub}>
+                                            <td style={{ fontWeight: 500, whiteSpace: 'nowrap' }}>{h.hub}</td>
+                                            <td style={{ textAlign: 'center', color: '#39845f', fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>{h.local || '-'}</td>
+                                            <td style={{ textAlign: 'center', color: '#004aad', fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>{h.transp || '-'}</td>
+                                            <td style={{ textAlign: 'center', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{h.total}</td>
                                         </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
-                ) : (
-                    <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: '32px', fontSize: '13px' }}>Sem dados no período</div>
-                )}
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : (
+                        <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: '32px', fontSize: '13px' }}>Sem dados no período</div>
+                    )}
+                </div>
+
+                {/* Tabela detalhada: HUB | LOCAL | LOGGI | CORREIOS | OUTRO | TOTAL */}
+                <div className="card" style={{ marginBottom: 0 }}>
+                    <h2 className="card-title" style={{ marginBottom: '16px' }}>Volume por HUB × Meio</h2>
+                    {matrixData.hubs.length > 0 ? (
+                        <div className="table-container">
+                            <table className="table">
+                                <thead>
+                                    <tr>
+                                        <th style={{ textAlign: 'left' }}>HUB</th>
+                                        <th style={{ textAlign: 'center', color: '#39845f' }}>Local</th>
+                                        <th style={{ textAlign: 'center', color: '#8c52ff' }}>Loggi</th>
+                                        <th style={{ textAlign: 'center', color: '#004aad' }}>Correios</th>
+                                        <th style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>Outro</th>
+                                        <th style={{ textAlign: 'center', fontWeight: 700 }}>Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {matrixData.hubs.map(hub => {
+                                        const row = matrixData.fixed?.[hub] || { Local: 0, Loggi: 0, Correios: 0, Outro: 0 };
+                                        const hubTotal = row.Local + row.Loggi + row.Correios + row.Outro;
+                                        const cell = (n) => n > 0 ? (
+                                            <span style={{ fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>{n}</span>
+                                        ) : (
+                                            <span style={{ color: 'var(--text-tertiary)' }}>-</span>
+                                        );
+                                        return (
+                                            <tr key={hub}>
+                                                <td style={{ fontWeight: 500, whiteSpace: 'nowrap' }}>{hub}</td>
+                                                <td style={{ textAlign: 'center' }}>{cell(row.Local)}</td>
+                                                <td style={{ textAlign: 'center' }}>{cell(row.Loggi)}</td>
+                                                <td style={{ textAlign: 'center' }}>{cell(row.Correios)}</td>
+                                                <td style={{ textAlign: 'center' }}>{cell(row.Outro)}</td>
+                                                <td style={{ textAlign: 'center', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{hubTotal}</td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : (
+                        <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: '32px', fontSize: '13px' }}>Sem dados no período</div>
+                    )}
+                </div>
             </div>
         </div>
     );

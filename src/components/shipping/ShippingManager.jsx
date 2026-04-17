@@ -21,14 +21,16 @@ import { buscarRastreioPorNF } from '@/services/trackingService';
 // Constantes
 const transportadoras = ['Melhor Envio', 'Correios', 'Jadlog', 'Total Express', 'Braspress', 'TNT', 'Azul Cargo', 'Loggi', 'Outro'];
 
+// Paleta: #8c52ff (roxo), #004aad (azul), #39845f (verde), #893030 (vermelho), #b4b4b4
+// Fundos a 20% de opacidade, texto em cor pura.
 export const statusList = {
-    'DESPACHADO':          { label: 'Despachado',             color: '#d97706', textColor: '#92400E', bg: '#FEF3C7' },
-    'AGUARDANDO_COLETA':   { label: 'Aguardando Coleta',      color: '#f59e0b', textColor: '#78350F', bg: '#FEF3C7' },
-    'EM_TRANSITO':         { label: 'Em Trânsito',            color: '#3b82f6', textColor: '#1E40AF', bg: '#DBEAFE' },
-    'SAIU_ENTREGA':        { label: 'Saiu p/ Entrega',        color: '#7c3aed', textColor: '#5B21B6', bg: '#EDE9FE' },
-    'TENTATIVA_ENTREGA':   { label: 'Tentativa de Entrega',   color: '#ea580c', textColor: '#9A3412', bg: '#FFF7ED' },
-    'ENTREGUE':            { label: 'Entregue',               color: '#10b981', textColor: '#065F46', bg: '#D1FAE5' },
-    'DEVOLVIDO':           { label: 'Devolvido',              color: '#ef4444', textColor: '#991B1B', bg: '#FEE2E2' },
+    'DESPACHADO':          { label: 'Despachado',             color: '#8c52ff', textColor: '#6b3dcc', bg: 'rgba(140,82,255,0.20)' },
+    'AGUARDANDO_COLETA':   { label: 'Aguardando Coleta',      color: '#b07dff', textColor: '#6b3dcc', bg: 'rgba(140,82,255,0.12)' },
+    'EM_TRANSITO':         { label: 'Em Trânsito',            color: '#004aad', textColor: '#003a8c', bg: 'rgba(0,74,173,0.20)' },
+    'SAIU_ENTREGA':        { label: 'Saiu p/ Entrega',        color: '#1800ad', textColor: '#12007a', bg: 'rgba(24,0,173,0.18)' },
+    'TENTATIVA_ENTREGA':   { label: 'Tentativa de Entrega',   color: '#d97706', textColor: '#92400E', bg: 'rgba(217,119,6,0.18)' },
+    'ENTREGUE':            { label: 'Entregue',               color: '#39845f', textColor: '#2a6348', bg: 'rgba(57,132,95,0.20)' },
+    'DEVOLVIDO':           { label: 'Devolvido',              color: '#893030', textColor: '#6c2626', bg: 'rgba(137,48,48,0.18)' },
 };
 
 export const STATUS_TRANSITIONS = {
@@ -469,41 +471,120 @@ export default function ShippingManager({
 
     return (
         <div>
-            <div className="page-header">
-                <h1 className="page-title">Expedição</h1>
-                <p className="page-subtitle">Gerencie despachos e devoluções</p>
+            <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' }}>
+                <div>
+                    <h1 className="page-title">Expedição</h1>
+                    <p className="page-subtitle">Gerencie despachos e devoluções</p>
+                </div>
+                {isStockAdmin && (
+                    <button
+                        onClick={() => setShowLocaisModal(true)}
+                        title="Gerenciar HUBs (locais de origem)"
+                        aria-label="Gerenciar HUBs"
+                        style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '8px',
+                            background: '#fff', border: '1px solid var(--border-color)',
+                            borderRadius: '8px', padding: '8px 16px', cursor: 'pointer',
+                            fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)',
+                            flexShrink: 0,
+                        }}
+                    >
+                        HUB <Icon name="settings" size={14} />
+                    </button>
+                )}
             </div>
 
-            {/* Sub-abas Despachos / Devoluções */}
+            {success && <div className="alert alert-success">{success}</div>}
+            {error && <div className="alert alert-danger">{error}</div>}
+
+            {/* Card combinado: sub-abas principais (topo-esq) + divider + ações (base-dir) */}
             {(() => {
                 const despachos = shippings.filter(s => !s.tipo || s.tipo === 'despacho');
                 const devolucoes = shippings.filter(s => s.tipo === 'devolucao');
                 return (
-                    <div className="filter-tabs" style={{marginBottom: '16px'}}>
-                        <button
-                            className={`filter-tab ${tipoView === 'despacho' ? 'active' : ''}`}
-                            onClick={() => { setTipoView('despacho'); setActiveView('list'); }}
-                        >
-                            Despachos ({despachos.length})
-                        </button>
-                        <button
-                            className={`filter-tab ${tipoView === 'devolucao' ? 'active' : ''}`}
-                            onClick={() => { setTipoView('devolucao'); setActiveView('list'); }}
-                        >
-                            Devoluções ({devolucoes.length})
-                        </button>
-                        <button
-                            className={`filter-tab ${tipoView === 'analise' ? 'active' : ''}`}
-                            onClick={() => { setTipoView('analise'); setActiveView('list'); }}
-                        >
-                            Análise
-                        </button>
+                    <div className="card" style={{ marginBottom: '16px', padding: 0, overflow: 'hidden' }}>
+                        {/* Linha 1 — sub-abas.
+                            Admin: 50% ESQUERDO (espaço reservado para ações na direita).
+                            Equipe/Operador: 100% (sem ações do lado direito). */}
+                        <div style={{
+                            display: 'flex', width: '100%',
+                            borderBottom: '1px solid var(--border)',
+                        }}>
+                            <div style={{
+                                flex: isStockAdmin ? '0 0 50%' : '1 1 100%',
+                                display: 'flex', padding: '0 16px',
+                            }}>
+                                <button
+                                    className={`filter-tab ${tipoView === 'despacho' ? 'active' : ''}`}
+                                    onClick={() => { setTipoView('despacho'); setActiveView('list'); }}
+                                    style={{ flex: 1, textAlign: 'center', justifyContent: 'center', whiteSpace: 'nowrap' }}
+                                >
+                                    Despachos ({String(despachos.length).padStart(3, '0')})
+                                </button>
+                                <button
+                                    className={`filter-tab ${tipoView === 'devolucao' ? 'active' : ''}`}
+                                    onClick={() => { setTipoView('devolucao'); setActiveView('list'); }}
+                                    style={{ flex: 1, textAlign: 'center', justifyContent: 'center', whiteSpace: 'nowrap' }}
+                                >
+                                    Devoluções ({String(devolucoes.length).padStart(2, '0')})
+                                </button>
+                                <button
+                                    className={`filter-tab ${tipoView === 'analise' ? 'active' : ''}`}
+                                    onClick={() => { setTipoView('analise'); setActiveView('list'); }}
+                                    style={{ flex: 1, textAlign: 'center', justifyContent: 'center', whiteSpace: 'nowrap' }}
+                                >
+                                    Análise Logística
+                                </button>
+                            </div>
+                            {isStockAdmin && <div style={{ flex: '0 0 50%' }} />}
+                        </div>
+
+                        {/* Linha 2 — ações ocupam 50% DIREITO */}
+                        {tipoView !== 'analise' && isStockAdmin && (() => {
+                            const baseStyle = (isActive) => ({
+                                flex: 1,
+                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                                background: 'transparent', border: 'none', cursor: 'pointer',
+                                fontSize: '13px', fontWeight: isActive ? 600 : 500,
+                                color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
+                                padding: '10px 8px', whiteSpace: 'nowrap',
+                            });
+                            return (
+                                <div style={{ display: 'flex', width: '100%' }}>
+                                    <div style={{ flex: '0 0 50%' }} />
+                                    <div style={{ flex: '0 0 50%', display: 'flex', padding: '0 16px' }}>
+                                        {tipoView === 'despacho' ? (
+                                            <>
+                                                <button onClick={() => setActiveView('register')} style={baseStyle(activeView === 'register')}>
+                                                    <Icon name="add" size={14} /> Novo
+                                                </button>
+                                                <button onClick={() => setActiveView('import')} style={baseStyle(activeView === 'import')}>
+                                                    Importar NF
+                                                </button>
+                                                <button onClick={() => setActiveView('import-tiny')} style={baseStyle(activeView === 'import-tiny')}>
+                                                    Importar NF (Tiny)
+                                                </button>
+                                                <button onClick={() => setActiveView('csv')} style={baseStyle(activeView === 'csv')}>
+                                                    Importar CSV
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <button onClick={() => setActiveView('register-devolucao')} style={baseStyle(activeView === 'register-devolucao')}>
+                                                    <Icon name="add" size={14} /> Nova Devolução
+                                                </button>
+                                                <button onClick={() => setActiveView('import-tiny-dev')} style={baseStyle(activeView === 'import-tiny-dev')}>
+                                                    Importar NF (Tiny)
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })()}
                     </div>
                 );
             })()}
-
-            {success && <div className="alert alert-success">{success}</div>}
-            {error && <div className="alert alert-danger">{error}</div>}
 
             {/* Análise view — full replacement */}
             {tipoView === 'analise' && (
@@ -518,74 +599,6 @@ export default function ShippingManager({
                     onClose={() => setShowLocaisModal(false)}
                 />
             )}
-
-            {/* Tabs — contextuais por tipoView */}
-            {tipoView !== 'analise' && <div className="card" style={{marginBottom: '16px'}}>
-                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px'}}>
-                    <div className="filter-tabs">
-                        <button
-                            className={`filter-tab ${activeView === 'list' ? 'active' : ''}`}
-                            onClick={() => setActiveView('list')}
-                        >
-                            Lista
-                        </button>
-                        {tipoView === 'despacho' ? (
-                            <>
-                                {isStockAdmin && (<button
-                                    className={`filter-tab ${activeView === 'register' ? 'active' : ''}`}
-                                    onClick={() => setActiveView('register')}
-                                >
-                                    Novo
-                                </button>)}
-                                {isStockAdmin && (<button
-                                    className={`filter-tab ${activeView === 'import' ? 'active' : ''}`}
-                                    onClick={() => setActiveView('import')}
-                                >
-                                    Importar NF
-                                </button>)}
-                                {isStockAdmin && (<button
-                                    className={`filter-tab ${activeView === 'import-tiny' ? 'active' : ''}`}
-                                    onClick={() => setActiveView('import-tiny')}
-                                >
-                                    Importar Tiny
-                                </button>)}
-                                {isStockAdmin && (<button
-                                    className={`filter-tab ${activeView === 'csv' ? 'active' : ''}`}
-                                    onClick={() => setActiveView('csv')}
-                                >
-                                    Importar CSV
-                                </button>)}
-                            </>
-                        ) : (
-                            <>
-                                {isStockAdmin && (<button
-                                    className={`filter-tab ${activeView === 'register-devolucao' ? 'active' : ''}`}
-                                    onClick={() => setActiveView('register-devolucao')}
-                                >
-                                    Nova Devolução
-                                </button>)}
-                                {isStockAdmin && (<button
-                                    className={`filter-tab ${activeView === 'import-tiny-dev' ? 'active' : ''}`}
-                                    onClick={() => setActiveView('import-tiny-dev')}
-                                >
-                                    Importar Tiny
-                                </button>)}
-                            </>
-                        )}
-                    </div>
-                    {isStockAdmin && (
-                        <button
-                            className="btn btn-secondary"
-                            onClick={() => setShowLocaisModal(true)}
-                            title="Configurar locais de origem"
-                            style={{display: 'flex', alignItems: 'center', gap: '6px'}}
-                        >
-                            <Icon name="settings" size={14} />
-                            <span>Locais de Origem</span>
-                        </button>
-                    )}
-                </div>
-            </div>}
 
             {tipoView !== 'analise' && <>
             {/* Lista */}

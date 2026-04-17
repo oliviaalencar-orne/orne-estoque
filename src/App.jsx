@@ -33,6 +33,9 @@ import PendingApprovalScreen from '@/components/auth/PendingApprovalScreen';
 import RejectedScreen from '@/components/auth/RejectedScreen';
 import AccessRestricted from '@/components/auth/AccessRestricted';
 
+// Layout
+import Sidebar from '@/components/layout/Sidebar';
+
 // Page components
 import Dashboard from '@/components/dashboard/Dashboard';
 import StockView from '@/components/stock/StockView';
@@ -360,194 +363,20 @@ export default function App() {
         </div>
       </div>
 
-      {/* ── Sidebar Overlay ───────────────────────────────────────── */}
-      <div
-        className={`sidebar-overlay ${sidebarOpen ? 'visible' : ''}`}
-        onClick={() => setSidebarOpen(false)}
-      ></div>
-
-      {/* ── Sidebar ───────────────────────────────────────────────── */}
-      <div className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
-        <div className="logo-container">
-          <img
-            src="/logo-orne.png"
-            alt="Orne"
-            className="logo"
-            onError={(e) => (e.target.style.display = 'none')}
-          />
-        </div>
-
-        <div className="user-info">
-          {userProfile?.nome && (
-            <div style={{ fontSize: '13px', fontWeight: 600, color: 'rgba(255,255,255,0.95)', marginBottom: '2px' }}>
-              {userProfile.nome}
-            </div>
-          )}
-          <div className="user-email">{user.email}</div>
-          <button className="btn-logout" onClick={handleLogout}>
-            Sair
-          </button>
-        </div>
-
-
-        {(isEquipe || isOperador) && (
-          <div style={{ padding: '0 14px', marginBottom: '16px' }}>
-            <div style={{
-              width: '100%',
-              padding: '9px',
-              background: 'rgba(255,255,255,0.08)',
-              border: '1px solid rgba(255,255,255,0.12)',
-              borderRadius: '10px',
-              color: 'rgba(255,255,255,0.65)',
-              fontSize: '11px',
-              textAlign: 'center',
-              fontFamily: 'inherit',
-              letterSpacing: '0.2px',
-            }}>
-              {isOperador ? 'Acesso: Operador' : 'Acesso: Consulta'}
-            </div>
-          </div>
-        )}
-
-        <ul className="nav-menu">
-          <li className="nav-item">
-            <a
-              className={`nav-link ${activeTab === 'dashboard' ? 'active' : ''}`}
-              onClick={() => handleTabChange('dashboard')}
-            >
-              <span
-                className="nav-icon"
-                dangerouslySetInnerHTML={{ __html: ICONS.dashboard }}
-              ></span>
-              Dashboard
-            </a>
-          </li>
-          <li className="nav-item">
-            <a
-              className={`nav-link ${activeTab === 'stock' ? 'active' : ''}`}
-              onClick={() => handleTabChange('stock')}
-            >
-              <span
-                className="nav-icon"
-                dangerouslySetInnerHTML={{ __html: ICONS.stock }}
-              ></span>
-              Estoque
-            </a>
-          </li>
-
-          {(isStockAdmin || isEquipe || isOperador) && (
-            <>
-              <div className="nav-section">Movimentações</div>
-              {isStockAdmin && (
-                <li className="nav-item">
-                  <a
-                    className={`nav-link ${activeTab === 'entry' ? 'active' : ''}`}
-                    onClick={() => handleTabChange('entry')}
-                  >
-                    <span
-                      className="nav-icon"
-                      dangerouslySetInnerHTML={{ __html: ICONS.entry }}
-                    ></span>
-                    Entrada
-                  </a>
-                </li>
-              )}
-              {isStockAdmin && (
-                <li className="nav-item">
-                  <a
-                    className={`nav-link ${activeTab === 'exit' ? 'active' : ''}`}
-                    onClick={() => handleTabChange('exit')}
-                  >
-                    <span
-                      className="nav-icon"
-                      dangerouslySetInnerHTML={{ __html: ICONS.exit }}
-                    ></span>
-                    Saída
-                  </a>
-                </li>
-              )}
-              <li className="nav-item">
-                <a
-                  className={`nav-link ${activeTab === 'separation' ? 'active' : ''}`}
-                  onClick={() => handleTabChange('separation')}
-                >
-                  <span
-                    className="nav-icon"
-                    dangerouslySetInnerHTML={{ __html: ICONS.clipboard }}
-                  ></span>
-                  Separação
-                </a>
-              </li>
-              <li className="nav-item">
-                <a
-                  className={`nav-link ${activeTab === 'shipping' ? 'active' : ''}`}
-                  onClick={() => handleTabChange('shipping')}
-                >
-                  <span
-                    className="nav-icon"
-                    dangerouslySetInnerHTML={{ __html: ICONS.shipping }}
-                  ></span>
-                  Expedição
-                </a>
-              </li>
-            </>
-          )}
-
-          {(isStockAdmin || isOperador) && (
-            <>
-              <div className="nav-section">Relatórios</div>
-              <li className="nav-item">
-                <a
-                  className={`nav-link ${activeTab === 'history' ? 'active' : ''}`}
-                  onClick={() => handleTabChange('history')}
-                >
-                  <span
-                    className="nav-icon"
-                    dangerouslySetInnerHTML={{ __html: ICONS.history }}
-                  ></span>
-                  Histórico
-                </a>
-              </li>
-            </>
-          )}
-
-          {isStockAdmin && (
-            <>
-              <div className="nav-section">Integrações</div>
-              <li className="nav-item">
-                <a
-                  className={`nav-link ${activeTab === 'tiny' ? 'active' : ''}`}
-                  onClick={() => handleTabChange('tiny')}
-                >
-                  <span
-                    className="nav-icon"
-                    dangerouslySetInnerHTML={{ __html: ICONS.tiny }}
-                  ></span>
-                  Tiny ERP
-                </a>
-              </li>
-            </>
-          )}
-
-          {isSuperAdmin && (
-            <>
-              <div className="nav-section">Administração</div>
-              <li className="nav-item">
-                <a
-                  className={`nav-link ${activeTab === 'admin' ? 'active' : ''}`}
-                  onClick={() => handleTabChange('admin')}
-                >
-                  <span
-                    className="nav-icon"
-                    dangerouslySetInnerHTML={{ __html: ICONS.user }}
-                  ></span>
-                  Usuários
-                </a>
-              </li>
-            </>
-          )}
-        </ul>
-      </div>
+      {/* ── Sidebar (novo componente colapsável — Fase 1) ─────────── */}
+      <Sidebar
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        user={user}
+        userProfile={userProfile}
+        onLogout={handleLogout}
+        isStockAdmin={isStockAdmin}
+        isOperador={isOperador}
+        isEquipe={isEquipe}
+        isSuperAdmin={isSuperAdmin}
+        mobileOpen={sidebarOpen}
+        onCloseMobile={() => setSidebarOpen(false)}
+      />
 
       {/* ── Main Content ──────────────────────────────────────────── */}
       <div className="main-content">
@@ -580,6 +409,7 @@ export default function App() {
               onDeleteCategory={deleteCategory}
               products={products}
               isEquipe={isEquipe}
+              isOperador={isOperador}
               isStockAdmin={isStockAdmin}
               equipeProducts={equipeProducts}
               equipeLoading={equipeLoading}

@@ -17,7 +17,8 @@ import {
 } from '@/utils/shippingMessage';
 import { getStatusLabel, getStatusColor } from '@/utils/statusLabels';
 import { criarEntradasDevolucao } from '@/utils/devolucaoEntries';
-import { getTransportadoraReal } from '@/utils/transportadora';
+import { getTransportadoraReal, classificarTransporte } from '@/utils/transportadora';
+import { formatHubName } from '@/utils/hubs';
 
 
 // Resize image helper
@@ -468,18 +469,26 @@ export default function ShippingList({
         }
     };
 
-    const SortTh = ({ field, children, ...rest }) => (
-        <th
-            onClick={() => handleSort(field)}
-            style={{cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap'}}
-            {...rest}
-        >
-            {children}
-            <span style={{marginLeft: '4px', opacity: sortField === field ? 1 : 0.3, fontSize: '10px'}}>
-                {sortField === field ? (sortDir === 'asc' ? '▲' : '▼') : '▲▼'}
-            </span>
-        </th>
-    );
+    const SortTh = ({ field, children, ...rest }) => {
+        const active = sortField === field;
+        const iconName = active ? (sortDir === 'asc' ? 'arrowUp' : 'arrowDown') : 'arrowUpDown';
+        return (
+            <th
+                onClick={() => handleSort(field)}
+                style={{cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap', textAlign: 'center', background: '#FFECB5'}}
+                {...rest}
+            >
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', justifyContent: 'center' }}>
+                    {children}
+                    <Icon
+                        name={iconName}
+                        size={12}
+                        style={{ opacity: active ? 0.85 : 0.35, color: active ? 'var(--text-primary)' : 'var(--text-muted)' }}
+                    />
+                </span>
+            </th>
+        );
+    };
 
     // Status progression — only advances, never regresses
     const STATUS_RANK = { DESPACHADO: 0, AGUARDANDO_COLETA: 0.5, EM_TRANSITO: 1, SAIU_ENTREGA: 2, TENTATIVA_ENTREGA: 2, ENTREGUE: 3, DEVOLVIDO: 3 };
@@ -857,38 +866,42 @@ export default function ShippingList({
             {success && <div className="alert alert-success">{success}</div>}
             {error && <div className="alert alert-danger">{error}</div>}
 
-            <div style={{display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center'}}>
-                <div className="search-box" style={{flex: 1, minWidth: '200px', marginBottom: 0}}>
-                    <span className="search-icon"><Icon name="search" size={14} /></span>
-                    <input
-                        type="text"
-                        className="search-input"
-                        placeholder="Buscar por NF, cliente ou rastreio..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
+            {/* Linha com busca + ações de rastreio — só renderiza para admin/operador.
+                Para equipe, a busca é integrada à linha das status tabs abaixo. */}
+            {!isEquipe && (
+                <div style={{display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center'}}>
+                    <div className="search-box" style={{flex: 1, minWidth: '200px', marginBottom: 0}}>
+                        <span className="search-icon"><Icon name="search" size={14} /></span>
+                        <input
+                            type="text"
+                            className="search-input"
+                            placeholder="Buscar por NF, cliente ou rastreio..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                    {canEdit && (
+                        <button
+                            className="btn btn-primary"
+                            onClick={atualizarTodosRastreios}
+                            disabled={atualizandoRastreio}
+                            style={{whiteSpace: 'nowrap'}}
+                        >
+                            {atualizandoRastreio ? 'Atualizando...' : 'Atualizar Rastreios'}
+                        </button>
+                    )}
+                    {canEdit && (
+                        <button
+                            className="btn btn-secondary"
+                            onClick={vincularRastreiosME}
+                            disabled={batchMEActive || atualizandoRastreio}
+                            style={{whiteSpace: 'nowrap'}}
+                        >
+                            {batchMEActive ? 'Vinculando...' : 'Vincular Rastreios ME'}
+                        </button>
+                    )}
                 </div>
-                {canEdit && (
-                    <button
-                        className="btn btn-primary"
-                        onClick={atualizarTodosRastreios}
-                        disabled={atualizandoRastreio}
-                        style={{whiteSpace: 'nowrap'}}
-                    >
-                        {atualizandoRastreio ? 'Atualizando...' : 'Atualizar Rastreios'}
-                    </button>
-                )}
-                {canEdit && (
-                    <button
-                        className="btn btn-secondary"
-                        onClick={vincularRastreiosME}
-                        disabled={batchMEActive || atualizandoRastreio}
-                        style={{whiteSpace: 'nowrap'}}
-                    >
-                        {batchMEActive ? 'Vinculando...' : 'Vincular Rastreios ME'}
-                    </button>
-                )}
-            </div>
+            )}
 
             {/* Batch ME progress modal */}
             {batchMEActive && batchMEProgress && (
@@ -928,24 +941,59 @@ export default function ShippingList({
                 </div>
             )}
 
-            <div className="filter-tabs" style={{marginBottom: '12px'}}>
-                <button className={`filter-tab ${statusFilter === 'all' ? 'active' : ''}`} onClick={() => setStatusFilter('all')}>
-                    Todos ({shippings.length})
-                </button>
-                {Object.entries(statusList)
-                    .filter(([key]) => key !== 'TENTATIVA_ENTREGA' && !(isDevolucao && key === 'DEVOLVIDO'))
-                    .map(([key, val]) => {
-                        const label = isDevolucao ? (getStatusLabel(key, 'devolucao') || val.label) : val.label;
+            {/* Linha de status tabs. Para equipe, a busca acompanha na mesma linha.
+                Para admin/operador, a busca fica na linha anterior (com botões de rastreio).
+
+                Tabs com whiteSpace:nowrap + padding/fonte reduzidos p/ equipe para
+                caber todos em uma única linha sem quebras. */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
+                <div className="filter-tabs" style={{ marginBottom: 0, flex: isEquipe ? '4 1 480px' : '1 1 100%', flexWrap: 'nowrap' }}>
+                    {(() => {
+                        const tabStyle = {
+                            flex: 1, textAlign: 'center', justifyContent: 'center',
+                            whiteSpace: 'nowrap',
+                            ...(isEquipe ? { padding: '8px 4px', fontSize: '12px' } : {}),
+                        };
                         return (
-                            <button
-                                key={key}
-                                className={`filter-tab ${statusFilter === key ? 'active' : ''}`}
-                                onClick={() => setStatusFilter(key)}
-                            >
-                                {label} ({shippings.filter(s => key === 'EM_TRANSITO' ? (s.status === 'EM_TRANSITO' || s.status === 'TENTATIVA_ENTREGA') : s.status === key).length})
-                            </button>
+                            <>
+                                <button
+                                    className={`filter-tab ${statusFilter === 'all' ? 'active' : ''}`}
+                                    onClick={() => setStatusFilter('all')}
+                                    style={tabStyle}
+                                >
+                                    Todos ({shippings.length})
+                                </button>
+                                {Object.entries(statusList)
+                                    .filter(([key]) => key !== 'TENTATIVA_ENTREGA' && !(isDevolucao && key === 'DEVOLVIDO'))
+                                    .map(([key, val]) => {
+                                        const label = isDevolucao ? (getStatusLabel(key, 'devolucao') || val.label) : val.label;
+                                        return (
+                                            <button
+                                                key={key}
+                                                className={`filter-tab ${statusFilter === key ? 'active' : ''}`}
+                                                onClick={() => setStatusFilter(key)}
+                                                style={tabStyle}
+                                            >
+                                                {label} ({shippings.filter(s => key === 'EM_TRANSITO' ? (s.status === 'EM_TRANSITO' || s.status === 'TENTATIVA_ENTREGA') : s.status === key).length})
+                                            </button>
+                                        );
+                                    })}
+                            </>
                         );
-                    })}
+                    })()}
+                </div>
+                {isEquipe && (
+                    <div className="search-box" style={{flex: '1 1 200px', minWidth: '180px', maxWidth: '320px', marginBottom: 0}}>
+                        <span className="search-icon"><Icon name="search" size={14} /></span>
+                        <input
+                            type="text"
+                            className="search-input"
+                            placeholder="Buscar por Nf, cliente ou rastreio"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                )}
             </div>
 
             <PeriodFilter
@@ -994,7 +1042,7 @@ export default function ShippingList({
                         <thead>
                             <tr>
                                 {!isDevolucao && selectableShippings.length > 0 && (
-                                    <th style={{width: '36px', textAlign: 'center'}}>
+                                    <th style={{width: '36px', textAlign: 'center', background: '#FFECB5'}}>
                                         <input
                                             type="checkbox"
                                             checked={selectedForDelivery.size === selectableShippings.length && selectableShippings.length > 0}
@@ -1005,14 +1053,14 @@ export default function ShippingList({
                                     </th>
                                 )}
                                 <SortTh field="nfNumero">NF</SortTh>
-                                <SortTh field="date">Data</SortTh>
-                                <th>Cliente</th>
+                                <SortTh field="date">Data/Hora</SortTh>
+                                <th style={{textAlign: 'center', background: '#FFECB5'}}>Cliente</th>
                                 <SortTh field="localOrigem">{isDevolucao ? 'HUB Destino' : 'Origem'}</SortTh>
                                 <SortTh field="transportadora">Transportadora</SortTh>
-                                <th>Rastreio</th>
-                                <th>Status</th>
-                                {isDevolucao && <th>Motivo</th>}
-                                <th>Ações</th>
+                                <th style={{textAlign: 'center', background: '#FFECB5'}}>Rastreio</th>
+                                <th style={{textAlign: 'center', background: '#FFECB5'}}>Status</th>
+                                {isDevolucao && <th style={{textAlign: 'center', background: '#FFECB5'}}>Motivo</th>}
+                                <th style={{textAlign: 'left', background: '#FFECB5'}}>Ações</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1030,23 +1078,38 @@ export default function ShippingList({
                                             ) : null}
                                         </td>
                                     )}
-                                    <td>
+                                    <td style={{textAlign: 'center'}}>
                                         <strong>{s.nfNumero}</strong>
                                     </td>
-                                    <td style={{fontSize: '12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap'}}>
+                                    <td style={{fontSize: '12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap', textAlign: 'center'}}>
                                         {formatDate(s.date)}
                                     </td>
-                                    <td>
+                                    <td style={{textAlign: 'center'}}>
                                         {s.cliente}
                                         {s.destino && <div style={{fontSize: '10px', color: 'var(--text-muted)'}}>{s.destino.substring(0, 30)}...</div>}
                                     </td>
-                                    <td style={{fontSize: '12px'}}>{isDevolucao ? (s.hubDestino || '-') : s.localOrigem}</td>
-                                    <td style={{fontSize: '12px'}}>
-                                        {isEntregaLocalShipping(s) ? (
-                                            <span style={{color: '#065F46', fontWeight: 500}}>📦 Local</span>
-                                        ) : (getTransportadoraReal(s) || '-')}
+                                    <td style={{fontSize: '13px', textAlign: 'center'}}>{isDevolucao ? (formatHubName(s.hubDestino) || '-') : formatHubName(s.localOrigem)}</td>
+                                    <td style={{fontSize: '13px', textAlign: 'center'}}>
+                                        {(() => {
+                                            if (isEntregaLocalShipping(s)) {
+                                                return (
+                                                    <span style={{display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#39845f', fontWeight: 500}}>
+                                                        <Icon name="car" size={14} /> Local
+                                                    </span>
+                                                );
+                                            }
+                                            const tipo = classificarTransporte(s);
+                                            const real = getTransportadoraReal(s) || '-';
+                                            const iconName = { loggi: 'truck', correios: 'mail' }[tipo] || 'truck';
+                                            const color = { loggi: '#8c52ff', correios: '#004aad' }[tipo] || 'var(--text-secondary)';
+                                            return (
+                                                <span style={{display: 'inline-flex', alignItems: 'center', gap: '6px', color}}>
+                                                    <Icon name={iconName} size={14} /> {real}
+                                                </span>
+                                            );
+                                        })()}
                                     </td>
-                                    <td>
+                                    <td style={{textAlign: 'center'}}>
                                         {isEntregaLocalShipping(s) ? (
                                             <div>
                                                 {s.recebedorNome && (
@@ -1081,8 +1144,8 @@ export default function ShippingList({
                                                     const trackLink = s.linkRastreio || s.rastreioInfo?.linkRastreio || gerarLinkRastreio(s.transportadora, s.codigoRastreio);
                                                     return trackLink ? (
                                                         <a href={trackLink} target="_blank" rel="noopener noreferrer"
-                                                           style={{marginLeft: '8px', fontSize: '11px', fontWeight: 500}}>
-                                                            Rastrear ↗
+                                                           style={{marginLeft: '8px', fontSize: '11px', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '3px'}}>
+                                                            Rastrear <Icon name="externalLink" size={11} />
                                                         </a>
                                                     ) : null;
                                                 })()}
@@ -1105,11 +1168,7 @@ export default function ShippingList({
                                                         )}
                                                     </div>
                                                 )}
-                                                {s.rastreioInfo?.erro && (
-                                                    <div style={{fontSize: '10px', color: '#ef4444', marginTop: '2px', maxWidth: '250px', cursor: 'help'}} title={s.rastreioInfo.erro}>
-                                                        ⚠ {s.rastreioInfo.erro.substring(0, 100)}{s.rastreioInfo.erro.length > 100 ? '...' : ''}
-                                                    </div>
-                                                )}
+                                                {/* Erros de rastreio (ex: ME 422) escondidos do operador — disponíveis em logs/admin */}
                                             </div>
                                         ) : (
                                             canEdit ? (
@@ -1125,7 +1184,7 @@ export default function ShippingList({
                                             )
                                         )}
                                     </td>
-                                    <td>
+                                    <td style={{textAlign: 'center'}}>
                                         <div style={{position: 'relative', display: 'inline-flex', alignItems: 'center', gap: '2px'}}>
                                             <span style={{
                                                 display: 'inline-block',
@@ -1263,12 +1322,12 @@ export default function ShippingList({
                                         )}
                                     </td>
                                     {isDevolucao && (
-                                        <td style={{fontSize: '12px', color: 'var(--text-secondary)'}}>
+                                        <td style={{fontSize: '12px', color: 'var(--text-secondary)', textAlign: 'center'}}>
                                             {s.motivoDevolucao || '-'}
                                         </td>
                                     )}
-                                    <td>
-                                        <div style={{display: 'flex', gap: '4px', flexWrap: 'wrap'}}>
+                                    <td style={{textAlign: 'left'}}>
+                                        <div style={{display: 'inline-flex', gap: '4px', flexWrap: 'wrap', justifyContent: 'flex-start'}}>
                                             {/* WhatsApp copy — visible to all */}
                                             <button
                                                 className="btn btn-secondary btn-sm"

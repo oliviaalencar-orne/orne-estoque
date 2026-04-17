@@ -6,22 +6,26 @@ import { Icon } from '@/utils/icons';
 import { buildSeparationMessage, openWhatsAppWithMessage, copyToClipboard } from '@/utils/separationMessage';
 import { useEscapeDeselect } from '@/hooks/useEscapeDeselect';
 import { classificarTransporte } from '@/utils/transportadora';
+import { formatHubName, hubColor } from '@/utils/hubs';
 
-
+// Paleta aplicada (20% opacity bg, cor pura no texto)
 const STATUS_CONFIG = {
-  pendente: { label: 'Pendente', color: '#6b7280', bg: '#f3f4f6' },
-  separado: { label: 'Separado', color: '#3b82f6', bg: '#dbeafe' },
-  embalado: { label: 'Embalado', color: '#f59e0b', bg: '#fef3c7' },
-  despachado: { label: 'Despachado', color: '#10b981', bg: '#d1fae5' },
+  pendente:   { label: 'Pendente',   color: '#6B7280', bg: 'rgba(180,180,180,0.20)' },
+  separado:   { label: 'Separado',   color: '#004aad', bg: 'rgba(0,74,173,0.15)' },
+  embalado:   { label: 'Embalado',   color: '#8c52ff', bg: 'rgba(140,82,255,0.15)' },
+  despachado: { label: 'Despachado', color: '#39845f', bg: 'rgba(57,132,95,0.15)' },
 };
 
 // Equipe sees simplified labels: pendente/separado → "Em separação", embalado → "Embalando"
 const EQUIPE_STATUS_CONFIG = {
-  pendente: { label: 'Em separação', color: '#3b82f6', bg: '#dbeafe' },
-  separado: { label: 'Em separação', color: '#3b82f6', bg: '#dbeafe' },
-  embalado: { label: 'Embalando', color: '#f59e0b', bg: '#fef3c7' },
-  despachado: { label: 'Despachado', color: '#10b981', bg: '#d1fae5' },
+  pendente:   { label: 'Em separação', color: '#004aad', bg: 'rgba(0,74,173,0.15)' },
+  separado:   { label: 'Em separação', color: '#004aad', bg: 'rgba(0,74,173,0.15)' },
+  embalado:   { label: 'Embalando',    color: '#8c52ff', bg: 'rgba(140,82,255,0.15)' },
+  despachado: { label: 'Despachado',   color: '#39845f', bg: 'rgba(57,132,95,0.15)' },
 };
+
+// Ícones e cores por tipo de transporte
+const TRANSPORT_ICON = { local: 'car', loggi: 'truck', correios: 'mail', outras: 'truck' };
 
 const NEXT_STATUS = {
   pendente: 'separado',
@@ -360,87 +364,93 @@ export default function SeparationList({
 
   return (
     <div>
-      {/* Search + Filters */}
+      {/* Status filters + search — mesma linha, status distribuídos uniformemente */}
       <div className="card" style={{ marginBottom: '16px' }}>
-        <div style={{ position: 'relative', marginBottom: '12px' }}>
-          <Icon name="search" size={16} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-          <input
-            type="text"
-            className="form-input search-input"
-            placeholder="Buscar por NF, cliente ou destino..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            style={{ paddingLeft: '32px' }}
-          />
-          {searchTerm && (
-            <button className="search-clear" onClick={() => setSearchTerm('')}>&times;</button>
-          )}
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-          <div className="filter-tabs">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <div className="filter-tabs" style={{ flex: '3 1 400px', marginBottom: 0 }}>
             {filterTabs.map(f => (
               <button
                 key={f.key}
                 className={`filter-tab ${statusFilter === f.key ? 'active' : ''}`}
                 onClick={() => setStatusFilter(f.key)}
+                style={{ flex: 1, textAlign: 'center', justifyContent: 'center', whiteSpace: 'nowrap', padding: '8px 6px', fontSize: '12px' }}
               >{f.label}</button>
             ))}
           </div>
-          {/* Select All checkbox — admin/operador */}
-          {canEditSep && selectableItems.length > 0 && (
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
-              <input
-                type="checkbox"
-                checked={allSelected}
-                onChange={toggleSelectAll}
-                style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-              />
-              Selecionar Todos
-            </label>
-          )}
+          <div style={{ position: 'relative', flex: '1 1 240px', minWidth: '180px', maxWidth: '380px' }}>
+            <Icon name="search" size={16} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+            <input
+              type="text"
+              className="form-input search-input"
+              placeholder="Buscar por Nf, cliente ou destino..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              style={{ paddingLeft: '32px' }}
+            />
+            {searchTerm && (
+              <button className="search-clear" onClick={() => setSearchTerm('')}>&times;</button>
+            )}
+          </div>
         </div>
-        {/* Granular transport filter (pills) — admin/operador */}
-        {canEditSep && (() => {
-          const TIPOS = [
-            { key: 'local',    label: 'Local',    color: '#065f46', bg: '#d1fae5', border: '#6ee7b7' },
-            { key: 'loggi',    label: 'Loggi',    color: '#92400e', bg: '#fef3c7', border: '#fcd34d' },
-            { key: 'correios', label: 'Correios', color: '#1e40af', bg: '#dbeafe', border: '#93c5fd' },
-            { key: 'outras',   label: 'Outras',   color: '#4b5563', bg: '#f3f4f6', border: '#d1d5db' },
-          ];
-          return (
-            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '10px', paddingTop: '10px', borderTop: '1px solid var(--border-color)' }}>
-              {TIPOS.map(t => {
-                const count = transporteCounts[t.key] || 0;
-                if (count === 0) return null;
-                const active = filtroTransporte === t.key;
-                return (
-                  <button
-                    key={t.key}
-                    onClick={() => setFiltroTransporte(active ? 'all' : t.key)}
-                    title={active ? 'Clique para remover filtro' : `Filtrar por ${t.label}`}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      fontSize: '11px',
-                      fontWeight: 600,
-                      padding: '4px 10px',
-                      borderRadius: '999px',
-                      border: `1px solid ${active ? t.color : t.border}`,
-                      background: active ? t.color : t.bg,
-                      color: active ? '#fff' : t.color,
-                      cursor: 'pointer',
-                      transition: 'all 0.15s',
-                      boxShadow: active ? '0 1px 3px rgba(0,0,0,0.15)' : 'none',
-                    }}
-                  >
-                    {t.label} ({count})
-                  </button>
-                );
-              })}
-            </div>
-          );
-        })()}
+
+        {/* Transport filter pills (outlined) + Selecionar Todos — só admin/operador */}
+        {canEditSep && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-color)' }}>
+            {(() => {
+              const TIPOS = [
+                { key: 'local',    label: 'Local',    icon: 'car',   color: '#39845f', fill: 'rgba(57,132,95,0.15)' },
+                { key: 'loggi',    label: 'Loggi',    icon: 'truck', color: '#8c52ff', fill: 'rgba(140,82,255,0.15)' },
+                { key: 'correios', label: 'Correios', icon: 'mail',  color: '#004aad', fill: 'rgba(0,74,173,0.15)' },
+                { key: 'outras',   label: 'Outras',   icon: 'truck', color: '#6B7280', fill: 'rgba(180,180,180,0.25)' },
+              ];
+              return (
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {TIPOS.map(t => {
+                    const count = transporteCounts[t.key] || 0;
+                    if (count === 0) return null;
+                    const active = filtroTransporte === t.key;
+                    return (
+                      <button
+                        key={t.key}
+                        onClick={() => setFiltroTransporte(active ? 'all' : t.key)}
+                        title={active ? 'Clique para remover filtro' : `Filtrar por ${t.label}`}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          fontSize: '13px',
+                          fontWeight: 500,
+                          padding: '8px 16px',
+                          borderRadius: '8px',
+                          border: `1px solid ${t.color}`,
+                          background: active ? t.fill : 'transparent',
+                          color: t.color,
+                          cursor: 'pointer',
+                          transition: 'background 0.15s',
+                        }}
+                      >
+                        <Icon name={t.icon} size={14} />
+                        {t.label} <span style={{ opacity: 0.7 }}>({String(count).padStart(2, '0')})</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+            {/* Select All checkbox — admin/operador */}
+            {selectableItems.length > 0 && (
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={toggleSelectAll}
+                  style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                />
+                Selecionar Todos
+              </label>
+            )}
+          </div>
+        )}
       </div>
 
       {/* List */}
@@ -488,17 +498,35 @@ export default function SeparationList({
                       </span>
                       {showHubBadge && sep.hubId && (() => {
                         const hub = (hubs || []).find(h => h.id === sep.hubId);
-                        return hub ? (
-                          <span className="badge" style={{ background: '#e0e7ff', color: '#3730a3', fontSize: '10px' }}>
-                            {hub.name}
+                        if (!hub) return null;
+                        const palette = hubColor(hub.name);
+                        return (
+                          <span className="badge" style={{
+                            background: palette.bg, color: palette.color,
+                            fontSize: '11px', fontWeight: 600,
+                          }}>
+                            {formatHubName(hub.name)}
                           </span>
-                        ) : null;
+                        );
                       })()}
-                      {sep.transportadora && (
-                        <span className="badge" style={{ background: '#fef3c7', color: '#92400e', fontSize: '10px' }}>
-                          {sep.transportadora}
-                        </span>
-                      )}
+                      {sep.transportadora && (() => {
+                        const tipo = classificarTransporte(sep);
+                        const palette = {
+                          local:    { color: '#39845f', bg: 'rgba(57,132,95,0.20)' },
+                          loggi:    { color: '#8c52ff', bg: 'rgba(140,82,255,0.20)' },
+                          correios: { color: '#004aad', bg: 'rgba(0,74,173,0.20)' },
+                        }[tipo] || { color: '#6B7280', bg: 'rgba(180,180,180,0.25)' };
+                        return (
+                          <span className="badge" style={{
+                            background: palette.bg, color: palette.color,
+                            fontSize: '11px', fontWeight: 600,
+                            display: 'inline-flex', alignItems: 'center', gap: '4px',
+                          }}>
+                            <Icon name={TRANSPORT_ICON[tipo] || 'truck'} size={12} />
+                            {tipo === 'local' ? 'Entrega Local' : sep.transportadora}
+                          </span>
+                        );
+                      })()}
                       {isSuccess && (
                         <span style={{ color: 'var(--success)', fontSize: '12px', fontWeight: 500 }}>
                           ✓ Atualizado

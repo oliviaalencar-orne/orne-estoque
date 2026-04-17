@@ -1,17 +1,20 @@
 /**
- * StockView.jsx — Stock view with accordion categories and list rows
+ * StockView.jsx — Stock view with horizontal category chips and in-page detail panel
  *
- * Products grouped by category in collapsible sections.
- * Each section contains a sortable table of product rows.
+ * Fase 2.2: chips horizontais de categorias (UMA ativa), sub-filtros por status,
+ * painel in-page expandindo abaixo da linha do produto clicado.
  */
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Icon, CategoryIcon } from '@/utils/icons';
 import { formatBRL } from '@/utils/formatters';
 import CategorySelectInline from '@/components/ui/CategorySelectInline';
+import CategoryManager from '@/components/categories/CategoryManager';
 import { callTinyFunction } from '@/services/tinyService';
 import { supabaseClient } from '@/config/supabase';
+import { syncProductDefeito, setDefeitoForNf, setDefeitoForAllEntries } from '@/utils/defeitoSync';
+import { mapEntryFromDB, mapExitFromDB } from '@/utils/mappers';
 
-export default function StockView({ stock, categories, onUpdate, onDelete, searchTerm, setSearchTerm, entries, exits, locaisOrigem, onAddCategory, onUpdateCategory, onDeleteCategory, products, isEquipe, isStockAdmin, equipeProducts, equipeLoading, equipeHasMore, onEquipeLoadMore, onEquipeSearch, equipeTotalCount }) {
+export default function StockView({ stock, categories, onUpdate, onDelete, searchTerm, setSearchTerm, entries, exits, locaisOrigem, onAddCategory, onUpdateCategory, onDeleteCategory, products, isEquipe, isOperador = false, isStockAdmin, equipeProducts, equipeLoading, equipeHasMore, onEquipeLoadMore, onEquipeSearch, equipeTotalCount }) {
     // Loading state
     const showInitialLoading = isEquipe
         ? ((equipeProducts || []).length === 0 && equipeLoading)
@@ -34,12 +37,65 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
     }
 
     const [filter, setFilter] = useState('all');
-    const [detailProduct, setDetailProduct] = useState(null);
+    const [selectedCategoryId, setSelectedCategoryId] = useState(null); // null = all categories
+    const [showCategoryManager, setShowCategoryManager] = useState(false);
+    const [detailProduct, setDetailProduct] = useState(null); // product with inline panel expanded
+    const [fullHistoryProduct, setFullHistoryProduct] = useState(null); // modal with full history
     const [editingProduct, setEditingProduct] = useState(null);
     const [editForm, setEditForm] = useState({});
     const [successMsg, setSuccessMsg] = useState('');
     const [hideZeroStock, setHideZeroStock] = useState(true);
     const [tinySyncLoading, setTinySyncLoading] = useState(null); // product id being synced
+
+    // Equipe e operador não recebem entries/exits globalmente via props.
+    // Quando abrem o painel de um produto, buscamos o histórico dele por SKU
+    // sob demanda e cacheamos localmente.
+    //
+    // IMPORTANTE: equipe/operador recebem um select filtrado — SEM fornecedor
+    // e SEM cliente, que são dados comerciais sensíveis. Apenas admin vê
+    // esses campos (que chegam via props entries/exits globais).
+    const [equipeHistoryCache, setEquipeHistoryCache] = useState({}); // { [sku]: { entries, exits } }
+    const [equipeHistoryLoadingSku, setEquipeHistoryLoadingSku] = useState(null);
+
+    const needsLazyHistory = (isEquipe || isOperador) && (!entries || entries.length === 0);
+    // Apenas admin enxerga fornecedor/cliente. Controla renderização da coluna.
+    const canSeeSupplierClient = !!isStockAdmin;
+
+    // Whitelist de campos por role. Admin = '*', outros = sem supplier/client.
+    const ENTRY_FIELDS_EQUIPE = 'id, date, type, quantity, sku, nf, local_entrada, defeito, defeito_descricao';
+    const EXIT_FIELDS_EQUIPE = 'id, date, type, quantity, sku, nf, local';
+
+    const fetchHistoryForSku = async (sku) => {
+        if (!sku || equipeHistoryCache[sku]) return;
+        setEquipeHistoryLoadingSku(sku);
+        try {
+            const [entRes, exitRes] = await Promise.all([
+                supabaseClient.from('entries').select(ENTRY_FIELDS_EQUIPE).eq('sku', sku),
+                supabaseClient.from('exits').select(EXIT_FIELDS_EQUIPE).eq('sku', sku),
+            ]);
+            if (entRes.error) console.error('Erro ao buscar entries:', entRes.error);
+            if (exitRes.error) console.error('Erro ao buscar exits:', exitRes.error);
+            setEquipeHistoryCache(prev => ({
+                ...prev,
+                [sku]: {
+                    entries: (entRes.data || []).map(mapEntryFromDB),
+                    exits: (exitRes.data || []).map(mapExitFromDB),
+                },
+            }));
+        } catch (err) {
+            console.error('[StockView] falha ao buscar histórico lazy:', err);
+        } finally {
+            setEquipeHistoryLoadingSku(null);
+        }
+    };
+
+    // Lazy-load histórico quando o painel inline ou o modal forem abertos.
+    useEffect(() => {
+        if (!needsLazyHistory) return;
+        const sku = detailProduct?.sku || fullHistoryProduct?.sku;
+        if (sku) fetchHistoryForSku(sku);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [needsLazyHistory, detailProduct, fullHistoryProduct]);
 
     const handleTinySync = async (product) => {
         if (!product.sku || tinySyncLoading) return;
@@ -93,21 +149,18 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
         }
     };
 
-    // Accordion state — all collapsed by default
-    const [expandedCategories, setExpandedCategories] = useState(new Set());
-    const [categoryVisibleCount, setCategoryVisibleCount] = useState({});
+    // Pagination — flat list limit (no more accordion)
+    const [visibleLimit, setVisibleLimit] = useState(100);
+    useEffect(() => { setVisibleLimit(100); }, [selectedCategoryId, filter, hideZeroStock]);
 
-    const toggleCategory = (catId) => {
-        setExpandedCategories(prev => {
-            const next = new Set(prev);
-            if (next.has(catId)) next.delete(catId); else next.add(catId);
-            return next;
-        });
+    // Toggle product expansion (click same = close, click other = switch)
+    const toggleProductPanel = (product) => {
+        setDetailProduct(prev => (prev?.id === product.id ? null : product));
     };
 
-    const getVisibleCount = (catId) => categoryVisibleCount[catId] || 50;
-    const showMoreInCategory = (catId) => {
-        setCategoryVisibleCount(prev => ({ ...prev, [catId]: (prev[catId] || 50) + 50 }));
+    // Toggle category chip (click active = clear filter)
+    const toggleCategoryChip = (catId) => {
+        setSelectedCategoryId(prev => (prev === catId ? null : catId));
     };
 
     // Search with debounce
@@ -189,57 +242,59 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
             );
         }
 
-        // Status filter
-        if (filter !== 'all') {
-            filtered = filtered.filter(p => p.status === filter);
+        // Category chip filter
+        if (selectedCategoryId) {
+            filtered = filtered.filter(p => (p.category || '__none__') === selectedCategoryId);
         }
 
-        // Hide zero stock
-        if (hideZeroStock && filter !== 'empty') {
+        // Status filter
+        if (filter === 'ok') {
+            filtered = filtered.filter(p => p.status === 'ok');
+        } else if (filter === 'empty') {
+            filtered = filtered.filter(p => p.status === 'empty');
+        } else if (filter === 'defeito') {
+            filtered = filtered.filter(p => p.defeito);
+        }
+
+        // Hide zero stock (not applicable when showing empty/defeito filter)
+        if (hideZeroStock && filter !== 'empty' && filter !== 'defeito') {
             filtered = filtered.filter(p => p.currentQuantity > 0);
         }
 
         return sortProducts(filtered, sortBy, sortOrder);
-    }, [stock, equipeProducts, isEquipe, categories, debouncedSearch, hideZeroStock, sortBy, sortOrder, filter]);
+    }, [stock, equipeProducts, isEquipe, categories, debouncedSearch, hideZeroStock, sortBy, sortOrder, filter, selectedCategoryId]);
 
-    // Group filtered products by category
-    const groupedProducts = useMemo(() => {
-        const groups = new Map();
-        for (const p of filteredProducts) {
-            const catId = p.category || '__none__';
-            if (!groups.has(catId)) groups.set(catId, []);
-            groups.get(catId).push(p);
+    // Category chips — count per category (respects search but not status/category filter)
+    const categoryChips = useMemo(() => {
+        let base = isEquipe ? (equipeProducts || []) : stock;
+        if (!isEquipe && hasSearch) {
+            const term = debouncedSearch.toLowerCase();
+            base = base.filter(p =>
+                (p.name || '').toLowerCase().includes(term) ||
+                (p.sku || '').toLowerCase().includes(term) ||
+                (p.ean || '').toLowerCase().includes(term) ||
+                (p.nfOrigem || '').toLowerCase().includes(term)
+            );
         }
-        // Sort categories alphabetically, "Sem categoria" last
-        const sorted = [...groups.entries()].sort((a, b) => {
-            if (a[0] === '__none__') return 1;
-            if (b[0] === '__none__') return -1;
-            return getCategoryName(a[0]).localeCompare(getCategoryName(b[0]));
+        const counts = {};
+        base.forEach(p => {
+            const key = p.category || '__none__';
+            counts[key] = (counts[key] || 0) + 1;
         });
-        const result = [];
-        // Virtual category: Produtos com Defeito (first, if any)
-        const produtosDefeito = filteredProducts.filter(p => p.defeito);
-        if (produtosDefeito.length > 0) {
-            result.push({
-                categoryId: '__defeito__',
-                categoryName: '⚠️ Produtos com Defeito',
-                categoryColor: '#DC2626',
-                categoryIcon: null,
-                products: produtosDefeito,
-                isDefeitoCategory: true,
-            });
+        const chips = (categories || []).map(c => ({
+            id: c.id,
+            name: c.name,
+            color: c.color || '#6B7280',
+            icon: c.icon,
+            count: counts[c.id] || 0,
+        }));
+        if (counts['__none__']) {
+            chips.push({ id: '__none__', name: 'Sem categoria', color: '#9CA3AF', icon: null, count: counts['__none__'] });
         }
-        result.push(...sorted.map(([catId, prods]) => ({
-            categoryId: catId,
-            categoryName: getCategoryName(catId === '__none__' ? null : catId),
-            categoryColor: getCategoryColor(catId === '__none__' ? null : catId),
-            categoryIcon: categories.find(c => c.id === catId)?.icon || null,
-            products: prods,
-        })));
-        return result;
-    }, [filteredProducts, categories]);
+        return chips.sort((a, b) => a.name.localeCompare(b.name));
+    }, [stock, equipeProducts, isEquipe, debouncedSearch, categories]);
 
-    // Status counts
+    // Status counts (respects search + category chip)
     const statusCounts = useMemo(() => {
         let base = isEquipe ? (equipeProducts || []) : stock;
         if (!isEquipe && hasSearch) {
@@ -251,13 +306,17 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                 (p.nfOrigem || '').toLowerCase().includes(term)
             );
         }
+        if (selectedCategoryId) {
+            base = base.filter(p => (p.category || '__none__') === selectedCategoryId);
+        }
         const all = hideZeroStock ? base.filter(p => p.currentQuantity > 0) : base;
         return {
             all: all.length,
             ok: base.filter(p => p.status === 'ok').length,
             empty: base.filter(p => p.status === 'empty').length,
+            defeito: base.filter(p => p.defeito).length,
         };
-    }, [stock, equipeProducts, isEquipe, debouncedSearch, hideZeroStock]);
+    }, [stock, equipeProducts, isEquipe, debouncedSearch, hideZeroStock, selectedCategoryId]);
 
     // Product NFs for detail/edit modal
     const getProductNFs = (sku) => {
@@ -274,10 +333,41 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
         return Object.values(nfMap).sort((a, b) => new Date(b.date) - new Date(a.date));
     };
 
+    // Product NFs + defeito state agregado por NF (OR de todas as entries dessa NF)
+    const getProductNFsWithDefeito = (sku) => {
+        const productEntries = (entries || []).filter(e => e.sku === sku && e.nf && e.nf.trim() !== '');
+        const nfMap = {};
+        productEntries.forEach(e => {
+            if (!nfMap[e.nf]) {
+                nfMap[e.nf] = {
+                    nf: e.nf,
+                    date: e.date,
+                    quantity: e.quantity,
+                    defeito: !!e.defeito,
+                    defeitoDescricao: e.defeitoDescricao || '',
+                };
+            } else {
+                nfMap[e.nf].quantity += e.quantity;
+                if (new Date(e.date) > new Date(nfMap[e.nf].date)) nfMap[e.nf].date = e.date;
+                if (e.defeito) {
+                    nfMap[e.nf].defeito = true;
+                    if (!nfMap[e.nf].defeitoDescricao && e.defeitoDescricao) {
+                        nfMap[e.nf].defeitoDescricao = e.defeitoDescricao;
+                    }
+                }
+            }
+        });
+        return Object.values(nfMap).sort((a, b) => new Date(b.date) - new Date(a.date));
+    };
+
     // Product history
     const getProductHistory = (sku) => {
-        const productEntries = (entries || []).filter(e => e.sku === sku).map(e => ({...e, movimento: 'ENTRADA'}));
-        const productExits = (exits || []).filter(e => e.sku === sku).map(e => ({...e, movimento: 'SAIDA'}));
+        // Usa cache do equipe (lazy-fetch) quando entries/exits globais estão vazios
+        const cache = needsLazyHistory ? equipeHistoryCache[sku] : null;
+        const srcEntries = cache ? cache.entries : (entries || []);
+        const srcExits = cache ? cache.exits : (exits || []);
+        const productEntries = srcEntries.filter(e => e.sku === sku).map(e => ({...e, movimento: 'ENTRADA'}));
+        const productExits = srcExits.filter(e => e.sku === sku).map(e => ({...e, movimento: 'SAIDA'}));
         return [...productEntries, ...productExits].sort((a, b) => new Date(b.date) - new Date(a.date));
     };
 
@@ -288,6 +378,7 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
     };
 
     const openEditModal = (product) => {
+        const nfsWithDefeito = getProductNFsWithDefeito(product.sku);
         setEditForm({
             name: product.name || '',
             sku: product.sku || '',
@@ -296,20 +387,83 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
             minStock: product.minStock || 3,
             observations: product.observations || '',
             local: product.local || '',
+            // Fallback legado (so usado quando nao ha entries com NF)
             defeito: product.defeito || false,
             defeitoDescricao: product.defeitoDescricao || '',
+            // Novo: controle de defeito por NF
+            defeitosPorNfEditable: nfsWithDefeito.map(nf => ({
+                nf: nf.nf,
+                defeito: nf.defeito,
+                descricao: nf.defeitoDescricao,
+                // guarda estado inicial para comparacao no save
+                _initialDefeito: nf.defeito,
+                _initialDescricao: nf.defeitoDescricao,
+            })),
         });
         setEditingProduct(product);
     };
 
     const handleSaveEdit = async () => {
         if (!editForm.name || !editForm.sku) return;
-        const saveData = { ...editForm };
-        // Set defeito_data on first mark, preserve on unmark
-        if (saveData.defeito && !editingProduct.defeitoData) {
-            saveData.defeitoData = new Date().toISOString();
+
+        // 1. Salva campos basicos do produto (sem defeito — sera recalculado via sync)
+        const productUpdate = {
+            name: editForm.name,
+            sku: editForm.sku,
+            ean: editForm.ean,
+            category: editForm.category,
+            minStock: editForm.minStock,
+            observations: editForm.observations,
+            local: editForm.local,
+        };
+        await onUpdate(editingProduct.id, productUpdate);
+
+        const hasNfEditable = Array.isArray(editForm.defeitosPorNfEditable) && editForm.defeitosPorNfEditable.length > 0;
+
+        try {
+            if (hasNfEditable) {
+                // 2a. Per-NF: aplica apenas as NFs que mudaram
+                const changedNfs = editForm.defeitosPorNfEditable.filter(nf =>
+                    nf.defeito !== nf._initialDefeito ||
+                    (nf.descricao || '') !== (nf._initialDescricao || '')
+                );
+                for (const nf of changedNfs) {
+                    await setDefeitoForNf(editForm.sku, nf.nf, nf.defeito, nf.descricao);
+                }
+                if (changedNfs.length > 0) {
+                    const synced = await syncProductDefeito(editForm.sku);
+                    // propaga ao state local
+                    if (onUpdate) {
+                        await onUpdate(editingProduct.id, {
+                            defeito: synced.defeito,
+                            defeitosPorNf: synced.defeitosPorNf,
+                            defeitoData: synced.defeitoData,
+                            defeitoDescricao: synced.defeitoDescricao,
+                        });
+                    }
+                }
+            } else {
+                // 2b. Sem NFs registradas: aplica bulk (todas as entries ou generico)
+                const changed = editForm.defeito !== !!editingProduct.defeito ||
+                    (editForm.defeitoDescricao || '') !== (editingProduct.defeitoDescricao || '');
+                if (changed) {
+                    await setDefeitoForAllEntries(editForm.sku, editForm.defeito, editForm.defeitoDescricao);
+                    const synced = await syncProductDefeito(editForm.sku);
+                    if (onUpdate) {
+                        await onUpdate(editingProduct.id, {
+                            defeito: synced.defeito,
+                            defeitosPorNf: synced.defeitosPorNf,
+                            defeitoData: synced.defeitoData,
+                            defeitoDescricao: synced.defeitoDescricao,
+                        });
+                    }
+                }
+            }
+        } catch (err) {
+            console.error('[handleSaveEdit] falha ao sincronizar defeito:', err);
+            alert('Produto atualizado, mas houve erro ao sincronizar defeito: ' + err.message);
         }
-        await onUpdate(editingProduct.id, saveData);
+
         setEditingProduct(null);
         setSuccessMsg('Produto atualizado!');
         setTimeout(() => setSuccessMsg(''), 3000);
@@ -369,228 +523,295 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
 
     const hideObsTooltip = () => setObsTooltip(null);
 
-    // Render a product row
-    const renderProductRow = (p) => (
-        <tr
-            key={p.id}
-            onClick={() => setDetailProduct(p)}
-            style={{cursor: 'pointer'}}
-            className="stock-row"
-        >
-            <td style={{width: '48px', padding: '6px 8px'}}>
-                {p.imagemUrl && p.imagemUrl !== 'sem-imagem' ? (
-                    <img
-                        src={p.imagemUrl}
-                        alt=""
-                        loading="lazy"
-                        width={48}
-                        height={48}
-                        style={{width: '48px', height: '48px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--border-default)', background: '#fff'}}
-                        onError={(e) => { e.target.style.display = 'none'; e.target.nextElementSibling && (e.target.nextElementSibling.style.display = 'flex'); }}
-                    />
-                ) : null}
-                <div style={{width: '48px', height: '48px', borderRadius: '8px', background: '#f3f4f6', display: (p.imagemUrl && p.imagemUrl !== 'sem-imagem') ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center'}}>
-                    <Icon name="boxOpen" size={18} style={{opacity: 0.3}} />
-                </div>
-            </td>
-            <td>
-                <div className="product-name" style={{display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap'}}>
-                    {p.name}
-                    {p.defeito && (
+    // Render a product row + optional expanded detail panel below
+    const renderProductRow = (p) => {
+        const isExpanded = detailProduct?.id === p.id;
+        return (
+            <React.Fragment key={p.id}>
+                <tr
+                    onClick={() => toggleProductPanel(p)}
+                    style={{cursor: 'pointer'}}
+                    className={`stock-row ${isExpanded ? 'stock-row--expanded' : ''}`}
+                >
+                    <td style={{width: '48px', padding: '6px 8px'}}>
+                        {p.imagemUrl && p.imagemUrl !== 'sem-imagem' ? (
+                            <img
+                                src={p.imagemUrl}
+                                alt=""
+                                loading="lazy"
+                                width={48}
+                                height={48}
+                                style={{width: '48px', height: '48px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--border-default)', background: '#fff'}}
+                                onError={(e) => { e.target.style.display = 'none'; e.target.nextElementSibling && (e.target.nextElementSibling.style.display = 'flex'); }}
+                            />
+                        ) : null}
+                        <div style={{width: '48px', height: '48px', borderRadius: '8px', background: '#f3f4f6', display: (p.imagemUrl && p.imagemUrl !== 'sem-imagem') ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                            <Icon name="boxOpen" size={18} style={{opacity: 0.3}} />
+                        </div>
+                    </td>
+                    <td>
+                        <div className="product-name" style={{display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap'}}>
+                            {p.name}
+                            {p.defeito && (
+                                <span style={{
+                                    fontSize: '10px', fontWeight: 600, color: '#893030',
+                                    background: '#FCE7E7', padding: '1px 6px', borderRadius: '4px',
+                                    whiteSpace: 'nowrap', flexShrink: 0,
+                                }}>Defeito</span>
+                            )}
+                            {p.observations && p.observations.trim() && (
+                                <span
+                                    style={{display: 'inline-flex', alignItems: 'center', cursor: 'help', flexShrink: 0}}
+                                    onMouseEnter={(e) => showObsTooltip(e, p.observations)}
+                                    onMouseLeave={hideObsTooltip}
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{opacity: 0.75}}>
+                                        <circle cx="12" cy="12" r="10" />
+                                        <line x1="12" y1="8" x2="12" y2="12" />
+                                        <line x1="12" y1="16" x2="12.01" y2="16" />
+                                    </svg>
+                                </span>
+                            )}
+                        </div>
+                        {p.local && <div className="product-local">{'\uD83D\uDCCD'} {p.local}</div>}
+                        {p.defeito && p.defeitoDescricao && isExpanded && (
+                            <div style={{fontSize: '11px', color: '#893030', marginTop: '2px', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
+                                {p.defeitoDescricao}
+                            </div>
+                        )}
+                    </td>
+                    <td className="hide-mobile product-sku col-center">{p.sku}</td>
+                    <td className="col-center">
                         <span style={{
-                            fontSize: '10px', fontWeight: 600, color: '#DC2626',
-                            background: '#FEE2E2', padding: '1px 6px', borderRadius: '4px',
-                            whiteSpace: 'nowrap', flexShrink: 0,
-                        }}>Defeito</span>
-                    )}
-                    {p.observations && p.observations.trim() && (
-                        <span
-                            style={{display: 'inline-flex', alignItems: 'center', cursor: 'help', flexShrink: 0}}
-                            onMouseEnter={(e) => showObsTooltip(e, p.observations)}
-                            onMouseLeave={hideObsTooltip}
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{opacity: 0.75}}>
-                                <circle cx="12" cy="12" r="10" />
-                                <line x1="12" y1="8" x2="12" y2="12" />
-                                <line x1="12" y1="16" x2="12.01" y2="16" />
-                            </svg>
+                            fontWeight: 600, fontSize: '14px',
+                            color: p.currentQuantity > 0 ? '#39845f' : '#893030',
+                        }}>
+                            {p.currentQuantity}
                         </span>
+                    </td>
+                    <td className="hide-mobile col-center" style={{fontSize: '12px', color: 'var(--text-secondary)'}}>
+                        {p.unitPrice > 0 ? `R$ ${formatBRL(p.unitPrice)}` : '\u2014'}
+                    </td>
+                </tr>
+                {isExpanded && renderDetailPanel(p)}
+            </React.Fragment>
+        );
+    };
+
+    // Retorna apenas as ENTRADAs cujas NFs ainda possuem saldo no estoque
+    const getStockEntriesInfo = (sku) => {
+        const cache = needsLazyHistory ? equipeHistoryCache[sku] : null;
+        const srcEntries = cache ? cache.entries : (entries || []);
+        const allEntries = srcEntries.filter(e => e.sku === sku);
+        const nfBalance = getNfBalance(sku); // NFs com saldo > 0
+        const nfsWithBalance = new Set(nfBalance.map(([nf]) => nf));
+        return allEntries
+            .filter(e => nfsWithBalance.has(e.nf || 'SEM_NF'))
+            .map(e => ({ ...e, movimento: 'ENTRADA' }))
+            .sort((a, b) => new Date(b.date) - new Date(a.date));
+    };
+
+    // Shared row renderer for the movements table (used in panel and modal)
+    // Column order: DATA | LOCAL | TIPO | NF ENTRADA | NF SAIDA | [FORNECEDOR/CLIENTE] | QTD | OBS
+    // A coluna Fornecedor/Cliente só é renderizada quando showSupplierClient = true (apenas admin).
+    const renderHistoryRow = (mov, idx, p, nfsComSaldo, showSupplierClient = true) => {
+        const isEntrada = mov.movimento === 'ENTRADA';
+        const isDefeitoObs = mov.defeito || (mov.observations || '').toLowerCase().includes('defeito');
+        const nfEntrada = isEntrada ? (mov.nf || '-') : (mov.nfOrigem || '-');
+        const isNfDefeito = p.defeito && nfsComSaldo.some(([nfKey]) => nfKey === nfEntrada);
+        return (
+            <tr key={idx}>
+                <td style={{fontSize: '11px', whiteSpace: 'nowrap'}}>{formatDate(mov.date)}</td>
+                <td style={{fontSize: '11px'}}>{mov.localEntrada || '-'}</td>
+                <td>
+                    <span className="stock-history-badge" style={{
+                        color: isEntrada ? '#39845f' : '#893030',
+                    }}>
+                        {mov.movimento}
+                    </span>
+                </td>
+                <td style={{fontFamily: 'monospace', fontSize: '11px'}}>
+                    {nfEntrada}
+                    {isEntrada && isNfDefeito && (
+                        <span title="Produto com defeito" style={{color: '#893030', marginLeft: 3}}>&#9888;</span>
                     )}
-                </div>
-                {p.local && <div className="product-local">{'\uD83D\uDCCD'} {p.local}</div>}
-                {p.defeito && p.defeitoDescricao && (
-                    <div style={{fontSize: '11px', color: '#DC2626', marginTop: '2px', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
-                        {p.defeitoDescricao}
-                    </div>
+                </td>
+                <td style={{fontFamily: 'monospace', fontSize: '11px'}}>{!isEntrada ? (mov.nf || '-') : '-'}</td>
+                {showSupplierClient && (
+                    <td style={{fontSize: '12px'}}>{mov.supplier || mov.client || '-'}</td>
                 )}
-            </td>
-            <td className="hide-mobile product-sku">{p.sku}</td>
-            <td>
-                <span style={{
-                    fontWeight: 600, fontSize: '14px',
-                    color: p.currentQuantity > 0 ? '#059669' : '#d1d5db',
-                }}>
-                    {p.currentQuantity}
-                </span>
-            </td>
-            <td className="hide-mobile" style={{fontSize: '12px', color: 'var(--text-secondary)'}}>
-                {p.unitPrice > 0 ? `R$ ${formatBRL(p.unitPrice)}` : '\u2014'}
-            </td>
-        </tr>
-    );
+                <td style={{fontWeight: 600, color: isEntrada ? '#39845f' : '#893030'}}>
+                    {isEntrada ? '+' : '-'}{mov.quantity}
+                </td>
+                <td style={{fontSize: '11px', color: isDefeitoObs ? '#893030' : 'var(--text-muted)', fontWeight: isDefeitoObs ? 700 : 400, maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
+                    {mov.observations || mov.defeitoDescricao || '-'}
+                </td>
+            </tr>
+        );
+    };
+
+    // Render the inline detail panel (inserted as a spanning <tr> below the product row)
+    const renderDetailPanel = (p) => {
+        const history = getProductHistory(p.sku);
+        const stockEntries = getStockEntriesInfo(p.sku);
+        const nfsComSaldo = getNfBalance(p.sku);
+        const hasMovements = history.length > 0;
+        const isLoadingHistory = needsLazyHistory && !equipeHistoryCache[p.sku];
+        return (
+            <tr className="stock-detail-row">
+                <td colSpan={5} style={{padding: 0, borderBottom: '1px solid var(--border-default)'}}>
+                    <div className="stock-detail-panel">
+                        <div className="stock-detail-left">
+                            <div className="stock-detail-image">
+                                {p.imagemUrl && p.imagemUrl !== 'sem-imagem' ? (
+                                    <img src={p.imagemUrl} alt={p.name} loading="lazy" />
+                                ) : (
+                                    <div className="stock-detail-image-fallback">
+                                        <Icon name="boxOpen" size={48} style={{opacity: 0.25}} />
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="stock-detail-actions">
+                                {isStockAdmin && p.sku && (
+                                    <button
+                                        className="btn btn-secondary btn-sm"
+                                        onClick={(e) => { e.stopPropagation(); handleTinySync(p); }}
+                                        disabled={tinySyncLoading === p.id}
+                                        title="Atualizar dados do Tiny ERP"
+                                    >
+                                        {tinySyncLoading === p.id ? (
+                                            <><Icon name="spinner" size={12} style={{animation: 'spin 1s linear infinite'}} /> Atualizando...</>
+                                        ) : (
+                                            <><Icon name="sync" size={12} /> Atualizar do Tiny</>
+                                        )}
+                                    </button>
+                                )}
+                                {!isEquipe && isStockAdmin && (
+                                    <>
+                                        <button className="btn btn-primary btn-sm" onClick={(e) => { e.stopPropagation(); openEditModal(p); }}>Editar</button>
+                                        <button className="btn btn-sm stock-detail-delete" onClick={(e) => { e.stopPropagation(); handleDelete(p); setDetailProduct(null); }}>Excluir</button>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="stock-detail-right">
+                            <div className="stock-detail-category-header">
+                                {(getCategoryName(p.category) || 'SEM CATEGORIA').toUpperCase()} — {p.currentQuantity} UN.
+                            </div>
+                            {isLoadingHistory ? (
+                                <div className="stock-detail-history-empty" style={{padding: '40px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: 'var(--text-secondary)', fontSize: '13px'}}>
+                                    <Icon name="spinner" size={14} style={{animation: 'spin 1s linear infinite'}} />
+                                    Carregando histórico...
+                                </div>
+                            ) : stockEntries.length > 0 ? (
+                                <div className="stock-detail-history">
+                                    <table className="table stock-history-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Data</th>
+                                                <th>Local</th>
+                                                <th>Tipo</th>
+                                                <th>NF Entrada</th>
+                                                <th>NF Saída</th>
+                                                {canSeeSupplierClient && <th>Fornecedor/Cliente</th>}
+                                                <th>Qtd.</th>
+                                                <th>Obs.:</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {stockEntries.map((mov, idx) => renderHistoryRow(mov, idx, p, nfsComSaldo, canSeeSupplierClient))}
+                                            {hasMovements && (
+                                                <tr className="stock-history-more-row">
+                                                    <td colSpan={canSeeSupplierClient ? 8 : 7}>
+                                                        <button
+                                                            type="button"
+                                                            className="stock-history-more-btn"
+                                                            onClick={(e) => { e.stopPropagation(); setFullHistoryProduct(p); }}
+                                                            title="Ver historico de movimentacoes"
+                                                        >
+                                                            + Ver histórico de movimentações
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                            {/* Spacer row — empurra a linha TOTAL para a base, alinhando com a margem inferior da imagem */}
+                                            <tr className="stock-history-spacer"><td colSpan={canSeeSupplierClient ? 8 : 7}></td></tr>
+                                        </tbody>
+                                        <tfoot>
+                                            <tr className="stock-total-row">
+                                                <td style={{fontWeight: 700, letterSpacing: '0.04em'}}>TOTAL</td>
+                                                <td colSpan={canSeeSupplierClient ? 5 : 4}></td>
+                                                <td style={{fontWeight: 700, color: '#39845f'}}>
+                                                    {p.currentQuantity}
+                                                </td>
+                                                <td></td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            ) : (
+                                <div className="stock-detail-history-empty">
+                                    Nenhuma entrada em estoque registrada
+                                    {hasMovements && (
+                                        <div style={{marginTop: 12}}>
+                                            <button
+                                                type="button"
+                                                className="stock-history-more-btn"
+                                                onClick={(e) => { e.stopPropagation(); setFullHistoryProduct(p); }}
+                                            >
+                                                + Ver histórico de movimentações
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            <div className="stock-detail-close">
+                                <button
+                                    type="button"
+                                    className="stock-detail-collapse-btn"
+                                    onClick={(e) => { e.stopPropagation(); setDetailProduct(null); }}
+                                    aria-label="Recolher painel"
+                                    title="Recolher"
+                                >
+                                    <Icon name="chevronUp" size={18} />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        );
+    };
 
     return (
         <div>
             <div className="page-header">
                 <h1 className="page-title">Estoque</h1>
-                <p className="page-subtitle">Visualize e gerencie seus produtos</p>
             </div>
 
             {successMsg && <div className="alert alert-success">{successMsg}</div>}
 
-            {/* Detail Modal — read-only info + history */}
-            {detailProduct && !editingProduct && (
-                <div className="modal-overlay">
-                    <div className="modal-content" style={{maxWidth: '800px'}}>
-                        <h2 className="modal-title">Detalhes do Produto</h2>
-
-                        {/* Product info */}
-                        <div style={{display: 'flex', gap: '16px', marginBottom: '16px', flexWrap: 'wrap'}}>
-                            {detailProduct.imagemUrl && detailProduct.imagemUrl !== 'sem-imagem' && (
-                                <img src={detailProduct.imagemUrl} alt={detailProduct.name} loading="lazy" style={{width: '80px', height: '80px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--border-default)', background: '#fff'}} />
-                            )}
-                            <div style={{flex: 1, minWidth: '200px'}}>
-                                <div style={{fontWeight: 600, fontSize: '16px', marginBottom: '4px'}}>{detailProduct.name}</div>
-                                <div style={{display: 'flex', gap: '12px', flexWrap: 'wrap', fontSize: '13px', color: 'var(--text-secondary)'}}>
-                                    <span>SKU: <strong>{detailProduct.sku}</strong></span>
-                                    {detailProduct.ean && <span>EAN: {detailProduct.ean}</span>}
-                                    {detailProduct.local && <span>{'\uD83D\uDCCD'} {detailProduct.local}</span>}
-                                    {detailProduct.unitPrice > 0 && <span>R$ {formatBRL(detailProduct.unitPrice)}</span>}
-                                </div>
-                                <div style={{marginTop: '8px'}}>
-                                    <span style={{
-                                        background: getCategoryColor(detailProduct.category) + '15',
-                                        color: getCategoryColor(detailProduct.category),
-                                        border: '1px solid ' + getCategoryColor(detailProduct.category) + '30',
-                                        padding: '2px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: 500,
-                                    }}>
-                                        {getCategoryName(detailProduct.category)}
-                                    </span>
-                                    <span style={{
-                                        marginLeft: '8px',
-                                        padding: '2px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: 600,
-                                        background: detailProduct.currentQuantity > 0 ? 'var(--accent-success-subtle)' : 'var(--accent-error-subtle)',
-                                        color: detailProduct.currentQuantity > 0 ? 'var(--accent-success)' : 'var(--accent-error)',
-                                    }}>
-                                        {detailProduct.currentQuantity} un.
-                                    </span>
-                                </div>
-                                {detailProduct.observations && (
-                                    <div style={{marginTop: '8px', fontSize: '13px', color: 'var(--text-secondary)', fontStyle: 'italic'}}>
-                                        {detailProduct.observations}
-                                    </div>
-                                )}
-                            </div>
+            {/* Category Manager Modal — opened by gear icon next to "Categoria" title */}
+            {showCategoryManager && (
+                <div className="modal-overlay" onClick={() => setShowCategoryManager(false)}>
+                    <div className="modal-content" onClick={e => e.stopPropagation()} style={{maxWidth: '600px', maxHeight: '85vh', overflow: 'auto'}}>
+                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
+                            <h3 style={{margin: 0}}>Gerenciar Categorias</h3>
+                            <button className="btn btn-icon btn-secondary" onClick={() => setShowCategoryManager(false)}>
+                                <Icon name="close" size={16} />
+                            </button>
                         </div>
-
-                        {/* History table */}
-                        {!isEquipe && (() => {
-                            const history = getProductHistory(detailProduct.sku);
-                            if (history.length === 0) {
-                                return <div style={{textAlign: 'center', padding: '16px', color: 'var(--text-muted)', fontSize: '13px'}}>Nenhuma movimentacao registrada</div>;
-                            }
-                            return (
-                                <div className="table-container" style={{maxHeight: '280px', overflowY: 'auto', marginBottom: '12px'}}>
-                                    <table className="table">
-                                        <thead>
-                                            <tr>
-                                                <th>Data</th>
-                                                <th>Tipo</th>
-                                                <th>Qtd</th>
-                                                <th>Local</th>
-                                                <th>NF Entrada</th>
-                                                <th>NF Saida</th>
-                                                <th>Fornecedor/Cliente</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {history.map((mov, idx) => (
-                                                <tr key={idx}>
-                                                    <td style={{fontSize: '11px', whiteSpace: 'nowrap'}}>{formatDate(mov.date)}</td>
-                                                    <td>
-                                                        <span style={{
-                                                            background: mov.movimento === 'ENTRADA' ? 'var(--success-light)' : 'var(--danger-light)',
-                                                            color: mov.movimento === 'ENTRADA' ? 'var(--success)' : 'var(--danger)',
-                                                            padding: '2px 8px', borderRadius: '10px', fontSize: '10px', fontWeight: '600'
-                                                        }}>
-                                                            {mov.movimento}
-                                                        </span>
-                                                    </td>
-                                                    <td style={{fontWeight: '600'}}>{mov.quantity}</td>
-                                                    <td style={{fontSize: '11px'}}>
-                                                        {mov.localEntrada && (
-                                                            <span style={{background: 'var(--accent-bg)', color: 'var(--accent)', padding: '2px 6px', borderRadius: '8px', fontSize: '10px'}}>
-                                                                {mov.localEntrada}
-                                                            </span>
-                                                        )}
-                                                    </td>
-                                                    <td style={{fontFamily: 'monospace', fontSize: '11px'}}>{mov.movimento === 'ENTRADA' ? (mov.nf || '-') : (mov.nfOrigem || '-')}</td>
-                                                    <td style={{fontFamily: 'monospace', fontSize: '11px'}}>{mov.movimento === 'SAIDA' ? (mov.nf || '-') : '-'}</td>
-                                                    <td style={{fontSize: '12px'}}>{mov.supplier || mov.client || '-'}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            );
-                        })()}
-
-                        {/* NF balance */}
-                        {!isEquipe && (() => {
-                            const nfsComSaldo = getNfBalance(detailProduct.sku);
-                            if (nfsComSaldo.length === 0) return null;
-                            return (
-                                <div style={{padding: '12px', background: 'var(--info-light)', borderRadius: 'var(--radius)', marginBottom: '12px'}}>
-                                    <div style={{fontWeight: '600', marginBottom: '8px', fontSize: '13px'}}>Estoque por NF de Entrada:</div>
-                                    <div style={{display: 'flex', flexWrap: 'wrap', gap: '8px'}}>
-                                        {nfsComSaldo.map(([nf, dados]) => (
-                                            <div key={nf} style={{background: 'white', padding: '6px 12px', borderRadius: 'var(--radius)', fontSize: '12px'}}>
-                                                <strong>NF {nf === 'SEM_NF' ? '(sem NF)' : nf}:</strong> {dados.entradas - dados.saidas} un.
-                                                {dados.local && dados.local !== '-' && (
-                                                    <span style={{marginLeft: '6px', color: 'var(--accent)', fontSize: '11px'}}>{dados.local}</span>
-                                                )}
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            );
-                        })()}
-
-                        <div className="btn-group" style={{gap: '8px'}}>
-                            {isStockAdmin && detailProduct.sku && (
-                                <button
-                                    className="btn btn-secondary"
-                                    onClick={() => handleTinySync(detailProduct)}
-                                    disabled={tinySyncLoading === detailProduct.id}
-                                    title="Atualizar dados do Tiny ERP"
-                                    style={{fontSize: '12px'}}
-                                >
-                                    {tinySyncLoading === detailProduct.id ? (
-                                        <><Icon name="spinner" size={14} style={{animation: 'spin 1s linear infinite'}} /> Atualizando...</>
-                                    ) : (
-                                        <><Icon name="sync" size={14} /> Atualizar do Tiny</>
-                                    )}
-                                </button>
-                            )}
-                            {!isEquipe && (
-                                <>
-                                    <button className="btn btn-primary" onClick={() => { openEditModal(detailProduct); }}>Editar</button>
-                                    <button className="btn btn-secondary" onClick={() => { handleDelete(detailProduct); setDetailProduct(null); }} style={{color: 'var(--accent-error)', borderColor: 'var(--accent-error)'}}>Excluir</button>
-                                </>
-                            )}
-                            <button className="btn btn-secondary" onClick={() => setDetailProduct(null)}>Fechar</button>
-                        </div>
+                        <CategoryManager
+                            categories={categories}
+                            onAdd={onAddCategory}
+                            onUpdate={onUpdateCategory}
+                            onDelete={onDeleteCategory}
+                            products={products || stock}
+                        />
                     </div>
                 </div>
             )}
@@ -653,24 +874,66 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                         )}
 
                         <div className="form-group">
-                            <label className="form-label">Notas Fiscais de Entrada</label>
+                            <label className="form-label">Notas Fiscais de Entrada — defeitos por NF</label>
                             {(() => {
-                                const nfs = getProductNFs(editingProduct.sku);
+                                const nfs = editForm.defeitosPorNfEditable || [];
                                 if (nfs.length === 0) {
-                                    return <div style={{ padding: '8px 12px', fontSize: '13px', color: 'var(--text-muted)', background: 'var(--bg-secondary)', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>Nenhuma NF registrada para este produto</div>;
+                                    return (
+                                        <div style={{ padding: '8px 12px', fontSize: '13px', color: 'var(--text-muted)', background: 'var(--bg-secondary)', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
+                                            Nenhuma NF registrada. Registre uma entrada primeiro para controlar defeito por NF.
+                                        </div>
+                                    );
                                 }
                                 return (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                        {nfs.map((nfInfo, idx) => (
-                                            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 12px', fontSize: '13px', background: 'var(--bg-secondary)', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
-                                                <span style={{ fontWeight: 500 }}>NF {nfInfo.nf}</span>
-                                                <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{nfInfo.quantity} un. — {new Date(nfInfo.date).toLocaleDateString('pt-BR')}</span>
-                                            </div>
-                                        ))}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                        {nfs.map((nfInfo, idx) => {
+                                            const updateNf = (patch) => {
+                                                setEditForm({
+                                                    ...editForm,
+                                                    defeitosPorNfEditable: editForm.defeitosPorNfEditable.map((n, i) => i === idx ? { ...n, ...patch } : n),
+                                                });
+                                            };
+                                            return (
+                                                <div key={idx} style={{
+                                                    padding: '8px 12px',
+                                                    fontSize: '13px',
+                                                    background: nfInfo.defeito ? '#FEF2F2' : 'var(--bg-secondary)',
+                                                    borderRadius: 'var(--radius)',
+                                                    border: nfInfo.defeito ? '1px solid #FCA5A5' : '1px solid var(--border)',
+                                                }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                                                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', flex: 1 }}>
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={!!nfInfo.defeito}
+                                                                onChange={(e) => updateNf({ defeito: e.target.checked })}
+                                                                style={{ width: '16px', height: '16px', accentColor: '#DC2626' }}
+                                                            />
+                                                            <span style={{ fontWeight: 500 }}>NF {nfInfo.nf}</span>
+                                                            {nfInfo.defeito && (
+                                                                <span style={{ fontSize: '10px', fontWeight: 600, color: '#893030', background: '#FCE7E7', padding: '1px 6px', borderRadius: '4px' }}>Defeito</span>
+                                                            )}
+                                                        </label>
+                                                    </div>
+                                                    {nfInfo.defeito && (
+                                                        <div style={{ marginTop: '8px' }}>
+                                                            <textarea
+                                                                className="form-textarea"
+                                                                value={nfInfo.descricao || ''}
+                                                                onChange={(e) => updateNf({ descricao: e.target.value })}
+                                                                placeholder="Descrição do defeito desta NF..."
+                                                                rows={2}
+                                                                style={{ fontSize: '12px' }}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 );
                             })()}
-                            <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>NFs registradas via Entradas de estoque</span>
+                            <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>Marque a checkbox para registrar defeito em todas as unidades dessa NF.</span>
                         </div>
 
                         <div className="form-group">
@@ -678,7 +941,8 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                             <textarea className="form-textarea" value={editForm.observations} onChange={(e) => setEditForm({...editForm, observations: e.target.value})} placeholder="Informacoes adicionais sobre o produto..." />
                         </div>
 
-                        {/* Defeito */}
+                        {/* Defeito (fallback — so exibido quando nao ha NFs para controlar per-NF) */}
+                        {(!editForm.defeitosPorNfEditable || editForm.defeitosPorNfEditable.length === 0) && (
                         <div style={{
                             border: editForm.defeito ? '1px solid #FCA5A5' : '1px solid var(--border)',
                             background: editForm.defeito ? '#FEF2F2' : 'transparent',
@@ -706,6 +970,7 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                                 </div>
                             )}
                         </div>
+                        )}
 
                         <div style={{background: 'var(--bg-primary)', padding: '12px', borderRadius: 'var(--radius)', marginBottom: '16px', fontSize: '13px'}}>
                             <strong>Estoque atual:</strong> {editingProduct.currentQuantity} unidades
@@ -720,33 +985,79 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                 </div>
             )}
 
-            {/* Search bar */}
-            <div className="card" style={{marginBottom: '12px'}}>
-                <div className="search-box">
-                    <span className="search-icon"><Icon name="search" size={14} /></span>
-                    <input
-                        type="text"
-                        className="search-input"
-                        placeholder="Buscar por nome, SKU, EAN ou NF..."
-                        value={searchInput}
-                        onChange={(e) => setSearchInput(e.target.value)}
-                    />
-                    {searchInput && (
-                        <button className="search-clear" onClick={() => { setSearchInput(''); setDebouncedSearch(''); setSearchTerm(''); if (isEquipe && onEquipeSearch) onEquipeSearch(''); }} title="Limpar busca">&times;</button>
+            {/* CATEGORIA — chips horizontais (+ gear para gerenciar) */}
+            <div className="stock-category-section-wrap">
+                <div className="stock-category-title-row">
+                    <Icon name="folder" size={16} className="stock-category-title-icon" />
+                    <h3 className="stock-category-title">Categoria</h3>
+                    {isStockAdmin && (
+                        <button
+                            type="button"
+                            className="stock-category-gear"
+                            onClick={() => setShowCategoryManager(true)}
+                            title="Gerenciar categorias"
+                            aria-label="Gerenciar categorias"
+                        >
+                            <Icon name="settings" size={16} />
+                        </button>
                     )}
                 </div>
+                <div className="stock-chips-row">
+                    {categoryChips.length === 0 ? (
+                        <span style={{fontSize: '12px', color: 'var(--text-muted)'}}>Nenhuma categoria cadastrada</span>
+                    ) : categoryChips.map(chip => (
+                        <button
+                            key={chip.id}
+                            type="button"
+                            className={`stock-chip ${selectedCategoryId === chip.id ? 'active' : ''}`}
+                            onClick={() => toggleCategoryChip(chip.id)}
+                        >
+                            <span className="stock-chip-name">{chip.name}</span>
+                            <span className="stock-chip-count">({String(chip.count).padStart(2, '0')})</span>
+                        </button>
+                    ))}
+                </div>
 
-                {/* Status tabs */}
-                <div className="filter-tabs">
-                    <button className={`filter-tab ${filter === 'all' ? 'active' : ''}`} onClick={() => setFilter('all')}>
-                        Todos ({statusCounts.all})
-                    </button>
-                    <button className={`filter-tab ${filter === 'ok' ? 'active' : ''}`} onClick={() => setFilter('ok')}>
-                        OK ({statusCounts.ok})
-                    </button>
-                    <button className={`filter-tab ${filter === 'empty' ? 'active' : ''}`} onClick={() => setFilter('empty')}>
-                        Zerado ({statusCounts.empty})
-                    </button>
+                {/* Sub-filtros + busca (mesma largura dos chips, sem card extra) */}
+                <div className="stock-subfilter-row">
+                    <div className="filter-tabs stock-filter-tabs">
+                        <button className={`filter-tab ${filter === 'all' ? 'active' : ''}`} onClick={() => setFilter('all')}>
+                            Todos ({String(statusCounts.all).padStart(3, '0')})
+                        </button>
+                        <button className={`filter-tab ${filter === 'ok' ? 'active' : ''}`} onClick={() => setFilter('ok')}>
+                            OK ({String(statusCounts.ok).padStart(3, '0')})
+                        </button>
+                        <button className={`filter-tab ${filter === 'empty' ? 'active' : ''}`} onClick={() => setFilter('empty')}>
+                            S/ Estoque ({String(statusCounts.empty).padStart(3, '0')})
+                        </button>
+                        <button
+                            className={`filter-tab stock-filter-tab--defeito ${filter === 'defeito' ? 'active' : ''}`}
+                            onClick={() => setFilter('defeito')}
+                        >
+                            Produtos com defeito ({String(statusCounts.defeito).padStart(3, '0')})
+                        </button>
+                    </div>
+                    <div className="search-box stock-search-box">
+                        <span className="search-icon"><Icon name="search" size={14} /></span>
+                        <input
+                            type="text"
+                            className="search-input"
+                            placeholder="Buscar por nome, SKU, EAN ou NF..."
+                            value={searchInput}
+                            onChange={(e) => setSearchInput(e.target.value)}
+                        />
+                        {searchInput && (
+                            <button className="search-clear" onClick={() => { setSearchInput(''); setDebouncedSearch(''); setSearchTerm(''); if (isEquipe && onEquipeSearch) onEquipeSearch(''); }} title="Limpar busca">&times;</button>
+                        )}
+                    </div>
+                </div>
+
+                {/* Hide zero stock toggle — abaixo dos sub-filtros, alinhado à esquerda */}
+                <div className="stock-hide-zero-row">
+                    <label>
+                        <input type="checkbox" checked={hideZeroStock} onChange={e => setHideZeroStock(e.target.checked)} />
+                        Ocultar produtos zerados
+                    </label>
                 </div>
             </div>
 
@@ -757,67 +1068,36 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                 </div>
             )}
 
-            {/* Hide zero stock toggle */}
-            <div style={{ display: 'flex', alignItems: 'center', padding: '8px 0', marginBottom: '8px' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                    <input type="checkbox" checked={hideZeroStock} onChange={e => setHideZeroStock(e.target.checked)} />
-                    Ocultar produtos zerados
-                </label>
-            </div>
-
-            {/* Accordion categories with product list rows */}
-            {groupedProducts.length === 0 ? (
+            {/* Flat product table with inline expansion panel */}
+            {filteredProducts.length === 0 ? (
                 <div className="empty-state">
                     <div className="empty-state-icon"><Icon name="boxOpen" size={48} /></div>
                     <h3>Nenhum produto encontrado</h3>
                     <p>Tente ajustar os filtros ou a busca</p>
                 </div>
             ) : (
-                <div className="stock-accordion">
-                    {groupedProducts.map(group => (
-                        <div key={group.categoryId} className="stock-category-section">
-                            {/* Category header */}
-                            <div className="stock-category-header" onClick={() => toggleCategory(group.categoryId)} style={group.isDefeitoCategory ? {background: '#FEF2F2', borderColor: '#FCA5A5'} : undefined}>
-                                <span className="stock-category-arrow">
-                                    {(hasSearch || expandedCategories.has(group.categoryId)) ? '\u25BC' : '\u25B6'}
-                                </span>
-                                <span style={{fontWeight: 600, color: group.isDefeitoCategory ? '#DC2626' : '#374151'}}>
-                                    {group.categoryName}
-                                </span>
-                                <span className="stock-category-count">
-                                    {group.products.length} produto{group.products.length !== 1 ? 's' : ''}
-                                </span>
-                            </div>
-
-                            {/* Product rows — only rendered when expanded */}
-                            {(hasSearch || expandedCategories.has(group.categoryId)) && (
-                                <div className="stock-category-body">
-                                    <table className="table">
-                                        <thead>
-                                            <tr>
-                                                <th style={{width: '48px'}}></th>
-                                                <SortHeader field="name">Produto</SortHeader>
-                                                <SortHeader field="sku" className="hide-mobile">SKU</SortHeader>
-                                                <SortHeader field="quantity">Estoque</SortHeader>
-                                                <SortHeader field="price" className="hide-mobile">Preço</SortHeader>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {group.products.slice(0, getVisibleCount(group.categoryId)).map(renderProductRow)}
-                                        </tbody>
-                                    </table>
-                                    {/* Show more within category */}
-                                    {group.products.length > getVisibleCount(group.categoryId) && (
-                                        <div style={{textAlign: 'center', padding: '12px', borderTop: '1px solid var(--border-default)'}}>
-                                            <button className="btn btn-secondary btn-sm" onClick={() => showMoreInCategory(group.categoryId)}>
-                                                Mostrar mais ({group.products.length - getVisibleCount(group.categoryId)} restantes)
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
+                <div className="card stock-flat-list" style={{padding: 0}}>
+                    <table className="table stock-main-table">
+                        <thead>
+                            <tr>
+                                <th style={{width: '48px'}}></th>
+                                <SortHeader field="name">Produto</SortHeader>
+                                <SortHeader field="sku" className="hide-mobile col-center">SKU</SortHeader>
+                                <SortHeader field="quantity" className="col-center">Estoque</SortHeader>
+                                <SortHeader field="price" className="hide-mobile col-center">Preço</SortHeader>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {filteredProducts.slice(0, visibleLimit).map(renderProductRow)}
+                        </tbody>
+                    </table>
+                    {filteredProducts.length > visibleLimit && (
+                        <div style={{textAlign: 'center', padding: '12px', borderTop: '1px solid var(--border-default)'}}>
+                            <button className="btn btn-secondary btn-sm" onClick={() => setVisibleLimit(v => v + 100)}>
+                                Mostrar mais ({filteredProducts.length - visibleLimit} restantes)
+                            </button>
                         </div>
-                    ))}
+                    )}
                 </div>
             )}
 
@@ -839,6 +1119,62 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                     }} />
                 </div>
             )}
+
+            {/* Full history modal — todas entradas e saidas do produto */}
+            {fullHistoryProduct && (() => {
+                const fullHistory = getProductHistory(fullHistoryProduct.sku);
+                const nfsComSaldo = getNfBalance(fullHistoryProduct.sku);
+                const isLoadingFull = needsLazyHistory && !equipeHistoryCache[fullHistoryProduct.sku];
+                return (
+                    <div className="modal-overlay" onClick={() => setFullHistoryProduct(null)}>
+                        <div
+                            className="modal-content stock-full-history-modal"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <div className="stock-full-history-header">
+                                <h3 className="stock-full-history-title">
+                                    Histórico de movimentações — {fullHistoryProduct.name}
+                                </h3>
+                                <button
+                                    type="button"
+                                    className="btn btn-icon btn-secondary"
+                                    onClick={() => setFullHistoryProduct(null)}
+                                    aria-label="Fechar"
+                                    title="Fechar"
+                                >
+                                    <Icon name="close" size={16} />
+                                </button>
+                            </div>
+                            <div className="stock-full-history-body">
+                                {isLoadingFull ? (
+                                    <div style={{padding: '40px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: 'var(--text-secondary)', fontSize: '13px'}}>
+                                        <Icon name="spinner" size={14} style={{animation: 'spin 1s linear infinite'}} />
+                                        Carregando histórico...
+                                    </div>
+                                ) : (
+                                    <table className="table stock-history-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Data</th>
+                                                <th>Local</th>
+                                                <th>Tipo</th>
+                                                <th>NF Entrada</th>
+                                                <th>NF Saída</th>
+                                                {canSeeSupplierClient && <th>Fornecedor/Cliente</th>}
+                                                <th>Qtd.</th>
+                                                <th>Obs.:</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {fullHistory.map((mov, idx) => renderHistoryRow(mov, idx, fullHistoryProduct, nfsComSaldo, canSeeSupplierClient))}
+                                        </tbody>
+                                    </table>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
 
             {obsTooltip && (
                 <div style={{
@@ -872,33 +1208,8 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                 }
                 .stock-row:hover { background: #fafafa; }
                 .stock-row td { border-bottom: 1px solid #f0f0f0; }
-                .stock-category-section { margin-bottom: 2px; }
-                .stock-category-header {
-                    display: flex; align-items: center; gap: 10px;
-                    padding: 12px 16px;
-                    background: var(--bg-secondary);
-                    border: 1px solid var(--border-default);
-                    border-radius: var(--radius);
-                    cursor: pointer; user-select: none;
-                    font-size: 14px;
-                    transition: background 0.15s;
-                }
-                .stock-category-header:hover { background: #F9FAFB; }
-                .stock-category-arrow {
-                    font-size: 10px; width: 16px; text-align: center;
-                    color: #9CA3AF;
-                }
-                .stock-category-count {
-                    margin-left: auto; font-size: 12px; font-weight: 500;
-                    color: #6B7280; background: #F3F4F6;
-                    padding: 2px 8px; border-radius: 10px;
-                }
-                .stock-category-body {
-                    border: 1px solid var(--border-default); border-top: none;
-                    border-radius: 0 0 var(--radius) var(--radius);
-                    overflow: hidden;
-                }
-                .stock-category-body .table { margin-bottom: 0; }
+                .stock-row--expanded { background: #FFFFFF; }
+                .stock-row--expanded td { border-bottom-color: transparent; }
                 .product-name { font-weight: 600; font-size: 14px; color: #1a1a2e; line-height: 1.3; }
                 .product-local { font-size: 12px; color: #9ca3af; margin-top: 2px; }
                 .product-sku { font-family: monospace; font-size: 12px; color: #9ca3af; }
