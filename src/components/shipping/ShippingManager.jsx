@@ -503,32 +503,38 @@ export default function ShippingManager({
                 const devolucoes = shippings.filter(s => s.tipo === 'devolucao');
                 return (
                     <div className="card" style={{ marginBottom: '16px', padding: 0, overflow: 'hidden' }}>
-                        {/* Linha 1: sub-abas principais — distribuídas uniformemente (flex:1 cada) */}
-                        <div className="filter-tabs" style={{ padding: '0 16px', marginBottom: 0, width: '100%' }}>
-                            <button
-                                className={`filter-tab ${tipoView === 'despacho' ? 'active' : ''}`}
-                                onClick={() => { setTipoView('despacho'); setActiveView('list'); }}
-                                style={{ flex: 1, textAlign: 'center', justifyContent: 'center', whiteSpace: 'nowrap' }}
-                            >
-                                Despachos ({String(despachos.length).padStart(3, '0')})
-                            </button>
-                            <button
-                                className={`filter-tab ${tipoView === 'devolucao' ? 'active' : ''}`}
-                                onClick={() => { setTipoView('devolucao'); setActiveView('list'); }}
-                                style={{ flex: 1, textAlign: 'center', justifyContent: 'center', whiteSpace: 'nowrap' }}
-                            >
-                                Devoluções ({String(devolucoes.length).padStart(2, '0')})
-                            </button>
-                            <button
-                                className={`filter-tab ${tipoView === 'analise' ? 'active' : ''}`}
-                                onClick={() => { setTipoView('analise'); setActiveView('list'); }}
-                                style={{ flex: 1, textAlign: 'center', justifyContent: 'center', whiteSpace: 'nowrap' }}
-                            >
-                                Análise Logística
-                            </button>
+                        {/* Linha 1 — sub-abas ocupam 50% ESQUERDO; divisor horizontal cruza toda a largura */}
+                        <div style={{
+                            display: 'flex', width: '100%',
+                            borderBottom: '1px solid var(--border)',
+                        }}>
+                            <div style={{ flex: '0 0 50%', display: 'flex', padding: '0 16px' }}>
+                                <button
+                                    className={`filter-tab ${tipoView === 'despacho' ? 'active' : ''}`}
+                                    onClick={() => { setTipoView('despacho'); setActiveView('list'); }}
+                                    style={{ flex: 1, textAlign: 'center', justifyContent: 'center', whiteSpace: 'nowrap' }}
+                                >
+                                    Despachos ({String(despachos.length).padStart(3, '0')})
+                                </button>
+                                <button
+                                    className={`filter-tab ${tipoView === 'devolucao' ? 'active' : ''}`}
+                                    onClick={() => { setTipoView('devolucao'); setActiveView('list'); }}
+                                    style={{ flex: 1, textAlign: 'center', justifyContent: 'center', whiteSpace: 'nowrap' }}
+                                >
+                                    Devoluções ({String(devolucoes.length).padStart(2, '0')})
+                                </button>
+                                <button
+                                    className={`filter-tab ${tipoView === 'analise' ? 'active' : ''}`}
+                                    onClick={() => { setTipoView('analise'); setActiveView('list'); }}
+                                    style={{ flex: 1, textAlign: 'center', justifyContent: 'center', whiteSpace: 'nowrap' }}
+                                >
+                                    Análise Logística
+                                </button>
+                            </div>
+                            <div style={{ flex: '0 0 50%' }} />
                         </div>
 
-                        {/* Linha 2: ações contextuais — distribuídas uniformemente (flex:1 cada) */}
+                        {/* Linha 2 — ações ocupam 50% DIREITO */}
                         {tipoView !== 'analise' && isStockAdmin && (() => {
                             const baseStyle = (isActive) => ({
                                 flex: 1,
@@ -539,35 +545,35 @@ export default function ShippingManager({
                                 padding: '10px 8px', whiteSpace: 'nowrap',
                             });
                             return (
-                                <div style={{
-                                    display: 'flex', width: '100%',
-                                    padding: '0 16px',
-                                }}>
-                                    {tipoView === 'despacho' ? (
-                                        <>
-                                            <button onClick={() => setActiveView('register')} style={baseStyle(activeView === 'register')}>
-                                                <Icon name="add" size={14} /> Novo
-                                            </button>
-                                            <button onClick={() => setActiveView('import')} style={baseStyle(activeView === 'import')}>
-                                                Importar NF
-                                            </button>
-                                            <button onClick={() => setActiveView('import-tiny')} style={baseStyle(activeView === 'import-tiny')}>
-                                                Importar NF (Tiny)
-                                            </button>
-                                            <button onClick={() => setActiveView('csv')} style={baseStyle(activeView === 'csv')}>
-                                                Importar CSV
-                                            </button>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <button onClick={() => setActiveView('register-devolucao')} style={baseStyle(activeView === 'register-devolucao')}>
-                                                <Icon name="add" size={14} /> Nova Devolução
-                                            </button>
-                                            <button onClick={() => setActiveView('import-tiny-dev')} style={baseStyle(activeView === 'import-tiny-dev')}>
-                                                Importar NF (Tiny)
-                                            </button>
-                                        </>
-                                    )}
+                                <div style={{ display: 'flex', width: '100%' }}>
+                                    <div style={{ flex: '0 0 50%' }} />
+                                    <div style={{ flex: '0 0 50%', display: 'flex', padding: '0 16px' }}>
+                                        {tipoView === 'despacho' ? (
+                                            <>
+                                                <button onClick={() => setActiveView('register')} style={baseStyle(activeView === 'register')}>
+                                                    <Icon name="add" size={14} /> Novo
+                                                </button>
+                                                <button onClick={() => setActiveView('import')} style={baseStyle(activeView === 'import')}>
+                                                    Importar NF
+                                                </button>
+                                                <button onClick={() => setActiveView('import-tiny')} style={baseStyle(activeView === 'import-tiny')}>
+                                                    Importar NF (Tiny)
+                                                </button>
+                                                <button onClick={() => setActiveView('csv')} style={baseStyle(activeView === 'csv')}>
+                                                    Importar CSV
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <button onClick={() => setActiveView('register-devolucao')} style={baseStyle(activeView === 'register-devolucao')}>
+                                                    <Icon name="add" size={14} /> Nova Devolução
+                                                </button>
+                                                <button onClick={() => setActiveView('import-tiny-dev')} style={baseStyle(activeView === 'import-tiny-dev')}>
+                                                    Importar NF (Tiny)
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
                                 </div>
                             );
                         })()}

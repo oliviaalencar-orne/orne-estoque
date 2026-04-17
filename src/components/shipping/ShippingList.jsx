@@ -1026,7 +1026,7 @@ export default function ShippingList({
                                 <th style={{textAlign: 'center', background: '#FFECB5'}}>Rastreio</th>
                                 <th style={{textAlign: 'center', background: '#FFECB5'}}>Status</th>
                                 {isDevolucao && <th style={{textAlign: 'center', background: '#FFECB5'}}>Motivo</th>}
-                                <th style={{textAlign: 'center', background: '#FFECB5'}}>Ações</th>
+                                <th style={{textAlign: 'left', background: '#FFECB5'}}>Ações</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1292,8 +1292,8 @@ export default function ShippingList({
                                             {s.motivoDevolucao || '-'}
                                         </td>
                                     )}
-                                    <td style={{textAlign: 'center'}}>
-                                        <div style={{display: 'inline-flex', gap: '4px', flexWrap: 'wrap', justifyContent: 'center'}}>
+                                    <td style={{textAlign: 'left'}}>
+                                        <div style={{display: 'inline-flex', gap: '4px', flexWrap: 'wrap', justifyContent: 'flex-start'}}>
                                             {/* WhatsApp copy — visible to all */}
                                             <button
                                                 className="btn btn-secondary btn-sm"
