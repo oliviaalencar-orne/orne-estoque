@@ -866,38 +866,42 @@ export default function ShippingList({
             {success && <div className="alert alert-success">{success}</div>}
             {error && <div className="alert alert-danger">{error}</div>}
 
-            <div style={{display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center'}}>
-                <div className="search-box" style={{flex: 1, minWidth: '200px', marginBottom: 0}}>
-                    <span className="search-icon"><Icon name="search" size={14} /></span>
-                    <input
-                        type="text"
-                        className="search-input"
-                        placeholder="Buscar por NF, cliente ou rastreio..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
+            {/* Linha com busca + ações de rastreio — só renderiza para admin/operador.
+                Para equipe, a busca é integrada à linha das status tabs abaixo. */}
+            {!isEquipe && (
+                <div style={{display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center'}}>
+                    <div className="search-box" style={{flex: 1, minWidth: '200px', marginBottom: 0}}>
+                        <span className="search-icon"><Icon name="search" size={14} /></span>
+                        <input
+                            type="text"
+                            className="search-input"
+                            placeholder="Buscar por NF, cliente ou rastreio..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                    {canEdit && (
+                        <button
+                            className="btn btn-primary"
+                            onClick={atualizarTodosRastreios}
+                            disabled={atualizandoRastreio}
+                            style={{whiteSpace: 'nowrap'}}
+                        >
+                            {atualizandoRastreio ? 'Atualizando...' : 'Atualizar Rastreios'}
+                        </button>
+                    )}
+                    {canEdit && (
+                        <button
+                            className="btn btn-secondary"
+                            onClick={vincularRastreiosME}
+                            disabled={batchMEActive || atualizandoRastreio}
+                            style={{whiteSpace: 'nowrap'}}
+                        >
+                            {batchMEActive ? 'Vinculando...' : 'Vincular Rastreios ME'}
+                        </button>
+                    )}
                 </div>
-                {canEdit && (
-                    <button
-                        className="btn btn-primary"
-                        onClick={atualizarTodosRastreios}
-                        disabled={atualizandoRastreio}
-                        style={{whiteSpace: 'nowrap'}}
-                    >
-                        {atualizandoRastreio ? 'Atualizando...' : 'Atualizar Rastreios'}
-                    </button>
-                )}
-                {canEdit && (
-                    <button
-                        className="btn btn-secondary"
-                        onClick={vincularRastreiosME}
-                        disabled={batchMEActive || atualizandoRastreio}
-                        style={{whiteSpace: 'nowrap'}}
-                    >
-                        {batchMEActive ? 'Vinculando...' : 'Vincular Rastreios ME'}
-                    </button>
-                )}
-            </div>
+            )}
 
             {/* Batch ME progress modal */}
             {batchMEActive && batchMEProgress && (
@@ -937,29 +941,45 @@ export default function ShippingList({
                 </div>
             )}
 
-            <div className="filter-tabs" style={{marginBottom: '12px', width: '100%'}}>
-                <button
-                    className={`filter-tab ${statusFilter === 'all' ? 'active' : ''}`}
-                    onClick={() => setStatusFilter('all')}
-                    style={{flex: 1, textAlign: 'center', justifyContent: 'center'}}
-                >
-                    Todos ({shippings.length})
-                </button>
-                {Object.entries(statusList)
-                    .filter(([key]) => key !== 'TENTATIVA_ENTREGA' && !(isDevolucao && key === 'DEVOLVIDO'))
-                    .map(([key, val]) => {
-                        const label = isDevolucao ? (getStatusLabel(key, 'devolucao') || val.label) : val.label;
-                        return (
-                            <button
-                                key={key}
-                                className={`filter-tab ${statusFilter === key ? 'active' : ''}`}
-                                onClick={() => setStatusFilter(key)}
-                                style={{flex: 1, textAlign: 'center', justifyContent: 'center'}}
-                            >
-                                {label} ({shippings.filter(s => key === 'EM_TRANSITO' ? (s.status === 'EM_TRANSITO' || s.status === 'TENTATIVA_ENTREGA') : s.status === key).length})
-                            </button>
-                        );
-                    })}
+            {/* Linha de status tabs. Para equipe, a busca acompanha na mesma linha.
+                Para admin/operador, a busca fica na linha anterior (com botões de rastreio). */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
+                <div className="filter-tabs" style={{ marginBottom: 0, flex: isEquipe ? '3 1 400px' : '1 1 100%' }}>
+                    <button
+                        className={`filter-tab ${statusFilter === 'all' ? 'active' : ''}`}
+                        onClick={() => setStatusFilter('all')}
+                        style={{flex: 1, textAlign: 'center', justifyContent: 'center'}}
+                    >
+                        Todos ({shippings.length})
+                    </button>
+                    {Object.entries(statusList)
+                        .filter(([key]) => key !== 'TENTATIVA_ENTREGA' && !(isDevolucao && key === 'DEVOLVIDO'))
+                        .map(([key, val]) => {
+                            const label = isDevolucao ? (getStatusLabel(key, 'devolucao') || val.label) : val.label;
+                            return (
+                                <button
+                                    key={key}
+                                    className={`filter-tab ${statusFilter === key ? 'active' : ''}`}
+                                    onClick={() => setStatusFilter(key)}
+                                    style={{flex: 1, textAlign: 'center', justifyContent: 'center'}}
+                                >
+                                    {label} ({shippings.filter(s => key === 'EM_TRANSITO' ? (s.status === 'EM_TRANSITO' || s.status === 'TENTATIVA_ENTREGA') : s.status === key).length})
+                                </button>
+                            );
+                        })}
+                </div>
+                {isEquipe && (
+                    <div className="search-box" style={{flex: '1 1 240px', minWidth: '200px', maxWidth: '380px', marginBottom: 0}}>
+                        <span className="search-icon"><Icon name="search" size={14} /></span>
+                        <input
+                            type="text"
+                            className="search-input"
+                            placeholder="Buscar por Nf, cliente ou rastreio"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                )}
             </div>
 
             <PeriodFilter

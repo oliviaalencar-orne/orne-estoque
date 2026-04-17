@@ -503,12 +503,17 @@ export default function ShippingManager({
                 const devolucoes = shippings.filter(s => s.tipo === 'devolucao');
                 return (
                     <div className="card" style={{ marginBottom: '16px', padding: 0, overflow: 'hidden' }}>
-                        {/* Linha 1 — sub-abas ocupam 50% ESQUERDO; divisor horizontal cruza toda a largura */}
+                        {/* Linha 1 — sub-abas.
+                            Admin: 50% ESQUERDO (espaço reservado para ações na direita).
+                            Equipe/Operador: 100% (sem ações do lado direito). */}
                         <div style={{
                             display: 'flex', width: '100%',
                             borderBottom: '1px solid var(--border)',
                         }}>
-                            <div style={{ flex: '0 0 50%', display: 'flex', padding: '0 16px' }}>
+                            <div style={{
+                                flex: isStockAdmin ? '0 0 50%' : '1 1 100%',
+                                display: 'flex', padding: '0 16px',
+                            }}>
                                 <button
                                     className={`filter-tab ${tipoView === 'despacho' ? 'active' : ''}`}
                                     onClick={() => { setTipoView('despacho'); setActiveView('list'); }}
@@ -531,7 +536,7 @@ export default function ShippingManager({
                                     Análise Logística
                                 </button>
                             </div>
-                            <div style={{ flex: '0 0 50%' }} />
+                            {isStockAdmin && <div style={{ flex: '0 0 50%' }} />}
                         </div>
 
                         {/* Linha 2 — ações ocupam 50% DIREITO */}
