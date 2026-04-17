@@ -12,6 +12,7 @@ import CategoryManager from '@/components/categories/CategoryManager';
 import { callTinyFunction } from '@/services/tinyService';
 import { supabaseClient } from '@/config/supabase';
 import { syncProductDefeito, setDefeitoForNf, setDefeitoForAllEntries } from '@/utils/defeitoSync';
+import { mapEntryFromDB, mapExitFromDB } from '@/utils/mappers';
 
 export default function StockView({ stock, categories, onUpdate, onDelete, searchTerm, setSearchTerm, entries, exits, locaisOrigem, onAddCategory, onUpdateCategory, onDeleteCategory, products, isEquipe, isStockAdmin, equipeProducts, equipeLoading, equipeHasMore, onEquipeLoadMore, onEquipeSearch, equipeTotalCount }) {
     // Loading state
@@ -45,6 +46,46 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
     const [successMsg, setSuccessMsg] = useState('');
     const [hideZeroStock, setHideZeroStock] = useState(true);
     const [tinySyncLoading, setTinySyncLoading] = useState(null); // product id being synced
+
+    // Equipe (e operador) não recebem entries/exits globalmente via props.
+    // Quando abrem o painel de um produto, buscamos o histórico dele por SKU
+    // sob demanda e cacheamos localmente.
+    const [equipeHistoryCache, setEquipeHistoryCache] = useState({}); // { [sku]: { entries, exits } }
+    const [equipeHistoryLoadingSku, setEquipeHistoryLoadingSku] = useState(null);
+
+    const needsLazyHistory = isEquipe && (!entries || entries.length === 0);
+
+    const fetchHistoryForSku = async (sku) => {
+        if (!sku || equipeHistoryCache[sku]) return;
+        setEquipeHistoryLoadingSku(sku);
+        try {
+            const [entRes, exitRes] = await Promise.all([
+                supabaseClient.from('entries').select('*').eq('sku', sku),
+                supabaseClient.from('exits').select('*').eq('sku', sku),
+            ]);
+            if (entRes.error) console.error('Erro ao buscar entries:', entRes.error);
+            if (exitRes.error) console.error('Erro ao buscar exits:', exitRes.error);
+            setEquipeHistoryCache(prev => ({
+                ...prev,
+                [sku]: {
+                    entries: (entRes.data || []).map(mapEntryFromDB),
+                    exits: (exitRes.data || []).map(mapExitFromDB),
+                },
+            }));
+        } catch (err) {
+            console.error('[StockView] falha ao buscar histórico lazy:', err);
+        } finally {
+            setEquipeHistoryLoadingSku(null);
+        }
+    };
+
+    // Lazy-load histórico quando o painel inline ou o modal forem abertos.
+    useEffect(() => {
+        if (!needsLazyHistory) return;
+        const sku = detailProduct?.sku || fullHistoryProduct?.sku;
+        if (sku) fetchHistoryForSku(sku);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [needsLazyHistory, detailProduct, fullHistoryProduct]);
 
     const handleTinySync = async (product) => {
         if (!product.sku || tinySyncLoading) return;
@@ -311,8 +352,12 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
 
     // Product history
     const getProductHistory = (sku) => {
-        const productEntries = (entries || []).filter(e => e.sku === sku).map(e => ({...e, movimento: 'ENTRADA'}));
-        const productExits = (exits || []).filter(e => e.sku === sku).map(e => ({...e, movimento: 'SAIDA'}));
+        // Usa cache do equipe (lazy-fetch) quando entries/exits globais estão vazios
+        const cache = needsLazyHistory ? equipeHistoryCache[sku] : null;
+        const srcEntries = cache ? cache.entries : (entries || []);
+        const srcExits = cache ? cache.exits : (exits || []);
+        const productEntries = srcEntries.filter(e => e.sku === sku).map(e => ({...e, movimento: 'ENTRADA'}));
+        const productExits = srcExits.filter(e => e.sku === sku).map(e => ({...e, movimento: 'SAIDA'}));
         return [...productEntries, ...productExits].sort((a, b) => new Date(b.date) - new Date(a.date));
     };
 
@@ -546,7 +591,9 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
 
     // Retorna apenas as ENTRADAs cujas NFs ainda possuem saldo no estoque
     const getStockEntriesInfo = (sku) => {
-        const allEntries = (entries || []).filter(e => e.sku === sku);
+        const cache = needsLazyHistory ? equipeHistoryCache[sku] : null;
+        const srcEntries = cache ? cache.entries : (entries || []);
+        const allEntries = srcEntries.filter(e => e.sku === sku);
         const nfBalance = getNfBalance(sku); // NFs com saldo > 0
         const nfsWithBalance = new Set(nfBalance.map(([nf]) => nf));
         return allEntries
@@ -593,10 +640,11 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
 
     // Render the inline detail panel (inserted as a spanning <tr> below the product row)
     const renderDetailPanel = (p) => {
-        const history = !isEquipe ? getProductHistory(p.sku) : [];
-        const stockEntries = !isEquipe ? getStockEntriesInfo(p.sku) : [];
-        const nfsComSaldo = !isEquipe ? getNfBalance(p.sku) : [];
+        const history = getProductHistory(p.sku);
+        const stockEntries = getStockEntriesInfo(p.sku);
+        const nfsComSaldo = getNfBalance(p.sku);
         const hasMovements = history.length > 0;
+        const isLoadingHistory = needsLazyHistory && !equipeHistoryCache[p.sku];
         return (
             <tr className="stock-detail-row">
                 <td colSpan={5} style={{padding: 0, borderBottom: '1px solid var(--border-default)'}}>
@@ -640,7 +688,12 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                             <div className="stock-detail-category-header">
                                 {(getCategoryName(p.category) || 'SEM CATEGORIA').toUpperCase()} — {p.currentQuantity} UN.
                             </div>
-                            {!isEquipe && stockEntries.length > 0 ? (
+                            {isLoadingHistory ? (
+                                <div className="stock-detail-history-empty" style={{padding: '40px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: 'var(--text-secondary)', fontSize: '13px'}}>
+                                    <Icon name="spinner" size={14} style={{animation: 'spin 1s linear infinite'}} />
+                                    Carregando histórico...
+                                </div>
+                            ) : stockEntries.length > 0 ? (
                                 <div className="stock-detail-history">
                                     <table className="table stock-history-table">
                                         <thead>
