@@ -9,6 +9,7 @@ import React, { useState, useMemo, useCallback, useRef } from 'react';
 import { Icon } from '@/utils/icons';
 import { supabaseClient } from '@/config/supabase';
 import { buildSeparationMessage, openWhatsAppWithMessage, copyToClipboard } from '@/utils/separationMessage';
+import { formatHubName } from '@/utils/hubs';
 import TinyNFeImport from '@/components/import/TinyNFeImport';
 import SeparationList from './SeparationList';
 import SeparationForm from './SeparationForm';
@@ -64,11 +65,11 @@ export default function SeparationManager({
     return separations.filter(s => s.hubId === selectedHubId && s.status === 'pendente');
   }, [separations, selectedHubId]);
 
-  // Get hub name for selected hub
+  // Get hub name for selected hub (display-normalized)
   const selectedHubName = useMemo(() => {
     if (selectedHubId === 'all') return '';
     const hub = (hubs || []).find(h => h.id === selectedHubId);
-    return hub?.name || '';
+    return hub ? formatHubName(hub.name) : '';
   }, [selectedHubId, hubs]);
 
   // Build message for the selected hub's pending separations
@@ -618,30 +619,37 @@ export default function SeparationManager({
 
   return (
     <div>
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div>
-          <h1 className="page-title">Separação</h1>
-          <p className="page-subtitle">Prepare mercadorias para envio</p>
-        </div>
-        {isStockAdmin && (
-          <button
-            className="btn btn-secondary"
-            onClick={() => setShowHubsModal(true)}
-            title="Gerenciar HUBs"
-            style={{ fontSize: '12px', padding: '6px 10px', display: 'flex', alignItems: 'center', gap: '4px' }}
-          >
-            <Icon name="settings" size={14} /> HUBs
-          </button>
-        )}
+      <div className="page-header">
+        <h1 className="page-title">Separação</h1>
+        <p className="page-subtitle">Prepare mercadorias para envio</p>
       </div>
 
       {success && <div className="alert alert-success">{success}</div>}
 
       {/* Hub tabs */}
       {(hubs || []).length > 0 && (
-        <div className="card" style={{ marginBottom: '12px', padding: '8px 12px' }}>
-          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
-            <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 500, marginRight: '4px' }}>HUB:</span>
+        <div className="card" style={{ marginBottom: '16px', padding: '8px 12px' }}>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: '4px',
+              fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600, marginRight: '4px',
+            }}>
+              <Icon name="mapPin" size={14} /> HUB
+              {isStockAdmin && (
+                <button
+                  onClick={() => setShowHubsModal(true)}
+                  title="Gerenciar HUBs"
+                  aria-label="Gerenciar HUBs"
+                  style={{
+                    background: 'transparent', border: 'none', cursor: 'pointer',
+                    color: 'var(--text-muted)', padding: '2px', marginLeft: '2px',
+                    display: 'inline-flex', alignItems: 'center',
+                  }}
+                >
+                  <Icon name="settings" size={14} />
+                </button>
+              )}
+            </span>
             <button
               className={`filter-tab ${selectedHubId === 'all' ? 'active' : ''}`}
               onClick={() => { setSelectedHubId('all'); setShowShareMenu(false); }}
@@ -656,7 +664,7 @@ export default function SeparationManager({
                 onClick={() => { setSelectedHubId(hub.id); setShowShareMenu(false); }}
                 style={{ fontSize: '12px', padding: '4px 10px' }}
               >
-                {hub.name} ({hubCounts[hub.id] || 0})
+                {formatHubName(hub.name)} ({hubCounts[hub.id] || 0})
               </button>
             ))}
           </div>
@@ -779,7 +787,7 @@ export default function SeparationManager({
             className={`filter-tab ${activeView === 'list' ? 'active' : ''}`}
             onClick={() => { setActiveView('list'); setEditingSeparation(null); }}
           >
-            Lista ({filteredSeparations.length})
+            Solicitações ({filteredSeparations.length})
           </button>
           {isStockAdmin && (
             <button

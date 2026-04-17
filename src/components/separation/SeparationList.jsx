@@ -6,22 +6,26 @@ import { Icon } from '@/utils/icons';
 import { buildSeparationMessage, openWhatsAppWithMessage, copyToClipboard } from '@/utils/separationMessage';
 import { useEscapeDeselect } from '@/hooks/useEscapeDeselect';
 import { classificarTransporte } from '@/utils/transportadora';
+import { formatHubName } from '@/utils/hubs';
 
-
+// Paleta aplicada (20% opacity bg, cor pura no texto)
 const STATUS_CONFIG = {
-  pendente: { label: 'Pendente', color: '#6b7280', bg: '#f3f4f6' },
-  separado: { label: 'Separado', color: '#3b82f6', bg: '#dbeafe' },
-  embalado: { label: 'Embalado', color: '#f59e0b', bg: '#fef3c7' },
-  despachado: { label: 'Despachado', color: '#10b981', bg: '#d1fae5' },
+  pendente:   { label: 'Pendente',   color: '#6B7280', bg: 'rgba(180,180,180,0.20)' },
+  separado:   { label: 'Separado',   color: '#004aad', bg: 'rgba(0,74,173,0.15)' },
+  embalado:   { label: 'Embalado',   color: '#8c52ff', bg: 'rgba(140,82,255,0.15)' },
+  despachado: { label: 'Despachado', color: '#39845f', bg: 'rgba(57,132,95,0.15)' },
 };
 
 // Equipe sees simplified labels: pendente/separado → "Em separação", embalado → "Embalando"
 const EQUIPE_STATUS_CONFIG = {
-  pendente: { label: 'Em separação', color: '#3b82f6', bg: '#dbeafe' },
-  separado: { label: 'Em separação', color: '#3b82f6', bg: '#dbeafe' },
-  embalado: { label: 'Embalando', color: '#f59e0b', bg: '#fef3c7' },
-  despachado: { label: 'Despachado', color: '#10b981', bg: '#d1fae5' },
+  pendente:   { label: 'Em separação', color: '#004aad', bg: 'rgba(0,74,173,0.15)' },
+  separado:   { label: 'Em separação', color: '#004aad', bg: 'rgba(0,74,173,0.15)' },
+  embalado:   { label: 'Embalando',    color: '#8c52ff', bg: 'rgba(140,82,255,0.15)' },
+  despachado: { label: 'Despachado',   color: '#39845f', bg: 'rgba(57,132,95,0.15)' },
 };
+
+// Ícones e cores por tipo de transporte
+const TRANSPORT_ICON = { local: 'car', loggi: 'truck', correios: 'mail', outras: 'truck' };
 
 const NEXT_STATUS = {
   pendente: 'separado',
@@ -402,13 +406,13 @@ export default function SeparationList({
         {/* Granular transport filter (pills) — admin/operador */}
         {canEditSep && (() => {
           const TIPOS = [
-            { key: 'local',    label: 'Local',    color: '#065f46', bg: '#d1fae5', border: '#6ee7b7' },
-            { key: 'loggi',    label: 'Loggi',    color: '#92400e', bg: '#fef3c7', border: '#fcd34d' },
-            { key: 'correios', label: 'Correios', color: '#1e40af', bg: '#dbeafe', border: '#93c5fd' },
-            { key: 'outras',   label: 'Outras',   color: '#4b5563', bg: '#f3f4f6', border: '#d1d5db' },
+            { key: 'local',    label: 'Local',    icon: 'car',   color: '#39845f', bg: 'rgba(57,132,95,0.20)' },
+            { key: 'loggi',    label: 'Loggi',    icon: 'truck', color: '#8c52ff', bg: 'rgba(140,82,255,0.20)' },
+            { key: 'correios', label: 'Correios', icon: 'mail',  color: '#004aad', bg: 'rgba(0,74,173,0.20)' },
+            { key: 'outras',   label: 'Outras',   icon: 'truck', color: '#6B7280', bg: 'rgba(180,180,180,0.25)' },
           ];
           return (
-            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '10px', paddingTop: '10px', borderTop: '1px solid var(--border-color)' }}>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-color)' }}>
               {TIPOS.map(t => {
                 const count = transporteCounts[t.key] || 0;
                 if (count === 0) return null;
@@ -421,12 +425,12 @@ export default function SeparationList({
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
-                      gap: '4px',
-                      fontSize: '11px',
+                      gap: '6px',
+                      fontSize: '12px',
                       fontWeight: 600,
-                      padding: '4px 10px',
+                      padding: '6px 12px',
                       borderRadius: '999px',
-                      border: `1px solid ${active ? t.color : t.border}`,
+                      border: `1px solid ${active ? t.color : 'transparent'}`,
                       background: active ? t.color : t.bg,
                       color: active ? '#fff' : t.color,
                       cursor: 'pointer',
@@ -434,6 +438,7 @@ export default function SeparationList({
                       boxShadow: active ? '0 1px 3px rgba(0,0,0,0.15)' : 'none',
                     }}
                   >
+                    <Icon name={t.icon} size={14} />
                     {t.label} ({count})
                   </button>
                 );
@@ -489,16 +494,32 @@ export default function SeparationList({
                       {showHubBadge && sep.hubId && (() => {
                         const hub = (hubs || []).find(h => h.id === sep.hubId);
                         return hub ? (
-                          <span className="badge" style={{ background: '#e0e7ff', color: '#3730a3', fontSize: '10px' }}>
-                            {hub.name}
+                          <span className="badge" style={{
+                            background: 'rgba(57,132,95,0.20)', color: '#39845f',
+                            fontSize: '11px', fontWeight: 600,
+                          }}>
+                            {formatHubName(hub.name)}
                           </span>
                         ) : null;
                       })()}
-                      {sep.transportadora && (
-                        <span className="badge" style={{ background: '#fef3c7', color: '#92400e', fontSize: '10px' }}>
-                          {sep.transportadora}
-                        </span>
-                      )}
+                      {sep.transportadora && (() => {
+                        const tipo = classificarTransporte(sep);
+                        const palette = {
+                          local:    { color: '#39845f', bg: 'rgba(57,132,95,0.20)' },
+                          loggi:    { color: '#8c52ff', bg: 'rgba(140,82,255,0.20)' },
+                          correios: { color: '#004aad', bg: 'rgba(0,74,173,0.20)' },
+                        }[tipo] || { color: '#6B7280', bg: 'rgba(180,180,180,0.25)' };
+                        return (
+                          <span className="badge" style={{
+                            background: palette.bg, color: palette.color,
+                            fontSize: '11px', fontWeight: 600,
+                            display: 'inline-flex', alignItems: 'center', gap: '4px',
+                          }}>
+                            <Icon name={TRANSPORT_ICON[tipo] || 'truck'} size={12} />
+                            {tipo === 'local' ? 'Entrega Local' : sep.transportadora}
+                          </span>
+                        );
+                      })()}
                       {isSuccess && (
                         <span style={{ color: 'var(--success)', fontSize: '12px', fontWeight: 500 }}>
                           ✓ Atualizado
