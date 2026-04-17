@@ -503,112 +503,74 @@ export default function ShippingManager({
                 const devolucoes = shippings.filter(s => s.tipo === 'devolucao');
                 return (
                     <div className="card" style={{ marginBottom: '16px', padding: 0, overflow: 'hidden' }}>
-                        {/* Linha 1: sub-abas principais — alinhadas à esquerda, com divider inferior */}
-                        <div className="filter-tabs" style={{ padding: '0 16px', marginBottom: 0 }}>
+                        {/* Linha 1: sub-abas principais — distribuídas uniformemente (flex:1 cada) */}
+                        <div className="filter-tabs" style={{ padding: '0 16px', marginBottom: 0, width: '100%' }}>
                             <button
                                 className={`filter-tab ${tipoView === 'despacho' ? 'active' : ''}`}
                                 onClick={() => { setTipoView('despacho'); setActiveView('list'); }}
+                                style={{ flex: 1, textAlign: 'center', justifyContent: 'center', whiteSpace: 'nowrap' }}
                             >
                                 Despachos ({String(despachos.length).padStart(3, '0')})
                             </button>
                             <button
                                 className={`filter-tab ${tipoView === 'devolucao' ? 'active' : ''}`}
                                 onClick={() => { setTipoView('devolucao'); setActiveView('list'); }}
+                                style={{ flex: 1, textAlign: 'center', justifyContent: 'center', whiteSpace: 'nowrap' }}
                             >
                                 Devoluções ({String(devolucoes.length).padStart(2, '0')})
                             </button>
                             <button
                                 className={`filter-tab ${tipoView === 'analise' ? 'active' : ''}`}
                                 onClick={() => { setTipoView('analise'); setActiveView('list'); }}
+                                style={{ flex: 1, textAlign: 'center', justifyContent: 'center', whiteSpace: 'nowrap' }}
                             >
                                 Análise Logística
                             </button>
                         </div>
 
-                        {/* Linha 2: ações contextuais — só quando não é Análise E é admin.
-                            Sem filter-tabs class para não exibir segundo divider. */}
-                        {tipoView !== 'analise' && isStockAdmin && (
-                            <div style={{
-                                display: 'flex', justifyContent: 'flex-end', gap: '8px',
-                                padding: '10px 16px', flexWrap: 'wrap',
-                            }}>
-                                {tipoView === 'despacho' ? (
-                                    <>
-                                        {isStockAdmin && (<button
-                                            onClick={() => setActiveView('register')}
-                                            style={{
-                                                display: 'inline-flex', alignItems: 'center', gap: '4px',
-                                                background: 'transparent', border: 'none', cursor: 'pointer',
-                                                fontSize: '13px', fontWeight: activeView === 'register' ? 600 : 500,
-                                                color: activeView === 'register' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                                                padding: '6px 10px',
-                                            }}
-                                        >
-                                            <Icon name="add" size={14} /> Novo
-                                        </button>)}
-                                        {isStockAdmin && (<button
-                                            onClick={() => setActiveView('import')}
-                                            style={{
-                                                background: 'transparent', border: 'none', cursor: 'pointer',
-                                                fontSize: '13px', fontWeight: activeView === 'import' ? 600 : 500,
-                                                color: activeView === 'import' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                                                padding: '6px 10px',
-                                            }}
-                                        >
-                                            Importar NF
-                                        </button>)}
-                                        {isStockAdmin && (<button
-                                            onClick={() => setActiveView('import-tiny')}
-                                            style={{
-                                                background: 'transparent', border: 'none', cursor: 'pointer',
-                                                fontSize: '13px', fontWeight: activeView === 'import-tiny' ? 600 : 500,
-                                                color: activeView === 'import-tiny' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                                                padding: '6px 10px',
-                                            }}
-                                        >
-                                            Importar NF (Tiny)
-                                        </button>)}
-                                        {isStockAdmin && (<button
-                                            onClick={() => setActiveView('csv')}
-                                            style={{
-                                                background: 'transparent', border: 'none', cursor: 'pointer',
-                                                fontSize: '13px', fontWeight: activeView === 'csv' ? 600 : 500,
-                                                color: activeView === 'csv' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                                                padding: '6px 10px',
-                                            }}
-                                        >
-                                            Importar CSV
-                                        </button>)}
-                                    </>
-                                ) : (
-                                    <>
-                                        {isStockAdmin && (<button
-                                            onClick={() => setActiveView('register-devolucao')}
-                                            style={{
-                                                display: 'inline-flex', alignItems: 'center', gap: '4px',
-                                                background: 'transparent', border: 'none', cursor: 'pointer',
-                                                fontSize: '13px', fontWeight: activeView === 'register-devolucao' ? 600 : 500,
-                                                color: activeView === 'register-devolucao' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                                                padding: '6px 10px',
-                                            }}
-                                        >
-                                            <Icon name="add" size={14} /> Nova Devolução
-                                        </button>)}
-                                        {isStockAdmin && (<button
-                                            onClick={() => setActiveView('import-tiny-dev')}
-                                            style={{
-                                                background: 'transparent', border: 'none', cursor: 'pointer',
-                                                fontSize: '13px', fontWeight: activeView === 'import-tiny-dev' ? 600 : 500,
-                                                color: activeView === 'import-tiny-dev' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                                                padding: '6px 10px',
-                                            }}
-                                        >
-                                            Importar NF (Tiny)
-                                        </button>)}
-                                    </>
-                                )}
-                            </div>
-                        )}
+                        {/* Linha 2: ações contextuais — distribuídas uniformemente (flex:1 cada) */}
+                        {tipoView !== 'analise' && isStockAdmin && (() => {
+                            const baseStyle = (isActive) => ({
+                                flex: 1,
+                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                                background: 'transparent', border: 'none', cursor: 'pointer',
+                                fontSize: '13px', fontWeight: isActive ? 600 : 500,
+                                color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
+                                padding: '10px 8px', whiteSpace: 'nowrap',
+                            });
+                            return (
+                                <div style={{
+                                    display: 'flex', width: '100%',
+                                    padding: '0 16px',
+                                }}>
+                                    {tipoView === 'despacho' ? (
+                                        <>
+                                            <button onClick={() => setActiveView('register')} style={baseStyle(activeView === 'register')}>
+                                                <Icon name="add" size={14} /> Novo
+                                            </button>
+                                            <button onClick={() => setActiveView('import')} style={baseStyle(activeView === 'import')}>
+                                                Importar NF
+                                            </button>
+                                            <button onClick={() => setActiveView('import-tiny')} style={baseStyle(activeView === 'import-tiny')}>
+                                                Importar NF (Tiny)
+                                            </button>
+                                            <button onClick={() => setActiveView('csv')} style={baseStyle(activeView === 'csv')}>
+                                                Importar CSV
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <button onClick={() => setActiveView('register-devolucao')} style={baseStyle(activeView === 'register-devolucao')}>
+                                                <Icon name="add" size={14} /> Nova Devolução
+                                            </button>
+                                            <button onClick={() => setActiveView('import-tiny-dev')} style={baseStyle(activeView === 'import-tiny-dev')}>
+                                                Importar NF (Tiny)
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
+                            );
+                        })()}
                     </div>
                 );
             })()}
