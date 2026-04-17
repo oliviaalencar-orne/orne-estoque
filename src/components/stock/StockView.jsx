@@ -520,7 +520,7 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                             )}
                         </div>
                         {p.local && <div className="product-local">{'\uD83D\uDCCD'} {p.local}</div>}
-                        {p.defeito && p.defeitoDescricao && (
+                        {p.defeito && p.defeitoDescricao && isExpanded && (
                             <div style={{fontSize: '11px', color: '#893030', marginTop: '2px', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
                                 {p.defeitoDescricao}
                             </div>
