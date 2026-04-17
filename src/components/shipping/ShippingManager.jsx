@@ -525,9 +525,9 @@ export default function ShippingManager({
                             </button>
                         </div>
 
-                        {/* Linha 2: ações contextuais — alinhadas à direita (só quando não é Análise).
+                        {/* Linha 2: ações contextuais — só quando não é Análise E é admin.
                             Sem filter-tabs class para não exibir segundo divider. */}
-                        {tipoView !== 'analise' && (
+                        {tipoView !== 'analise' && isStockAdmin && (
                             <div style={{
                                 display: 'flex', justifyContent: 'flex-end', gap: '8px',
                                 padding: '10px 16px', flexWrap: 'wrap',

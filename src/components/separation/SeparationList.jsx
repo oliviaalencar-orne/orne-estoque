@@ -392,62 +392,64 @@ export default function SeparationList({
           </div>
         </div>
 
-        {/* Transport filter pills (outlined) + Selecionar Todos — terceira linha */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-color)' }}>
-          {canEditSep && (() => {
-            const TIPOS = [
-              { key: 'local',    label: 'Local',    icon: 'car',   color: '#39845f', fill: 'rgba(57,132,95,0.15)' },
-              { key: 'loggi',    label: 'Loggi',    icon: 'truck', color: '#8c52ff', fill: 'rgba(140,82,255,0.15)' },
-              { key: 'correios', label: 'Correios', icon: 'mail',  color: '#004aad', fill: 'rgba(0,74,173,0.15)' },
-              { key: 'outras',   label: 'Outras',   icon: 'truck', color: '#6B7280', fill: 'rgba(180,180,180,0.25)' },
-            ];
-            return (
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                {TIPOS.map(t => {
-                  const count = transporteCounts[t.key] || 0;
-                  if (count === 0) return null;
-                  const active = filtroTransporte === t.key;
-                  return (
-                    <button
-                      key={t.key}
-                      onClick={() => setFiltroTransporte(active ? 'all' : t.key)}
-                      title={active ? 'Clique para remover filtro' : `Filtrar por ${t.label}`}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        fontSize: '13px',
-                        fontWeight: 500,
-                        padding: '8px 16px',
-                        borderRadius: '8px',
-                        border: `1px solid ${t.color}`,
-                        background: active ? t.fill : 'transparent',
-                        color: t.color,
-                        cursor: 'pointer',
-                        transition: 'background 0.15s',
-                      }}
-                    >
-                      <Icon name={t.icon} size={14} />
-                      {t.label} <span style={{ opacity: 0.7 }}>({String(count).padStart(2, '0')})</span>
-                    </button>
-                  );
-                })}
-              </div>
-            );
-          })()}
-          {/* Select All checkbox — admin/operador */}
-          {canEditSep && selectableItems.length > 0 && (
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
-              <input
-                type="checkbox"
-                checked={allSelected}
-                onChange={toggleSelectAll}
-                style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-              />
-              Selecionar Todos
-            </label>
-          )}
-        </div>
+        {/* Transport filter pills (outlined) + Selecionar Todos — só admin/operador */}
+        {canEditSep && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-color)' }}>
+            {(() => {
+              const TIPOS = [
+                { key: 'local',    label: 'Local',    icon: 'car',   color: '#39845f', fill: 'rgba(57,132,95,0.15)' },
+                { key: 'loggi',    label: 'Loggi',    icon: 'truck', color: '#8c52ff', fill: 'rgba(140,82,255,0.15)' },
+                { key: 'correios', label: 'Correios', icon: 'mail',  color: '#004aad', fill: 'rgba(0,74,173,0.15)' },
+                { key: 'outras',   label: 'Outras',   icon: 'truck', color: '#6B7280', fill: 'rgba(180,180,180,0.25)' },
+              ];
+              return (
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {TIPOS.map(t => {
+                    const count = transporteCounts[t.key] || 0;
+                    if (count === 0) return null;
+                    const active = filtroTransporte === t.key;
+                    return (
+                      <button
+                        key={t.key}
+                        onClick={() => setFiltroTransporte(active ? 'all' : t.key)}
+                        title={active ? 'Clique para remover filtro' : `Filtrar por ${t.label}`}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          fontSize: '13px',
+                          fontWeight: 500,
+                          padding: '8px 16px',
+                          borderRadius: '8px',
+                          border: `1px solid ${t.color}`,
+                          background: active ? t.fill : 'transparent',
+                          color: t.color,
+                          cursor: 'pointer',
+                          transition: 'background 0.15s',
+                        }}
+                      >
+                        <Icon name={t.icon} size={14} />
+                        {t.label} <span style={{ opacity: 0.7 }}>({String(count).padStart(2, '0')})</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+            {/* Select All checkbox — admin/operador */}
+            {selectableItems.length > 0 && (
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={toggleSelectAll}
+                  style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                />
+                Selecionar Todos
+              </label>
+            )}
+          </div>
+        )}
       </div>
 
       {/* List */}
