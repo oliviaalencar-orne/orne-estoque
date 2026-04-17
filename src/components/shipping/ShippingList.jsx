@@ -475,10 +475,10 @@ export default function ShippingList({
         return (
             <th
                 onClick={() => handleSort(field)}
-                style={{cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap'}}
+                style={{cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap', textAlign: 'center', background: '#FFECB5'}}
                 {...rest}
             >
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', justifyContent: 'center' }}>
                     {children}
                     <Icon
                         name={iconName}
@@ -1003,7 +1003,7 @@ export default function ShippingList({
                         <thead>
                             <tr>
                                 {!isDevolucao && selectableShippings.length > 0 && (
-                                    <th style={{width: '36px', textAlign: 'center'}}>
+                                    <th style={{width: '36px', textAlign: 'center', background: '#FFECB5'}}>
                                         <input
                                             type="checkbox"
                                             checked={selectedForDelivery.size === selectableShippings.length && selectableShippings.length > 0}
@@ -1014,14 +1014,14 @@ export default function ShippingList({
                                     </th>
                                 )}
                                 <SortTh field="nfNumero">NF</SortTh>
-                                <SortTh field="date">Data</SortTh>
-                                <th>Cliente</th>
+                                <SortTh field="date">Data/Hora</SortTh>
+                                <th style={{textAlign: 'center', background: '#FFECB5'}}>Cliente</th>
                                 <SortTh field="localOrigem">{isDevolucao ? 'HUB Destino' : 'Origem'}</SortTh>
                                 <SortTh field="transportadora">Transportadora</SortTh>
-                                <th>Rastreio</th>
-                                <th>Status</th>
-                                {isDevolucao && <th>Motivo</th>}
-                                <th>Ações</th>
+                                <th style={{textAlign: 'center', background: '#FFECB5'}}>Rastreio</th>
+                                <th style={{textAlign: 'center', background: '#FFECB5'}}>Status</th>
+                                {isDevolucao && <th style={{textAlign: 'center', background: '#FFECB5'}}>Motivo</th>}
+                                <th style={{textAlign: 'center', background: '#FFECB5'}}>Ações</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1039,18 +1039,18 @@ export default function ShippingList({
                                             ) : null}
                                         </td>
                                     )}
-                                    <td>
+                                    <td style={{textAlign: 'center'}}>
                                         <strong>{s.nfNumero}</strong>
                                     </td>
-                                    <td style={{fontSize: '12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap'}}>
+                                    <td style={{fontSize: '12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap', textAlign: 'center'}}>
                                         {formatDate(s.date)}
                                     </td>
-                                    <td>
+                                    <td style={{textAlign: 'center'}}>
                                         {s.cliente}
                                         {s.destino && <div style={{fontSize: '10px', color: 'var(--text-muted)'}}>{s.destino.substring(0, 30)}...</div>}
                                     </td>
-                                    <td style={{fontSize: '13px'}}>{isDevolucao ? (formatHubName(s.hubDestino) || '-') : formatHubName(s.localOrigem)}</td>
-                                    <td style={{fontSize: '13px'}}>
+                                    <td style={{fontSize: '13px', textAlign: 'center'}}>{isDevolucao ? (formatHubName(s.hubDestino) || '-') : formatHubName(s.localOrigem)}</td>
+                                    <td style={{fontSize: '13px', textAlign: 'center'}}>
                                         {(() => {
                                             if (isEntregaLocalShipping(s)) {
                                                 return (
@@ -1070,7 +1070,7 @@ export default function ShippingList({
                                             );
                                         })()}
                                     </td>
-                                    <td>
+                                    <td style={{textAlign: 'center'}}>
                                         {isEntregaLocalShipping(s) ? (
                                             <div>
                                                 {s.recebedorNome && (
@@ -1145,7 +1145,7 @@ export default function ShippingList({
                                             )
                                         )}
                                     </td>
-                                    <td>
+                                    <td style={{textAlign: 'center'}}>
                                         <div style={{position: 'relative', display: 'inline-flex', alignItems: 'center', gap: '2px'}}>
                                             <span style={{
                                                 display: 'inline-block',
@@ -1283,12 +1283,12 @@ export default function ShippingList({
                                         )}
                                     </td>
                                     {isDevolucao && (
-                                        <td style={{fontSize: '12px', color: 'var(--text-secondary)'}}>
+                                        <td style={{fontSize: '12px', color: 'var(--text-secondary)', textAlign: 'center'}}>
                                             {s.motivoDevolucao || '-'}
                                         </td>
                                     )}
-                                    <td>
-                                        <div style={{display: 'flex', gap: '4px', flexWrap: 'wrap'}}>
+                                    <td style={{textAlign: 'center'}}>
+                                        <div style={{display: 'inline-flex', gap: '4px', flexWrap: 'wrap', justifyContent: 'center'}}>
                                             {/* WhatsApp copy — visible to all */}
                                             <button
                                                 className="btn btn-secondary btn-sm"
