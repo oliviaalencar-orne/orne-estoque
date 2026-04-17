@@ -937,8 +937,12 @@ export default function ShippingList({
                 </div>
             )}
 
-            <div className="filter-tabs" style={{marginBottom: '12px'}}>
-                <button className={`filter-tab ${statusFilter === 'all' ? 'active' : ''}`} onClick={() => setStatusFilter('all')}>
+            <div className="filter-tabs" style={{marginBottom: '12px', width: '100%'}}>
+                <button
+                    className={`filter-tab ${statusFilter === 'all' ? 'active' : ''}`}
+                    onClick={() => setStatusFilter('all')}
+                    style={{flex: 1, textAlign: 'center', justifyContent: 'center'}}
+                >
                     Todos ({shippings.length})
                 </button>
                 {Object.entries(statusList)
@@ -950,6 +954,7 @@ export default function ShippingList({
                                 key={key}
                                 className={`filter-tab ${statusFilter === key ? 'active' : ''}`}
                                 onClick={() => setStatusFilter(key)}
+                                style={{flex: 1, textAlign: 'center', justifyContent: 'center'}}
                             >
                                 {label} ({shippings.filter(s => key === 'EM_TRANSITO' ? (s.status === 'EM_TRANSITO' || s.status === 'TENTATIVA_ENTREGA') : s.status === key).length})
                             </button>

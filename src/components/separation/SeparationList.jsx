@@ -364,32 +364,33 @@ export default function SeparationList({
 
   return (
     <div>
-      {/* Status filters + search — mesma linha */}
+      {/* Status filters — linha própria, distribuídos uniformemente */}
       <div className="card" style={{ marginBottom: '16px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-          <div className="filter-tabs" style={{ marginBottom: 0 }}>
-            {filterTabs.map(f => (
-              <button
-                key={f.key}
-                className={`filter-tab ${statusFilter === f.key ? 'active' : ''}`}
-                onClick={() => setStatusFilter(f.key)}
-              >{f.label}</button>
-            ))}
-          </div>
-          <div style={{ position: 'relative', flex: '1 1 260px', minWidth: '200px', maxWidth: '420px' }}>
-            <Icon name="search" size={16} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-            <input
-              type="text"
-              className="form-input search-input"
-              placeholder="Buscar por NF, cliente ou destino..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              style={{ paddingLeft: '32px' }}
-            />
-            {searchTerm && (
-              <button className="search-clear" onClick={() => setSearchTerm('')}>&times;</button>
-            )}
-          </div>
+        <div className="filter-tabs" style={{ marginBottom: '12px', width: '100%' }}>
+          {filterTabs.map(f => (
+            <button
+              key={f.key}
+              className={`filter-tab ${statusFilter === f.key ? 'active' : ''}`}
+              onClick={() => setStatusFilter(f.key)}
+              style={{ flex: 1, textAlign: 'center', justifyContent: 'center' }}
+            >{f.label}</button>
+          ))}
+        </div>
+
+        {/* Busca — linha separada */}
+        <div style={{ position: 'relative' }}>
+          <Icon name="search" size={16} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+          <input
+            type="text"
+            className="form-input search-input"
+            placeholder="Buscar por NF, cliente ou destino..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            style={{ paddingLeft: '32px' }}
+          />
+          {searchTerm && (
+            <button className="search-clear" onClick={() => setSearchTerm('')}>&times;</button>
+          )}
         </div>
 
         {/* Transport filter pills (outlined) + Selecionar Todos — só admin/operador */}
