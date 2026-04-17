@@ -21,14 +21,16 @@ import { buscarRastreioPorNF } from '@/services/trackingService';
 // Constantes
 const transportadoras = ['Melhor Envio', 'Correios', 'Jadlog', 'Total Express', 'Braspress', 'TNT', 'Azul Cargo', 'Loggi', 'Outro'];
 
+// Paleta: #8c52ff (roxo), #004aad (azul), #39845f (verde), #893030 (vermelho), #b4b4b4
+// Fundos a 20% de opacidade, texto em cor pura.
 export const statusList = {
-    'DESPACHADO':          { label: 'Despachado',             color: '#d97706', textColor: '#92400E', bg: '#FEF3C7' },
-    'AGUARDANDO_COLETA':   { label: 'Aguardando Coleta',      color: '#f59e0b', textColor: '#78350F', bg: '#FEF3C7' },
-    'EM_TRANSITO':         { label: 'Em Trânsito',            color: '#3b82f6', textColor: '#1E40AF', bg: '#DBEAFE' },
-    'SAIU_ENTREGA':        { label: 'Saiu p/ Entrega',        color: '#7c3aed', textColor: '#5B21B6', bg: '#EDE9FE' },
-    'TENTATIVA_ENTREGA':   { label: 'Tentativa de Entrega',   color: '#ea580c', textColor: '#9A3412', bg: '#FFF7ED' },
-    'ENTREGUE':            { label: 'Entregue',               color: '#10b981', textColor: '#065F46', bg: '#D1FAE5' },
-    'DEVOLVIDO':           { label: 'Devolvido',              color: '#ef4444', textColor: '#991B1B', bg: '#FEE2E2' },
+    'DESPACHADO':          { label: 'Despachado',             color: '#8c52ff', textColor: '#6b3dcc', bg: 'rgba(140,82,255,0.20)' },
+    'AGUARDANDO_COLETA':   { label: 'Aguardando Coleta',      color: '#b07dff', textColor: '#6b3dcc', bg: 'rgba(140,82,255,0.12)' },
+    'EM_TRANSITO':         { label: 'Em Trânsito',            color: '#004aad', textColor: '#003a8c', bg: 'rgba(0,74,173,0.20)' },
+    'SAIU_ENTREGA':        { label: 'Saiu p/ Entrega',        color: '#1800ad', textColor: '#12007a', bg: 'rgba(24,0,173,0.18)' },
+    'TENTATIVA_ENTREGA':   { label: 'Tentativa de Entrega',   color: '#d97706', textColor: '#92400E', bg: 'rgba(217,119,6,0.18)' },
+    'ENTREGUE':            { label: 'Entregue',               color: '#39845f', textColor: '#2a6348', bg: 'rgba(57,132,95,0.20)' },
+    'DEVOLVIDO':           { label: 'Devolvido',              color: '#893030', textColor: '#6c2626', bg: 'rgba(137,48,48,0.18)' },
 };
 
 export const STATUS_TRANSITIONS = {
@@ -474,30 +476,50 @@ export default function ShippingManager({
                 <p className="page-subtitle">Gerencie despachos e devoluções</p>
             </div>
 
-            {/* Sub-abas Despachos / Devoluções */}
+            {/* Sub-abas Despachos / Devoluções / Análise + HUB ⚙️ */}
             {(() => {
                 const despachos = shippings.filter(s => !s.tipo || s.tipo === 'despacho');
                 const devolucoes = shippings.filter(s => s.tipo === 'devolucao');
                 return (
-                    <div className="filter-tabs" style={{marginBottom: '16px'}}>
-                        <button
-                            className={`filter-tab ${tipoView === 'despacho' ? 'active' : ''}`}
-                            onClick={() => { setTipoView('despacho'); setActiveView('list'); }}
-                        >
-                            Despachos ({despachos.length})
-                        </button>
-                        <button
-                            className={`filter-tab ${tipoView === 'devolucao' ? 'active' : ''}`}
-                            onClick={() => { setTipoView('devolucao'); setActiveView('list'); }}
-                        >
-                            Devoluções ({devolucoes.length})
-                        </button>
-                        <button
-                            className={`filter-tab ${tipoView === 'analise' ? 'active' : ''}`}
-                            onClick={() => { setTipoView('analise'); setActiveView('list'); }}
-                        >
-                            Análise
-                        </button>
+                    <div style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        flexWrap: 'wrap', gap: '12px', marginBottom: '16px',
+                    }}>
+                        <div className="filter-tabs" style={{ marginBottom: 0 }}>
+                            <button
+                                className={`filter-tab ${tipoView === 'despacho' ? 'active' : ''}`}
+                                onClick={() => { setTipoView('despacho'); setActiveView('list'); }}
+                            >
+                                Despachos ({despachos.length})
+                            </button>
+                            <button
+                                className={`filter-tab ${tipoView === 'devolucao' ? 'active' : ''}`}
+                                onClick={() => { setTipoView('devolucao'); setActiveView('list'); }}
+                            >
+                                Devoluções ({devolucoes.length})
+                            </button>
+                            <button
+                                className={`filter-tab ${tipoView === 'analise' ? 'active' : ''}`}
+                                onClick={() => { setTipoView('analise'); setActiveView('list'); }}
+                            >
+                                Análise
+                            </button>
+                        </div>
+                        {isStockAdmin && (
+                            <button
+                                onClick={() => setShowLocaisModal(true)}
+                                title="Gerenciar HUBs (locais de origem)"
+                                aria-label="Gerenciar HUBs"
+                                style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: '6px',
+                                    background: 'transparent', border: '1px solid var(--border-color)',
+                                    borderRadius: '8px', padding: '6px 12px', cursor: 'pointer',
+                                    fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)',
+                                }}
+                            >
+                                <Icon name="mapPin" size={14} /> HUB <Icon name="settings" size={14} />
+                            </button>
+                        )}
                     </div>
                 );
             })()}
@@ -573,17 +595,6 @@ export default function ShippingManager({
                             </>
                         )}
                     </div>
-                    {isStockAdmin && (
-                        <button
-                            className="btn btn-secondary"
-                            onClick={() => setShowLocaisModal(true)}
-                            title="Configurar locais de origem"
-                            style={{display: 'flex', alignItems: 'center', gap: '6px'}}
-                        >
-                            <Icon name="settings" size={14} />
-                            <span>Locais de Origem</span>
-                        </button>
-                    )}
                 </div>
             </div>}
 

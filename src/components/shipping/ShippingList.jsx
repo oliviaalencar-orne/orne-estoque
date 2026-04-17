@@ -17,7 +17,8 @@ import {
 } from '@/utils/shippingMessage';
 import { getStatusLabel, getStatusColor } from '@/utils/statusLabels';
 import { criarEntradasDevolucao } from '@/utils/devolucaoEntries';
-import { getTransportadoraReal } from '@/utils/transportadora';
+import { getTransportadoraReal, classificarTransporte } from '@/utils/transportadora';
+import { formatHubName } from '@/utils/hubs';
 
 
 // Resize image helper
@@ -468,18 +469,26 @@ export default function ShippingList({
         }
     };
 
-    const SortTh = ({ field, children, ...rest }) => (
-        <th
-            onClick={() => handleSort(field)}
-            style={{cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap'}}
-            {...rest}
-        >
-            {children}
-            <span style={{marginLeft: '4px', opacity: sortField === field ? 1 : 0.3, fontSize: '10px'}}>
-                {sortField === field ? (sortDir === 'asc' ? '▲' : '▼') : '▲▼'}
-            </span>
-        </th>
-    );
+    const SortTh = ({ field, children, ...rest }) => {
+        const active = sortField === field;
+        const iconName = active ? (sortDir === 'asc' ? 'arrowUp' : 'arrowDown') : 'arrowUpDown';
+        return (
+            <th
+                onClick={() => handleSort(field)}
+                style={{cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap'}}
+                {...rest}
+            >
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                    {children}
+                    <Icon
+                        name={iconName}
+                        size={12}
+                        style={{ opacity: active ? 0.85 : 0.35, color: active ? 'var(--text-primary)' : 'var(--text-muted)' }}
+                    />
+                </span>
+            </th>
+        );
+    };
 
     // Status progression — only advances, never regresses
     const STATUS_RANK = { DESPACHADO: 0, AGUARDANDO_COLETA: 0.5, EM_TRANSITO: 1, SAIU_ENTREGA: 2, TENTATIVA_ENTREGA: 2, ENTREGUE: 3, DEVOLVIDO: 3 };
@@ -1040,11 +1049,26 @@ export default function ShippingList({
                                         {s.cliente}
                                         {s.destino && <div style={{fontSize: '10px', color: 'var(--text-muted)'}}>{s.destino.substring(0, 30)}...</div>}
                                     </td>
-                                    <td style={{fontSize: '12px'}}>{isDevolucao ? (s.hubDestino || '-') : s.localOrigem}</td>
-                                    <td style={{fontSize: '12px'}}>
-                                        {isEntregaLocalShipping(s) ? (
-                                            <span style={{color: '#065F46', fontWeight: 500}}>📦 Local</span>
-                                        ) : (getTransportadoraReal(s) || '-')}
+                                    <td style={{fontSize: '13px'}}>{isDevolucao ? (formatHubName(s.hubDestino) || '-') : formatHubName(s.localOrigem)}</td>
+                                    <td style={{fontSize: '13px'}}>
+                                        {(() => {
+                                            if (isEntregaLocalShipping(s)) {
+                                                return (
+                                                    <span style={{display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#39845f', fontWeight: 500}}>
+                                                        <Icon name="car" size={14} /> Local
+                                                    </span>
+                                                );
+                                            }
+                                            const tipo = classificarTransporte(s);
+                                            const real = getTransportadoraReal(s) || '-';
+                                            const iconName = { loggi: 'truck', correios: 'mail' }[tipo] || 'truck';
+                                            const color = { loggi: '#8c52ff', correios: '#004aad' }[tipo] || 'var(--text-secondary)';
+                                            return (
+                                                <span style={{display: 'inline-flex', alignItems: 'center', gap: '6px', color}}>
+                                                    <Icon name={iconName} size={14} /> {real}
+                                                </span>
+                                            );
+                                        })()}
                                     </td>
                                     <td>
                                         {isEntregaLocalShipping(s) ? (
@@ -1081,8 +1105,8 @@ export default function ShippingList({
                                                     const trackLink = s.linkRastreio || s.rastreioInfo?.linkRastreio || gerarLinkRastreio(s.transportadora, s.codigoRastreio);
                                                     return trackLink ? (
                                                         <a href={trackLink} target="_blank" rel="noopener noreferrer"
-                                                           style={{marginLeft: '8px', fontSize: '11px', fontWeight: 500}}>
-                                                            Rastrear ↗
+                                                           style={{marginLeft: '8px', fontSize: '11px', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '3px'}}>
+                                                            Rastrear <Icon name="externalLink" size={11} />
                                                         </a>
                                                     ) : null;
                                                 })()}
@@ -1105,11 +1129,7 @@ export default function ShippingList({
                                                         )}
                                                     </div>
                                                 )}
-                                                {s.rastreioInfo?.erro && (
-                                                    <div style={{fontSize: '10px', color: '#ef4444', marginTop: '2px', maxWidth: '250px', cursor: 'help'}} title={s.rastreioInfo.erro}>
-                                                        ⚠ {s.rastreioInfo.erro.substring(0, 100)}{s.rastreioInfo.erro.length > 100 ? '...' : ''}
-                                                    </div>
-                                                )}
+                                                {/* Erros de rastreio (ex: ME 422) escondidos do operador — disponíveis em logs/admin */}
                                             </div>
                                         ) : (
                                             canEdit ? (
