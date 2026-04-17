@@ -626,15 +626,23 @@ export default function SeparationManager({
 
       {success && <div className="alert alert-success">{success}</div>}
 
-      {/* Hub tabs */}
-      {(hubs || []).length > 0 && (
-        <div className="card" style={{ marginBottom: '16px', padding: '8px 12px' }}>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-            <span style={{
-              display: 'inline-flex', alignItems: 'center', gap: '4px',
-              fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600, marginRight: '4px',
-            }}>
-              <Icon name="mapPin" size={14} /> HUB
+      {/* Hub card — pin + HUB bold + gear no topo, grid de botões abaixo */}
+      {(hubs || []).length > 0 && (() => {
+        const hubOptions = [
+          { id: 'all', label: `TODOS (${String(hubCounts.all).padStart(2, '0')})` },
+          ...(hubs || []).map(h => ({
+            id: h.id,
+            label: `${formatHubName(h.name)} (${String(hubCounts[h.id] || 0).padStart(2, '0')})`,
+          })),
+        ];
+        return (
+          <div className="card" style={{ marginBottom: '16px', padding: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+              <span style={{
+                width: '8px', height: '8px', borderRadius: '50%',
+                background: '#893030', display: 'inline-block',
+              }} />
+              <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>HUB</span>
               {isStockAdmin && (
                 <button
                   onClick={() => setShowHubsModal(true)}
@@ -642,34 +650,49 @@ export default function SeparationManager({
                   aria-label="Gerenciar HUBs"
                   style={{
                     background: 'transparent', border: 'none', cursor: 'pointer',
-                    color: 'var(--text-muted)', padding: '2px', marginLeft: '2px',
+                    color: 'var(--text-muted)', padding: '2px',
                     display: 'inline-flex', alignItems: 'center',
                   }}
                 >
                   <Icon name="settings" size={14} />
                 </button>
               )}
-            </span>
-            <button
-              className={`filter-tab ${selectedHubId === 'all' ? 'active' : ''}`}
-              onClick={() => { setSelectedHubId('all'); setShowShareMenu(false); }}
-              style={{ fontSize: '12px', padding: '4px 10px' }}
-            >
-              Todos ({hubCounts.all})
-            </button>
-            {(hubs || []).map(hub => (
-              <button
-                key={hub.id}
-                className={`filter-tab ${selectedHubId === hub.id ? 'active' : ''}`}
-                onClick={() => { setSelectedHubId(hub.id); setShowShareMenu(false); }}
-                style={{ fontSize: '12px', padding: '4px 10px' }}
-              >
-                {formatHubName(hub.name)} ({hubCounts[hub.id] || 0})
-              </button>
-            ))}
+            </div>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: `repeat(${hubOptions.length}, 1fr)`,
+              gap: '12px',
+            }}>
+              {hubOptions.map(opt => {
+                const active = selectedHubId === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    onClick={() => { setSelectedHubId(opt.id); setShowShareMenu(false); }}
+                    style={{
+                      padding: '12px 16px',
+                      borderRadius: '8px',
+                      border: '1px solid var(--border-color)',
+                      background: active ? '#EDEDED' : '#fff',
+                      fontWeight: active ? 600 : 500,
+                      fontSize: '13px',
+                      color: 'var(--text-primary)',
+                      cursor: 'pointer',
+                      transition: 'background 0.15s, border-color 0.15s',
+                      textAlign: 'center',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Consolidated export button — on specific HUB tabs, for admin/operador */}
       {canEditSeparation && isHubSelected && (
@@ -780,21 +803,23 @@ export default function SeparationManager({
         </>
       )}
 
-      {/* View tabs */}
+      {/* View tabs — com ícones antes dos títulos */}
       <div className="card" style={{ marginBottom: '16px' }}>
         <div className="filter-tabs">
           <button
             className={`filter-tab ${activeView === 'list' ? 'active' : ''}`}
             onClick={() => { setActiveView('list'); setEditingSeparation(null); }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
           >
-            Solicitações ({filteredSeparations.length})
+            <Icon name="clipboard" size={14} /> Solicitações ({filteredSeparations.length})
           </button>
           {isStockAdmin && (
             <button
               className={`filter-tab ${activeView === 'new-tiny' ? 'active' : ''}`}
               onClick={() => { setActiveView('new-tiny'); setEditingSeparation(null); }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
             >
-              Importar NF (Tiny)
+              <Icon name="sync" size={14} /> Importar NF (Tiny)
             </button>
           )}
           {isStockAdmin && (
@@ -804,8 +829,9 @@ export default function SeparationManager({
                 setEditingSeparation(null);
                 setActiveView('new-manual');
               }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
             >
-              Manual
+              <Icon name="file" size={14} /> Manual
             </button>
           )}
         </div>
