@@ -942,34 +942,48 @@ export default function ShippingList({
             )}
 
             {/* Linha de status tabs. Para equipe, a busca acompanha na mesma linha.
-                Para admin/operador, a busca fica na linha anterior (com botões de rastreio). */}
+                Para admin/operador, a busca fica na linha anterior (com botões de rastreio).
+
+                Tabs com whiteSpace:nowrap + padding/fonte reduzidos p/ equipe para
+                caber todos em uma única linha sem quebras. */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
-                <div className="filter-tabs" style={{ marginBottom: 0, flex: isEquipe ? '3 1 400px' : '1 1 100%' }}>
-                    <button
-                        className={`filter-tab ${statusFilter === 'all' ? 'active' : ''}`}
-                        onClick={() => setStatusFilter('all')}
-                        style={{flex: 1, textAlign: 'center', justifyContent: 'center'}}
-                    >
-                        Todos ({shippings.length})
-                    </button>
-                    {Object.entries(statusList)
-                        .filter(([key]) => key !== 'TENTATIVA_ENTREGA' && !(isDevolucao && key === 'DEVOLVIDO'))
-                        .map(([key, val]) => {
-                            const label = isDevolucao ? (getStatusLabel(key, 'devolucao') || val.label) : val.label;
-                            return (
+                <div className="filter-tabs" style={{ marginBottom: 0, flex: isEquipe ? '4 1 480px' : '1 1 100%', flexWrap: 'nowrap' }}>
+                    {(() => {
+                        const tabStyle = {
+                            flex: 1, textAlign: 'center', justifyContent: 'center',
+                            whiteSpace: 'nowrap',
+                            ...(isEquipe ? { padding: '8px 4px', fontSize: '12px' } : {}),
+                        };
+                        return (
+                            <>
                                 <button
-                                    key={key}
-                                    className={`filter-tab ${statusFilter === key ? 'active' : ''}`}
-                                    onClick={() => setStatusFilter(key)}
-                                    style={{flex: 1, textAlign: 'center', justifyContent: 'center'}}
+                                    className={`filter-tab ${statusFilter === 'all' ? 'active' : ''}`}
+                                    onClick={() => setStatusFilter('all')}
+                                    style={tabStyle}
                                 >
-                                    {label} ({shippings.filter(s => key === 'EM_TRANSITO' ? (s.status === 'EM_TRANSITO' || s.status === 'TENTATIVA_ENTREGA') : s.status === key).length})
+                                    Todos ({shippings.length})
                                 </button>
-                            );
-                        })}
+                                {Object.entries(statusList)
+                                    .filter(([key]) => key !== 'TENTATIVA_ENTREGA' && !(isDevolucao && key === 'DEVOLVIDO'))
+                                    .map(([key, val]) => {
+                                        const label = isDevolucao ? (getStatusLabel(key, 'devolucao') || val.label) : val.label;
+                                        return (
+                                            <button
+                                                key={key}
+                                                className={`filter-tab ${statusFilter === key ? 'active' : ''}`}
+                                                onClick={() => setStatusFilter(key)}
+                                                style={tabStyle}
+                                            >
+                                                {label} ({shippings.filter(s => key === 'EM_TRANSITO' ? (s.status === 'EM_TRANSITO' || s.status === 'TENTATIVA_ENTREGA') : s.status === key).length})
+                                            </button>
+                                        );
+                                    })}
+                            </>
+                        );
+                    })()}
                 </div>
                 {isEquipe && (
-                    <div className="search-box" style={{flex: '1 1 240px', minWidth: '200px', maxWidth: '380px', marginBottom: 0}}>
+                    <div className="search-box" style={{flex: '1 1 200px', minWidth: '180px', maxWidth: '320px', marginBottom: 0}}>
                         <span className="search-icon"><Icon name="search" size={14} /></span>
                         <input
                             type="text"
