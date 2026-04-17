@@ -14,7 +14,7 @@ import { supabaseClient } from '@/config/supabase';
 import { syncProductDefeito, setDefeitoForNf, setDefeitoForAllEntries } from '@/utils/defeitoSync';
 import { mapEntryFromDB, mapExitFromDB } from '@/utils/mappers';
 
-export default function StockView({ stock, categories, onUpdate, onDelete, searchTerm, setSearchTerm, entries, exits, locaisOrigem, onAddCategory, onUpdateCategory, onDeleteCategory, products, isEquipe, isStockAdmin, equipeProducts, equipeLoading, equipeHasMore, onEquipeLoadMore, onEquipeSearch, equipeTotalCount }) {
+export default function StockView({ stock, categories, onUpdate, onDelete, searchTerm, setSearchTerm, entries, exits, locaisOrigem, onAddCategory, onUpdateCategory, onDeleteCategory, products, isEquipe, isOperador = false, isStockAdmin, equipeProducts, equipeLoading, equipeHasMore, onEquipeLoadMore, onEquipeSearch, equipeTotalCount }) {
     // Loading state
     const showInitialLoading = isEquipe
         ? ((equipeProducts || []).length === 0 && equipeLoading)
@@ -47,21 +47,31 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
     const [hideZeroStock, setHideZeroStock] = useState(true);
     const [tinySyncLoading, setTinySyncLoading] = useState(null); // product id being synced
 
-    // Equipe (e operador) não recebem entries/exits globalmente via props.
+    // Equipe e operador não recebem entries/exits globalmente via props.
     // Quando abrem o painel de um produto, buscamos o histórico dele por SKU
     // sob demanda e cacheamos localmente.
+    //
+    // IMPORTANTE: equipe/operador recebem um select filtrado — SEM fornecedor
+    // e SEM cliente, que são dados comerciais sensíveis. Apenas admin vê
+    // esses campos (que chegam via props entries/exits globais).
     const [equipeHistoryCache, setEquipeHistoryCache] = useState({}); // { [sku]: { entries, exits } }
     const [equipeHistoryLoadingSku, setEquipeHistoryLoadingSku] = useState(null);
 
-    const needsLazyHistory = isEquipe && (!entries || entries.length === 0);
+    const needsLazyHistory = (isEquipe || isOperador) && (!entries || entries.length === 0);
+    // Apenas admin enxerga fornecedor/cliente. Controla renderização da coluna.
+    const canSeeSupplierClient = !!isStockAdmin;
+
+    // Whitelist de campos por role. Admin = '*', outros = sem supplier/client.
+    const ENTRY_FIELDS_EQUIPE = 'id, date, type, quantity, sku, nf, local_entrada, defeito, defeito_descricao';
+    const EXIT_FIELDS_EQUIPE = 'id, date, type, quantity, sku, nf, local';
 
     const fetchHistoryForSku = async (sku) => {
         if (!sku || equipeHistoryCache[sku]) return;
         setEquipeHistoryLoadingSku(sku);
         try {
             const [entRes, exitRes] = await Promise.all([
-                supabaseClient.from('entries').select('*').eq('sku', sku),
-                supabaseClient.from('exits').select('*').eq('sku', sku),
+                supabaseClient.from('entries').select(ENTRY_FIELDS_EQUIPE).eq('sku', sku),
+                supabaseClient.from('exits').select(EXIT_FIELDS_EQUIPE).eq('sku', sku),
             ]);
             if (entRes.error) console.error('Erro ao buscar entries:', entRes.error);
             if (exitRes.error) console.error('Erro ao buscar exits:', exitRes.error);
@@ -603,8 +613,9 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
     };
 
     // Shared row renderer for the movements table (used in panel and modal)
-    // Column order: DATA | LOCAL | TIPO | NF ENTRADA | NF SAIDA | FORNECEDOR/CLIENTE | QTD | OBS
-    const renderHistoryRow = (mov, idx, p, nfsComSaldo) => {
+    // Column order: DATA | LOCAL | TIPO | NF ENTRADA | NF SAIDA | [FORNECEDOR/CLIENTE] | QTD | OBS
+    // A coluna Fornecedor/Cliente só é renderizada quando showSupplierClient = true (apenas admin).
+    const renderHistoryRow = (mov, idx, p, nfsComSaldo, showSupplierClient = true) => {
         const isEntrada = mov.movimento === 'ENTRADA';
         const isDefeitoObs = mov.defeito || (mov.observations || '').toLowerCase().includes('defeito');
         const nfEntrada = isEntrada ? (mov.nf || '-') : (mov.nfOrigem || '-');
@@ -627,7 +638,9 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                     )}
                 </td>
                 <td style={{fontFamily: 'monospace', fontSize: '11px'}}>{!isEntrada ? (mov.nf || '-') : '-'}</td>
-                <td style={{fontSize: '12px'}}>{mov.supplier || mov.client || '-'}</td>
+                {showSupplierClient && (
+                    <td style={{fontSize: '12px'}}>{mov.supplier || mov.client || '-'}</td>
+                )}
                 <td style={{fontWeight: 600, color: isEntrada ? '#39845f' : '#893030'}}>
                     {isEntrada ? '+' : '-'}{mov.quantity}
                 </td>
@@ -703,16 +716,16 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                                                 <th>Tipo</th>
                                                 <th>NF Entrada</th>
                                                 <th>NF Saída</th>
-                                                <th>Fornecedor/Cliente</th>
+                                                {canSeeSupplierClient && <th>Fornecedor/Cliente</th>}
                                                 <th>Qtd.</th>
                                                 <th>Obs.:</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {stockEntries.map((mov, idx) => renderHistoryRow(mov, idx, p, nfsComSaldo))}
+                                            {stockEntries.map((mov, idx) => renderHistoryRow(mov, idx, p, nfsComSaldo, canSeeSupplierClient))}
                                             {hasMovements && (
                                                 <tr className="stock-history-more-row">
-                                                    <td colSpan={8}>
+                                                    <td colSpan={canSeeSupplierClient ? 8 : 7}>
                                                         <button
                                                             type="button"
                                                             className="stock-history-more-btn"
@@ -725,12 +738,12 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                                                 </tr>
                                             )}
                                             {/* Spacer row — empurra a linha TOTAL para a base, alinhando com a margem inferior da imagem */}
-                                            <tr className="stock-history-spacer"><td colSpan={8}></td></tr>
+                                            <tr className="stock-history-spacer"><td colSpan={canSeeSupplierClient ? 8 : 7}></td></tr>
                                         </tbody>
                                         <tfoot>
                                             <tr className="stock-total-row">
                                                 <td style={{fontWeight: 700, letterSpacing: '0.04em'}}>TOTAL</td>
-                                                <td colSpan={5}></td>
+                                                <td colSpan={canSeeSupplierClient ? 5 : 4}></td>
                                                 <td style={{fontWeight: 700, color: '#39845f'}}>
                                                     {p.currentQuantity}
                                                 </td>
@@ -1111,6 +1124,7 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
             {fullHistoryProduct && (() => {
                 const fullHistory = getProductHistory(fullHistoryProduct.sku);
                 const nfsComSaldo = getNfBalance(fullHistoryProduct.sku);
+                const isLoadingFull = needsLazyHistory && !equipeHistoryCache[fullHistoryProduct.sku];
                 return (
                     <div className="modal-overlay" onClick={() => setFullHistoryProduct(null)}>
                         <div
@@ -1132,23 +1146,30 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                                 </button>
                             </div>
                             <div className="stock-full-history-body">
-                                <table className="table stock-history-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Data</th>
-                                            <th>Local</th>
-                                            <th>Tipo</th>
-                                            <th>NF Entrada</th>
-                                            <th>NF Saída</th>
-                                            <th>Fornecedor/Cliente</th>
-                                            <th>Qtd.</th>
-                                            <th>Obs.:</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {fullHistory.map((mov, idx) => renderHistoryRow(mov, idx, fullHistoryProduct, nfsComSaldo))}
-                                    </tbody>
-                                </table>
+                                {isLoadingFull ? (
+                                    <div style={{padding: '40px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: 'var(--text-secondary)', fontSize: '13px'}}>
+                                        <Icon name="spinner" size={14} style={{animation: 'spin 1s linear infinite'}} />
+                                        Carregando histórico...
+                                    </div>
+                                ) : (
+                                    <table className="table stock-history-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Data</th>
+                                                <th>Local</th>
+                                                <th>Tipo</th>
+                                                <th>NF Entrada</th>
+                                                <th>NF Saída</th>
+                                                {canSeeSupplierClient && <th>Fornecedor/Cliente</th>}
+                                                <th>Qtd.</th>
+                                                <th>Obs.:</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {fullHistory.map((mov, idx) => renderHistoryRow(mov, idx, fullHistoryProduct, nfsComSaldo, canSeeSupplierClient))}
+                                        </tbody>
+                                    </table>
+                                )}
                             </div>
                         </div>
                     </div>

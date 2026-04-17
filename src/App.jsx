@@ -409,6 +409,7 @@ export default function App() {
               onDeleteCategory={deleteCategory}
               products={products}
               isEquipe={isEquipe}
+              isOperador={isOperador}
               isStockAdmin={isStockAdmin}
               equipeProducts={equipeProducts}
               equipeLoading={equipeLoading}
