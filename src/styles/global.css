@@ -497,14 +497,14 @@ body.sidebar-expanded .main-content { margin-left: 224px; }
 }
 .sb-logo img {
     display: block;
-    max-width: 120px;
-    max-height: 40px;
+    max-width: 105px;
+    max-height: 35px;
     object-fit: contain;
     filter: brightness(0) invert(1);
     transition: opacity 200ms ease;
 }
-.sb--collapsed .sb-logo-icon { max-width: 32px; max-height: 32px; }
-.sb--expanded .sb-logo-full { max-width: 120px; max-height: 40px; }
+.sb--collapsed .sb-logo-icon { max-width: 28px; max-height: 28px; }
+.sb--expanded .sb-logo-full { max-width: 105px; max-height: 35px; }
 
 .sb-toggle {
     position: absolute;
