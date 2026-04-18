@@ -3,6 +3,12 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import { handleTinyCallback } from '@/utils/helpers';
 import EntregadorUpload from '@/components/delivery/EntregadorUpload';
+import { initSentry } from '@/lib/sentry';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+
+// Inicializa Sentry antes de qualquer render (idempotente; no-op em
+// localhost ou quando VITE_SENTRY_DSN não está definido).
+initSentry();
 
 // PDF.js worker setup (replaces CDN script tag)
 import * as pdfjsLib from 'pdfjs-dist';
@@ -27,6 +33,8 @@ const RootComponent = entregaMatch
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <RootComponent />
+    <ErrorBoundary>
+      <RootComponent />
+    </ErrorBoundary>
   </React.StrictMode>
 );
