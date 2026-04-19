@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@sentry/react": "^10.49.0",
     "@supabase/supabase-js": "^2.98.0",
     "chart.js": "^4.5.1",
     "papaparse": "^5.5.3",
@@ -19,6 +20,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@sentry/vite-plugin": "^5.2.0",
     "@vitejs/plugin-react": "^5.1.4",
     "vite": "^7.3.1"
   }

@@ -5,6 +5,7 @@
  */
 import { useState, useEffect } from 'react';
 import { supabaseClient } from '@/config/supabase';
+import { setSentryUser, clearSentryUser } from '@/lib/sentry-user';
 
 /**
  * Hook that manages:
@@ -102,6 +103,20 @@ export function useAuth() {
   }, [user]);
 
   const handleLogout = () => supabaseClient.auth.signOut();
+
+  // Sentry user context — LGPD: apenas id (UUID) e role.
+  // Seta quando ambos user+profile (com role) estão disponíveis; limpa
+  // quando user sai. Se role ainda não veio, aguarda (evita enviar
+  // evento sem role).
+  useEffect(() => {
+    if (!user) {
+      clearSentryUser();
+      return;
+    }
+    if (userProfile?.role) {
+      setSentryUser({ id: user.id, role: userProfile.role });
+    }
+  }, [user, userProfile?.role]);
 
   return {
     user,

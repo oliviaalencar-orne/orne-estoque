@@ -36,6 +36,9 @@ import AccessRestricted from '@/components/auth/AccessRestricted';
 // Layout
 import Sidebar from '@/components/layout/Sidebar';
 
+// Error boundary (wrapper sobre Sentry.ErrorBoundary)
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+
 // Page components
 import Dashboard from '@/components/dashboard/Dashboard';
 import StockView from '@/components/stock/StockView';
@@ -62,33 +65,10 @@ const tabTitles = {
   admin: 'Usuários',
 };
 
-class ErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-  static getDerivedStateFromError(error) {
-    return { hasError: true, error };
-  }
-  componentDidCatch(error, info) {
-    console.error('ErrorBoundary caught:', error, info);
-  }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div style={{ padding: 40, fontFamily: 'Inter, monospace', color: '#c00' }}>
-          <h2>Erro na aplicação</h2>
-          <pre style={{ whiteSpace: 'pre-wrap', background: '#fef2f2', padding: 16, borderRadius: 8 }}>
-            {this.state.error?.message}
-            {'\n\n'}
-            {this.state.error?.stack}
-          </pre>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
+// ErrorBoundary agora é importado de src/components/ErrorBoundary.jsx
+// (wrapper sobre Sentry.ErrorBoundary com fallback UI da paleta do
+// design system). A classe local antiga foi removida para que erros
+// cheguem ao Sentry.
 
 export default function App() {
   // ── Auth ──────────────────────────────────────────────────────────────
