@@ -318,34 +318,11 @@ export default function ProductDetailsModal({
                                     </span>
                                 </Field>
                             )}
-                            {product.defeito && (
-                                <Field label="Defeito" span={2}>
-                                    <span
-                                        style={{
-                                            display: 'inline-block',
-                                            padding: '3px 10px',
-                                            borderRadius: '12px',
-                                            fontSize: '12px',
-                                            fontWeight: 600,
-                                            background: 'rgba(137,48,48,0.20)',
-                                            color: '#893030',
-                                        }}
-                                    >
-                                        Produto com defeito
-                                    </span>
-                                    {product.defeitoDescricao && (
-                                        <div
-                                            style={{
-                                                marginTop: '4px',
-                                                fontSize: '12px',
-                                                color: '#893030',
-                                            }}
-                                        >
-                                            {product.defeitoDescricao}
-                                        </div>
-                                    )}
-                                </Field>
-                            )}
+                            {/* Removido: bloco legado "DEFEITO" baseado em
+                                product.defeito_descricao (texto único).
+                                A seção "Defeitos por NF" abaixo usa o
+                                JSONB defeitos_por_nf, que é a fonte de
+                                verdade para cada defeito por NF. */}
                         </div>
                     </div>
                 </div>
@@ -573,10 +550,13 @@ export default function ProductDetailsModal({
                                                         style={{
                                                             fontSize: '11px',
                                                             color: 'var(--text-muted)',
-                                                            maxWidth: '200px',
-                                                            overflow: 'hidden',
-                                                            textOverflow: 'ellipsis',
-                                                            whiteSpace: 'nowrap',
+                                                            maxWidth: '240px',
+                                                            // Permite quebrar linha — observações
+                                                            // podem passar de 40 chars e o usuário
+                                                            // precisa ler o texto completo.
+                                                            whiteSpace: 'normal',
+                                                            wordBreak: 'break-word',
+                                                            lineHeight: 1.35,
                                                         }}
                                                     >
                                                         {mov.observations || mov.defeitoDescricao || '-'}
