@@ -1,14 +1,15 @@
 /**
- * StockView.jsx — Stock view with horizontal category chips and in-page detail panel
+ * StockView.jsx — Stock view with horizontal category chips and detail modal
  *
- * Fase 2.2: chips horizontais de categorias (UMA ativa), sub-filtros por status,
- * painel in-page expandindo abaixo da linha do produto clicado.
+ * Chips horizontais de categorias (UMA ativa), sub-filtros por status,
+ * e modal unificado de detalhes do produto (pós-rollback do painel inline).
  */
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Icon, CategoryIcon } from '@/utils/icons';
 import { formatBRL } from '@/utils/formatters';
 import CategorySelectInline from '@/components/ui/CategorySelectInline';
 import CategoryManager from '@/components/categories/CategoryManager';
+import ProductDetailsModal from '@/components/stock/ProductDetailsModal';
 import { callTinyFunction } from '@/services/tinyService';
 import { supabaseClient } from '@/config/supabase';
 import { syncProductDefeito, setDefeitoForNf, setDefeitoForAllEntries } from '@/utils/defeitoSync';
@@ -39,8 +40,7 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
     const [filter, setFilter] = useState('all');
     const [selectedCategoryId, setSelectedCategoryId] = useState(null); // null = all categories
     const [showCategoryManager, setShowCategoryManager] = useState(false);
-    const [detailProduct, setDetailProduct] = useState(null); // product with inline panel expanded
-    const [fullHistoryProduct, setFullHistoryProduct] = useState(null); // modal with full history
+    const [detailProduct, setDetailProduct] = useState(null); // produto no modal de detalhes
     const [editingProduct, setEditingProduct] = useState(null);
     const [editForm, setEditForm] = useState({});
     const [successMsg, setSuccessMsg] = useState('');
@@ -92,10 +92,10 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
     // Lazy-load histórico quando o painel inline ou o modal forem abertos.
     useEffect(() => {
         if (!needsLazyHistory) return;
-        const sku = detailProduct?.sku || fullHistoryProduct?.sku;
+        const sku = detailProduct?.sku;
         if (sku) fetchHistoryForSku(sku);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [needsLazyHistory, detailProduct, fullHistoryProduct]);
+    }, [needsLazyHistory, detailProduct]);
 
     const handleTinySync = async (product) => {
         if (!product.sku || tinySyncLoading) return;
@@ -153,10 +153,9 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
     const [visibleLimit, setVisibleLimit] = useState(100);
     useEffect(() => { setVisibleLimit(100); }, [selectedCategoryId, filter, hideZeroStock]);
 
-    // Toggle product expansion (click same = close, click other = switch)
-    const toggleProductPanel = (product) => {
-        setDetailProduct(prev => (prev?.id === product.id ? null : product));
-    };
+    // Abre o modal de detalhes para o produto clicado.
+    const openDetailModal = (product) => setDetailProduct(product);
+    const closeDetailModal = () => setDetailProduct(null);
 
     // Toggle category chip (click active = clear filter)
     const toggleCategoryChip = (catId) => {
@@ -523,15 +522,15 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
 
     const hideObsTooltip = () => setObsTooltip(null);
 
-    // Render a product row + optional expanded detail panel below
+    // Render a product row — clicar abre o modal de detalhes.
     const renderProductRow = (p) => {
-        const isExpanded = detailProduct?.id === p.id;
+        const isOpen = detailProduct?.id === p.id;
         return (
             <React.Fragment key={p.id}>
                 <tr
-                    onClick={() => toggleProductPanel(p)}
+                    onClick={() => openDetailModal(p)}
                     style={{cursor: 'pointer'}}
-                    className={`stock-row ${isExpanded ? 'stock-row--expanded' : ''}`}
+                    className={`stock-row ${isOpen ? 'stock-row--active' : ''}`}
                 >
                     <td style={{width: '48px', padding: '6px 8px'}}>
                         {p.imagemUrl && p.imagemUrl !== 'sem-imagem' ? (
@@ -575,11 +574,6 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                             )}
                         </div>
                         {p.local && <div className="product-local">{'\uD83D\uDCCD'} {p.local}</div>}
-                        {p.defeito && p.defeitoDescricao && isExpanded && (
-                            <div style={{fontSize: '11px', color: '#893030', marginTop: '2px', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
-                                {p.defeitoDescricao}
-                            </div>
-                        )}
                     </td>
                     <td className="hide-mobile product-sku col-center">{p.sku}</td>
                     <td className="col-center">
@@ -594,7 +588,6 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                         {p.unitPrice > 0 ? `R$ ${formatBRL(p.unitPrice)}` : '\u2014'}
                     </td>
                 </tr>
-                {isExpanded && renderDetailPanel(p)}
             </React.Fragment>
         );
     };
@@ -651,141 +644,6 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
         );
     };
 
-    // Render the inline detail panel (inserted as a spanning <tr> below the product row)
-    const renderDetailPanel = (p) => {
-        const history = getProductHistory(p.sku);
-        const stockEntries = getStockEntriesInfo(p.sku);
-        const nfsComSaldo = getNfBalance(p.sku);
-        const hasMovements = history.length > 0;
-        const isLoadingHistory = needsLazyHistory && !equipeHistoryCache[p.sku];
-        return (
-            <tr className="stock-detail-row">
-                <td colSpan={5} style={{padding: 0, borderBottom: '1px solid var(--border-default)'}}>
-                    <div className="stock-detail-panel">
-                        <div className="stock-detail-left">
-                            <div className="stock-detail-image">
-                                {p.imagemUrl && p.imagemUrl !== 'sem-imagem' ? (
-                                    <img src={p.imagemUrl} alt={p.name} loading="lazy" />
-                                ) : (
-                                    <div className="stock-detail-image-fallback">
-                                        <Icon name="boxOpen" size={48} style={{opacity: 0.25}} />
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="stock-detail-actions">
-                                {isStockAdmin && p.sku && (
-                                    <button
-                                        className="btn btn-secondary btn-sm"
-                                        onClick={(e) => { e.stopPropagation(); handleTinySync(p); }}
-                                        disabled={tinySyncLoading === p.id}
-                                        title="Atualizar dados do Tiny ERP"
-                                    >
-                                        {tinySyncLoading === p.id ? (
-                                            <><Icon name="spinner" size={12} style={{animation: 'spin 1s linear infinite'}} /> Atualizando...</>
-                                        ) : (
-                                            <><Icon name="sync" size={12} /> Atualizar do Tiny</>
-                                        )}
-                                    </button>
-                                )}
-                                {!isEquipe && isStockAdmin && (
-                                    <>
-                                        <button className="btn btn-primary btn-sm" onClick={(e) => { e.stopPropagation(); openEditModal(p); }}>Editar</button>
-                                        <button className="btn btn-sm stock-detail-delete" onClick={(e) => { e.stopPropagation(); handleDelete(p); setDetailProduct(null); }}>Excluir</button>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="stock-detail-right">
-                            <div className="stock-detail-category-header">
-                                {(getCategoryName(p.category) || 'SEM CATEGORIA').toUpperCase()} — {p.currentQuantity} UN.
-                            </div>
-                            {isLoadingHistory ? (
-                                <div className="stock-detail-history-empty" style={{padding: '40px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: 'var(--text-secondary)', fontSize: '13px'}}>
-                                    <Icon name="spinner" size={14} style={{animation: 'spin 1s linear infinite'}} />
-                                    Carregando histórico...
-                                </div>
-                            ) : stockEntries.length > 0 ? (
-                                <div className="stock-detail-history">
-                                    <table className="table stock-history-table">
-                                        <thead>
-                                            <tr>
-                                                <th>Data</th>
-                                                <th>Local</th>
-                                                <th>Tipo</th>
-                                                <th>NF Entrada</th>
-                                                <th>NF Saída</th>
-                                                {canSeeSupplierClient && <th>Fornecedor/Cliente</th>}
-                                                <th>Qtd.</th>
-                                                <th>Obs.:</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {stockEntries.map((mov, idx) => renderHistoryRow(mov, idx, p, nfsComSaldo, canSeeSupplierClient))}
-                                            {hasMovements && (
-                                                <tr className="stock-history-more-row">
-                                                    <td colSpan={canSeeSupplierClient ? 8 : 7}>
-                                                        <button
-                                                            type="button"
-                                                            className="stock-history-more-btn"
-                                                            onClick={(e) => { e.stopPropagation(); setFullHistoryProduct(p); }}
-                                                            title="Ver historico de movimentacoes"
-                                                        >
-                                                            + Ver histórico de movimentações
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            )}
-                                            {/* Spacer row — empurra a linha TOTAL para a base, alinhando com a margem inferior da imagem */}
-                                            <tr className="stock-history-spacer"><td colSpan={canSeeSupplierClient ? 8 : 7}></td></tr>
-                                        </tbody>
-                                        <tfoot>
-                                            <tr className="stock-total-row">
-                                                <td style={{fontWeight: 700, letterSpacing: '0.04em'}}>TOTAL</td>
-                                                <td colSpan={canSeeSupplierClient ? 5 : 4}></td>
-                                                <td style={{fontWeight: 700, color: '#39845f'}}>
-                                                    {p.currentQuantity}
-                                                </td>
-                                                <td></td>
-                                            </tr>
-                                        </tfoot>
-                                    </table>
-                                </div>
-                            ) : (
-                                <div className="stock-detail-history-empty">
-                                    Nenhuma entrada em estoque registrada
-                                    {hasMovements && (
-                                        <div style={{marginTop: 12}}>
-                                            <button
-                                                type="button"
-                                                className="stock-history-more-btn"
-                                                onClick={(e) => { e.stopPropagation(); setFullHistoryProduct(p); }}
-                                            >
-                                                + Ver histórico de movimentações
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            <div className="stock-detail-close">
-                                <button
-                                    type="button"
-                                    className="stock-detail-collapse-btn"
-                                    onClick={(e) => { e.stopPropagation(); setDetailProduct(null); }}
-                                    aria-label="Recolher painel"
-                                    title="Recolher"
-                                >
-                                    <Icon name="chevronUp" size={18} />
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </td>
-            </tr>
-        );
-    };
 
     return (
         <div>
@@ -1120,61 +978,31 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                 </div>
             )}
 
-            {/* Full history modal — todas entradas e saidas do produto */}
-            {fullHistoryProduct && (() => {
-                const fullHistory = getProductHistory(fullHistoryProduct.sku);
-                const nfsComSaldo = getNfBalance(fullHistoryProduct.sku);
-                const isLoadingFull = needsLazyHistory && !equipeHistoryCache[fullHistoryProduct.sku];
-                return (
-                    <div className="modal-overlay" onClick={() => setFullHistoryProduct(null)}>
-                        <div
-                            className="modal-content stock-full-history-modal"
-                            onClick={e => e.stopPropagation()}
-                        >
-                            <div className="stock-full-history-header">
-                                <h3 className="stock-full-history-title">
-                                    Histórico de movimentações — {fullHistoryProduct.name}
-                                </h3>
-                                <button
-                                    type="button"
-                                    className="btn btn-icon btn-secondary"
-                                    onClick={() => setFullHistoryProduct(null)}
-                                    aria-label="Fechar"
-                                    title="Fechar"
-                                >
-                                    <Icon name="close" size={16} />
-                                </button>
-                            </div>
-                            <div className="stock-full-history-body">
-                                {isLoadingFull ? (
-                                    <div style={{padding: '40px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: 'var(--text-secondary)', fontSize: '13px'}}>
-                                        <Icon name="spinner" size={14} style={{animation: 'spin 1s linear infinite'}} />
-                                        Carregando histórico...
-                                    </div>
-                                ) : (
-                                    <table className="table stock-history-table">
-                                        <thead>
-                                            <tr>
-                                                <th>Data</th>
-                                                <th>Local</th>
-                                                <th>Tipo</th>
-                                                <th>NF Entrada</th>
-                                                <th>NF Saída</th>
-                                                {canSeeSupplierClient && <th>Fornecedor/Cliente</th>}
-                                                <th>Qtd.</th>
-                                                <th>Obs.:</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {fullHistory.map((mov, idx) => renderHistoryRow(mov, idx, fullHistoryProduct, nfsComSaldo, canSeeSupplierClient))}
-                                        </tbody>
-                                    </table>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                );
-            })()}
+
+            {/* Modal unificado de detalhes do produto (substituiu painel inline) */}
+            {detailProduct && !editingProduct && (
+                <ProductDetailsModal
+                    product={detailProduct}
+                    equipeHistoryCache={equipeHistoryCache}
+                    needsLazyHistory={needsLazyHistory}
+                    isStockAdmin={isStockAdmin}
+                    isEquipe={isEquipe}
+                    isOperador={isOperador}
+                    canSeeSupplierClient={canSeeSupplierClient}
+                    getProductHistory={getProductHistory}
+                    getNfBalance={getNfBalance}
+                    nfsComDefeito={getProductNFsWithDefeito(detailProduct.sku).filter(n => n.defeito)}
+                    formatDate={formatDate}
+                    formatBRL={formatBRL}
+                    getCategoryName={getCategoryName}
+                    getCategoryColor={getCategoryColor}
+                    tinySyncLoading={tinySyncLoading}
+                    onClose={closeDetailModal}
+                    onEdit={(p) => { closeDetailModal(); openEditModal(p); }}
+                    onDelete={(p) => { handleDelete(p); closeDetailModal(); }}
+                    onTinySync={handleTinySync}
+                />
+            )}
 
             {obsTooltip && (
                 <div style={{
@@ -1208,8 +1036,7 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                 }
                 .stock-row:hover { background: #fafafa; }
                 .stock-row td { border-bottom: 1px solid #f0f0f0; }
-                .stock-row--expanded { background: #FFFFFF; }
-                .stock-row--expanded td { border-bottom-color: transparent; }
+                .stock-row--active { background: #F5F5F5; }
                 .product-name { font-weight: 600; font-size: 14px; color: #1a1a2e; line-height: 1.3; }
                 .product-local { font-size: 12px; color: #9ca3af; margin-top: 2px; }
                 .product-sku { font-family: monospace; font-size: 12px; color: #9ca3af; }
