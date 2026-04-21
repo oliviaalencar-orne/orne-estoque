@@ -3,14 +3,18 @@
  * cadeia de fallback Correios SRO → melhorrastreio para códigos
  * fresh-posted. Persiste status + rastreio_info via PostgREST.
  *
- * v21 (Fase 1 confiança): dataUltimoEvento agora grava null quando a
- * API não retorna timestamp (antes gravava ''). Permite que o frontend
- * distinga "sem dado" (null) de "sem evento válido" (string vazia
- * histórica).
- *
- * Baseline importado da Supabase (v21 ativa em produção, deployado
- * pelo dashboard, nunca estava no git). Qualquer mudança daqui em
- * diante é versionada.
+ * Histórico:
+ *  v21 (Fase 1 Alerta): dataUltimoEvento grava null quando a API não
+ *       retorna timestamp (antes gravava ''). Permite distinguir
+ *       "sem dado" (null) de "sem evento válido" (string vazia
+ *       histórica).
+ *  v22 (Entrega 1 Taxonomia de Devolução): ME `canceled` e `expired`
+ *       agora mapeiam para ETIQUETA_CANCELADA (antes: canceled→DEVOLVIDO,
+ *       expired caía no default EM_TRANSITO). Semanticamente correto:
+ *       esses pacotes nunca sairão do HUB ORNE. ME `returned` continua
+ *       → DEVOLVIDO (admin reclassifica para EXTRAVIADO manualmente se
+ *       for o caso). Escopo deliberadamente enxuto — RECUSADO/
+ *       ENTREGA_FALHOU/FALHA_NA_COLETA ficaram fora desta entrega.
  */
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
@@ -20,20 +24,27 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
+// v22: canceled/expired → ETIQUETA_CANCELADA.
 const STATUS_MAP: Record<string, string> = {
   'pending': 'DESPACHADO', 'posted': 'DESPACHADO',
   'released': 'AGUARDANDO_COLETA',
   'in_transit': 'EM_TRANSITO', 'out_for_delivery': 'SAIU_ENTREGA',
   'delivered': 'ENTREGUE', 'returned': 'DEVOLVIDO',
-  'not_delivered': 'TENTATIVA_ENTREGA', 'canceled': 'DEVOLVIDO', 'undelivered': 'TENTATIVA_ENTREGA',
+  'not_delivered': 'TENTATIVA_ENTREGA', 'undelivered': 'TENTATIVA_ENTREGA',
+  'canceled': 'ETIQUETA_CANCELADA', 'expired': 'ETIQUETA_CANCELADA',
 };
+// v22: ETIQUETA_CANCELADA e EXTRAVIADO são terminais paralelos a
+// ENTREGUE/DEVOLVIDO (rank 6). Permite auto-advance a partir de
+// qualquer intermediário.
 const STATUS_ORDER: Record<string, number> = {
   'DESPACHADO': 1, 'AGUARDANDO_COLETA': 2, 'EM_TRANSITO': 3, 'SAIU_ENTREGA': 4,
-  'TENTATIVA_ENTREGA': 4, 'ENTREGUE': 5, 'DEVOLVIDO': 6,
+  'TENTATIVA_ENTREGA': 4, 'ENTREGUE': 5,
+  'DEVOLVIDO': 6, 'ETIQUETA_CANCELADA': 6, 'EXTRAVIADO': 6,
 };
 function isAdvanced(cur: string, cand: string): boolean {
   if (!cand || cand === cur) return false;
-  if (cand === 'DEVOLVIDO') return true;
+  // Terminais negativos "forçam" avanço de qualquer intermediário
+  if (cand === 'DEVOLVIDO' || cand === 'ETIQUETA_CANCELADA') return true;
   return (STATUS_ORDER[cand] || 0) > (STATUS_ORDER[cur] || 0);
 }
 const ME_HEADERS = (token: string) => ({
@@ -54,7 +65,7 @@ function normalizeNF(nf: string): string { return (nf || '').replace(/^0+/, '').
 function dbHeaders() { const k = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!; return { 'apikey': k, 'Authorization': `Bearer ${k}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' }; }
 function dbUrl() { return Deno.env.get('SUPABASE_URL')!; }
 
-// v21: normaliza um timestamp — retorna string ISO se válido, ou null
+// Normaliza um timestamp — retorna string ISO se válido, ou null
 function normalizeTs(raw: unknown): string | null {
   if (!raw) return null;
   if (typeof raw !== 'string') return null;
@@ -72,7 +83,6 @@ async function persistTracking(shippingId: string, currentStatus: string, result
     const rastreioInfo: Record<string, any> = {
       status: statusAdvanced ? newStatus : currentStatus,
       statusOriginal: result.statusOriginal || '', ultimoEvento: result.ultimoEvento || '',
-      // v21: null quando o evento não traz timestamp (antes era '')
       dataUltimoEvento: normalizeTs(result.dataUltimoEvento),
       codigoRastreio: result.codigoRastreio || '',
       linkRastreio: result.linkRastreio || '', historico: result.historico || [],
