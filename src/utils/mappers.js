@@ -81,6 +81,9 @@ export const mapShippingFromDB = (row) => ({
   tinyNfId: row.tiny_nf_id || null,
   chaveAcesso: row.chave_acesso || '',
   verificacaoManual: row.verificacao_manual || null,
+  // Entrega 1 — Taxonomia de Devolução: auditoria de reclassificações
+  reclassificacaoAutomatica: row.reclassificacao_automatica || null,
+  reclassificacaoManual: row.reclassificacao_manual || null,
 });
 
 export const mapSeparationFromDB = (row) => ({

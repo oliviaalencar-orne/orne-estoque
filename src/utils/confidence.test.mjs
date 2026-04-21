@@ -36,9 +36,19 @@ test('AGUARDANDO_COLETA retorna ⚪ (problema interno, não de rastreio)', () =>
   assert.match(r.motivo, /coleta/i);
 });
 
-test('tipo devolucao sempre ⚪', () => {
-  const r = classifyConfidence({ id: '4', status: 'EM_TRANSITO', tipo: 'devolucao', date: ONTEM }, NOW);
-  assert.equal(r.nivel, 'na');
+// Entrega 1 da Taxonomia de Devolução: devoluções em trânsito passam a receber
+// Alerta igual ao despacho. Só status terminais (DEVOLVIDO/ETIQUETA_CANCELADA/
+// EXTRAVIADO) + ENTREGUE continuam ⚪.
+test('tipo devolucao EM_TRANSITO recente → 🟢 (não é mais sempre ⚪)', () => {
+  const r = classifyConfidence({
+    id: '4',
+    status: 'EM_TRANSITO',
+    tipo: 'devolucao',
+    date: ONTEM,
+    rastreioInfo: { dataUltimoEvento: ONTEM.toISOString() },
+    transportadora: 'Correios',
+  }, NOW);
+  assert.equal(r.nivel, 'ok');
 });
 
 test('entrega local sempre ⚪', () => {
@@ -281,6 +291,93 @@ test('cache: duas chamadas seguidas (sem now) retornam mesma referência', () =>
   const r1 = classifyConfidence(s);
   const r2 = classifyConfidence(s);
   assert.equal(r1, r2); // mesma instância (cache hit)
+});
+
+// =====================================================================
+// Entrega 1 — Taxonomia de Devolução: devoluções recebem Alerta,
+// terminais novos (ETIQUETA_CANCELADA/EXTRAVIADO) caem em ⚪.
+// =====================================================================
+
+test('[Entrega 1] Devolução em DESPACHADO há 1 dia útil → 🟢 ok', () => {
+  const r = classifyConfidence({
+    id: 'dev-ok',
+    status: 'DESPACHADO',
+    tipo: 'devolucao',
+    date: ONTEM,
+    rastreioInfo: { dataUltimoEvento: ONTEM.toISOString() },
+    transportadora: 'Correios',
+  }, NOW);
+  assert.equal(r.nivel, 'ok');
+  assert.equal(r.diasUteisSemMov, 1);
+});
+
+test('[Entrega 1] Devolução em DESPACHADO há 3 dias úteis (transportadora genérica) → 🟡 atenção', () => {
+  // Nota: a spec inicial citava 🔴 para "3 dias úteis / transportadora genérica",
+  // mas o perfil 'outras' tem thresholds { ok: 3, atencao: 10 } → 3 dias úteis
+  // cai na faixa amarela (🟡 atenção). Para hit 🔴 em 'outras' seria ≥10 dias
+  // úteis. Ajustado para refletir a regra real; ver também o teste seguinte.
+  const r = classifyConfidence({
+    id: 'dev-atencao',
+    status: 'DESPACHADO',
+    tipo: 'devolucao',
+    date: OITO_DIAS_UTEIS_ATRAS,
+    rastreioInfo: { dataUltimoEvento: TRES_DIAS_UTEIS_ATRAS.toISOString() },
+    transportadora: 'Jadlog', // cai em 'outras'
+  }, NOW);
+  assert.equal(r.nivel, 'atencao');
+  assert.equal(r.transporte, 'outras');
+  assert.equal(r.diasUteisSemMov, 3);
+});
+
+test('[Entrega 1] Devolução em DESPACHADO há 12 dias úteis (transportadora genérica) → 🔴 urgente', () => {
+  // Complementa o teste acima: ≥10 úteis em 'outras' → urgente.
+  const r = classifyConfidence({
+    id: 'dev-urgente',
+    status: 'DESPACHADO',
+    tipo: 'devolucao',
+    date: DOZE_DIAS_UTEIS_ATRAS,
+    rastreioInfo: { dataUltimoEvento: DOZE_DIAS_UTEIS_ATRAS.toISOString() },
+    transportadora: 'Jadlog',
+  }, NOW);
+  assert.equal(r.nivel, 'urgente');
+  assert.equal(r.transporte, 'outras');
+});
+
+test('[Entrega 1] Devolução em ETIQUETA_CANCELADA → ⚪ na (terminal administrativo)', () => {
+  const r = classifyConfidence({
+    id: 'dev-etiq-cancelada',
+    status: 'ETIQUETA_CANCELADA',
+    tipo: 'devolucao',
+    date: ONTEM,
+    rastreioInfo: { dataUltimoEvento: ONTEM.toISOString() },
+    transportadora: 'Correios',
+  }, NOW);
+  assert.equal(r.nivel, 'na');
+  assert.match(r.motivo, /terminal/i);
+});
+
+test('[Entrega 1] Envio em EXTRAVIADO → ⚪ na (terminal)', () => {
+  const r = classifyConfidence({
+    id: 'env-extraviado',
+    status: 'EXTRAVIADO',
+    date: DOZE_DIAS_UTEIS_ATRAS,
+    rastreioInfo: { dataUltimoEvento: OITO_DIAS_UTEIS_ATRAS.toISOString() },
+    transportadora: 'Loggi',
+  }, NOW);
+  assert.equal(r.nivel, 'na');
+});
+
+test('[Entrega 1] Despacho em DEVOLVIDO continua ⚪ (terminal — nada muda)', () => {
+  // Regressão: os 7 envios DEVOLVIDO atuais (tipo='despacho') continuam
+  // caindo em ⚪. O script de reclassificação os moverá para ETIQUETA_CANCELADA.
+  const r = classifyConfidence({
+    id: 'desp-devolvido',
+    status: 'DEVOLVIDO',
+    date: DOZE_DIAS_UTEIS_ATRAS,
+    rastreioInfo: { dataUltimoEvento: OITO_DIAS_UTEIS_ATRAS.toISOString() },
+    transportadora: 'Correios',
+  }, NOW);
+  assert.equal(r.nivel, 'na');
 });
 
 test('resultado inclui color.fg e color.bg para render', () => {

@@ -15,7 +15,12 @@
  *   MELHOR_ENVIO_TOKEN       — Token do Melhor Envio (configurar em Supabase → Edge Function Secrets)
  */
 
-const VALID_STATUSES = ['DESPACHADO', 'AGUARDANDO_COLETA', 'EM_TRANSITO', 'SAIU_ENTREGA', 'TENTATIVA_ENTREGA', 'ENTREGUE', 'DEVOLVIDO'];
+const VALID_STATUSES = [
+  'DESPACHADO', 'AGUARDANDO_COLETA', 'EM_TRANSITO', 'SAIU_ENTREGA',
+  'TENTATIVA_ENTREGA', 'ENTREGUE', 'DEVOLVIDO',
+  // Entrega 1 — Taxonomia de Devolução
+  'ETIQUETA_CANCELADA', 'EXTRAVIADO',
+];
 
 // Progressão válida — só avança, nunca retrocede
 const STATUS_RANK = {
@@ -26,11 +31,17 @@ const STATUS_RANK = {
   TENTATIVA_ENTREGA: 2,
   ENTREGUE: 3,
   DEVOLVIDO: 3, // mesmo nível que ENTREGUE (final)
+  ETIQUETA_CANCELADA: 3, // terminal administrativo
+  EXTRAVIADO: 3, // terminal (precisa verificação manual, mas encerra rastreio)
 };
+
+const TERMINAL_STATUSES = new Set([
+  'ENTREGUE', 'DEVOLVIDO', 'ETIQUETA_CANCELADA', 'EXTRAVIADO',
+]);
 
 function shouldUpdateStatus(currentStatus, newStatus) {
   if (!VALID_STATUSES.includes(newStatus)) return false;
-  if (currentStatus === 'ENTREGUE' || currentStatus === 'DEVOLVIDO') return false;
+  if (TERMINAL_STATUSES.has(currentStatus)) return false;
   return (STATUS_RANK[newStatus] ?? -1) > (STATUS_RANK[currentStatus] ?? -1);
 }
 

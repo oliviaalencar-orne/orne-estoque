@@ -12,6 +12,10 @@ const DEVOLUCAO_LABELS = {
   SAIU_ENTREGA: 'Em Rota de Entrega',
   TENTATIVA_ENTREGA: 'Tentativa de Entrega',
   ENTREGUE: 'Recebido no HUB',
+  // Entrega 1 — Taxonomia de Devolução
+  DEVOLVIDO: 'Devolvido',
+  ETIQUETA_CANCELADA: 'Etiqueta cancelada',
+  EXTRAVIADO: 'Extraviado',
 };
 
 const DEVOLUCAO_COLORS = {
@@ -21,6 +25,10 @@ const DEVOLUCAO_COLORS = {
   SAIU_ENTREGA: '#7c3aed',
   TENTATIVA_ENTREGA: '#ea580c',
   ENTREGUE: '#10b981',
+  // Terminais da Entrega 1
+  DEVOLVIDO: '#893030',        // vermelho escuro Orne
+  ETIQUETA_CANCELADA: '#6b7280', // cinza (administrativo, neutro)
+  EXTRAVIADO: '#7f1d1d',       // vermelho muito escuro (crítico)
 };
 
 export function getStatusLabel(status, tipo) {
