@@ -172,6 +172,31 @@ test('verificacaoManual ainda_em_transito antiga não mascara 🔴', () => {
   assert.equal(r.nivel, 'urgente');
 });
 
+test('verificacaoManual com decisao=null (desfeita) volta ao cálculo automático', () => {
+  // Cenário: operador confirmou entregue, depois desfez. decisao=null,
+  // só historico preservado. Badge deve voltar ao cálculo por tempo.
+  const r = classifyConfidence({
+    id: '15b',
+    status: 'EM_TRANSITO',
+    date: DOZE_DIAS_UTEIS_ATRAS,
+    rastreioInfo: { dataUltimoEvento: OITO_DIAS_UTEIS_ATRAS.toISOString() },
+    transportadora: 'Loggi',
+    verificacaoManual: {
+      decisao: null,
+      historico: [
+        {
+          decisao: 'confirmado_entregue',
+          data: ONTEM.toISOString(),
+          por_usuario_id: 'x',
+          desfeito_em: NOW.toISOString(),
+        },
+      ],
+    },
+  }, NOW);
+  // 8 úteis Loggi → urgente (regra automática, sem mascaramento manual)
+  assert.equal(r.nivel, 'urgente');
+});
+
 test('shipping nulo retorna na', () => {
   const r = classifyConfidence(null, NOW);
   assert.equal(r.nivel, 'na');
