@@ -19,6 +19,9 @@ import { getStatusLabel, getStatusColor } from '@/utils/statusLabels';
 import { criarEntradasDevolucao } from '@/utils/devolucaoEntries';
 import { getTransportadoraReal, classificarTransporte } from '@/utils/transportadora';
 import { formatHubName } from '@/utils/hubs';
+import { classifyConfidence, CONFIANCA_NIVEIS } from '@/utils/confidence';
+import ConfidenceBadge from '@/components/shipping/ConfidenceBadge';
+import ManualVerificationModal from '@/components/shipping/ManualVerificationModal';
 
 
 // Resize image helper
@@ -75,6 +78,10 @@ export default function ShippingList({
     const canDelete = isStockAdmin;
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
+    // Confiança de Rastreio (Fase 1) — chips "Precisam verificar", "Loggi suspeitos", "Correios travados"
+    const [confidenceFilter, setConfidenceFilter] = useState('all');
+    // Modal de verificação manual (chamado a partir do badge 🔴/🟡)
+    const [verificationModalShipping, setVerificationModalShipping] = useState(null);
     const [shipPeriodFilter, setShipPeriodFilter] = useState('30');
     const [shipCustomMonth, setShipCustomMonth] = useState(new Date().getMonth());
     const [shipCustomYear, setShipCustomYear] = useState(new Date().getFullYear());
@@ -391,6 +398,43 @@ export default function ShippingList({
         return date.toLocaleDateString('pt-BR') + ' ' + date.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'});
     };
 
+    // Helper: aplica o filtro de Confiança de Rastreio a um shipping.
+    // Usado tanto na filteredShippings quanto no cálculo de counts dos chips.
+    const matchesConfidenceFilter = useCallback((s, filter) => {
+        if (filter === 'all') return true;
+        const conf = classifyConfidence(s);
+        if (filter === 'precisam_verificar') {
+            return conf.nivel === CONFIANCA_NIVEIS.URGENTE || conf.nivel === CONFIANCA_NIVEIS.ATENCAO;
+        }
+        if (filter === 'loggi_suspeitos') {
+            return (conf.nivel === CONFIANCA_NIVEIS.URGENTE || conf.nivel === CONFIANCA_NIVEIS.ATENCAO)
+                && conf.transporte === 'loggi';
+        }
+        if (filter === 'correios_travados') {
+            return (conf.nivel === CONFIANCA_NIVEIS.URGENTE || conf.nivel === CONFIANCA_NIVEIS.ATENCAO)
+                && conf.transporte === 'correios';
+        }
+        return true;
+    }, []);
+
+    // Contagens pré-filtros (exceto confiança) para mostrar ao lado dos chips.
+    const confidenceCounts = useMemo(() => {
+        const base = filterByPeriod(shippings, shipPeriodFilter, shipCustomMonth, shipCustomYear, 'date')
+            .filter(s => {
+                const search = searchTerm.toLowerCase();
+                const matchesSearch = (s.nfNumero || '').toLowerCase().includes(search) ||
+                                     (s.cliente || '').toLowerCase().includes(search) ||
+                                     (s.codigoRastreio || '').toLowerCase().includes(search);
+                const matchesStatus = statusFilter === 'all' || s.status === statusFilter || (statusFilter === 'EM_TRANSITO' && s.status === 'TENTATIVA_ENTREGA');
+                return matchesSearch && matchesStatus;
+            });
+        return {
+            precisam_verificar: base.filter(s => matchesConfidenceFilter(s, 'precisam_verificar')).length,
+            loggi_suspeitos: base.filter(s => matchesConfidenceFilter(s, 'loggi_suspeitos')).length,
+            correios_travados: base.filter(s => matchesConfidenceFilter(s, 'correios_travados')).length,
+        };
+    }, [shippings, searchTerm, statusFilter, shipPeriodFilter, shipCustomMonth, shipCustomYear, matchesConfidenceFilter]);
+
     // Filtrar despachos
     const filteredShippings = useMemo(() => {
         let items = filterByPeriod(shippings, shipPeriodFilter, shipCustomMonth, shipCustomYear, 'date');
@@ -400,10 +444,13 @@ export default function ShippingList({
                                  (s.cliente || '').toLowerCase().includes(search) ||
                                  (s.codigoRastreio || '').toLowerCase().includes(search);
             const matchesStatus = statusFilter === 'all' || s.status === statusFilter || (statusFilter === 'EM_TRANSITO' && s.status === 'TENTATIVA_ENTREGA');
-            return matchesSearch && matchesStatus;
+            return matchesSearch && matchesStatus && matchesConfidenceFilter(s, confidenceFilter);
         });
         return items;
-    }, [shippings, searchTerm, statusFilter, shipPeriodFilter, shipCustomMonth, shipCustomYear]);
+    }, [shippings, searchTerm, statusFilter, confidenceFilter, shipPeriodFilter, shipCustomMonth, shipCustomYear, matchesConfidenceFilter]);
+
+    // Ordem de urgência p/ sort "Mais urgente primeiro" (maior = mais urgente).
+    const urgencyRank = { urgente: 3, atencao: 2, ok: 1, na: 0 };
 
     // Sorted shippings (MUST be after filteredShippings)
     const sortedShippings = useMemo(() => {
@@ -427,6 +474,20 @@ export default function ShippingList({
                     valA = (a.transportadora || '').toLowerCase();
                     valB = (b.transportadora || '').toLowerCase();
                     break;
+                case 'confianca': {
+                    // Ordena por nível de urgência; empate → mais dias sem movimento primeiro.
+                    const confA = classifyConfidence(a);
+                    const confB = classifyConfidence(b);
+                    const rankA = urgencyRank[confA.nivel] ?? 0;
+                    const rankB = urgencyRank[confB.nivel] ?? 0;
+                    if (rankA !== rankB) {
+                        // asc = menos urgente primeiro; desc = mais urgente primeiro (default esperado)
+                        return sortDir === 'asc' ? rankA - rankB : rankB - rankA;
+                    }
+                    const diasA = confA.diasUteisSemMov ?? -1;
+                    const diasB = confB.diasUteisSemMov ?? -1;
+                    return sortDir === 'asc' ? diasA - diasB : diasB - diasA;
+                }
                 default:
                     valA = new Date(a.date || 0).getTime();
                     valB = new Date(b.date || 0).getTime();
@@ -465,17 +526,18 @@ export default function ShippingList({
             setSortDir(prev => prev === 'asc' ? 'desc' : 'asc');
         } else {
             setSortField(field);
-            setSortDir(field === 'date' ? 'desc' : 'asc');
+            // Datas e Confiança default p/ desc (mais recente / mais urgente primeiro)
+            setSortDir(field === 'date' || field === 'confianca' ? 'desc' : 'asc');
         }
     };
 
-    const SortTh = ({ field, children, ...rest }) => {
+    const SortTh = ({ field, children, style: extraStyle, ...rest }) => {
         const active = sortField === field;
         const iconName = active ? (sortDir === 'asc' ? 'arrowUp' : 'arrowDown') : 'arrowUpDown';
         return (
             <th
                 onClick={() => handleSort(field)}
-                style={{cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap', textAlign: 'center', background: '#FFECB5'}}
+                style={{cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap', textAlign: 'center', background: '#FFECB5', ...(extraStyle || {})}}
                 {...rest}
             >
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', justifyContent: 'center' }}>
@@ -996,6 +1058,55 @@ export default function ShippingList({
                 )}
             </div>
 
+            {/* Chips de "Alerta de Rastreio" — só para despachos (devolução é outro fluxo).
+                Sem chip "Todos": nenhum filtro ativo = mostra tudo. Clicar no chip ativo
+                desativa (toggle-off). Chips continuam mutuamente exclusivos. */}
+            {!isDevolucao && (confidenceCounts.precisam_verificar > 0 || confidenceCounts.loggi_suspeitos > 0 || confidenceCounts.correios_travados > 0 || confidenceFilter !== 'all') && (
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 500 }}>
+                        Alerta:
+                    </span>
+                    {[
+                        { key: 'precisam_verificar', label: 'Precisam verificar', emoji: '🟡🔴', count: confidenceCounts.precisam_verificar },
+                        { key: 'loggi_suspeitos', label: 'Loggi suspeitos', emoji: '🟡', count: confidenceCounts.loggi_suspeitos },
+                        { key: 'correios_travados', label: 'Correios travados', emoji: '🔴', count: confidenceCounts.correios_travados },
+                    ].map(chip => {
+                        const active = confidenceFilter === chip.key;
+                        const disabled = !active && chip.count === 0;
+                        return (
+                            <button
+                                key={chip.key}
+                                onClick={() => {
+                                    if (disabled) return;
+                                    // Toggle: clicar no chip ativo desativa (volta ao 'all' = mostra tudo).
+                                    setConfidenceFilter(active ? 'all' : chip.key);
+                                }}
+                                disabled={disabled}
+                                title={active ? 'Clique para remover este filtro' : `Filtrar por ${chip.label.toLowerCase()}`}
+                                style={{
+                                    padding: '4px 12px',
+                                    borderRadius: '4px',
+                                    border: `1px solid ${active ? '#8c52ff' : '#e5e7eb'}`,
+                                    background: active ? 'rgba(140, 82, 255, 0.2)' : disabled ? '#f9fafb' : '#fff',
+                                    color: active ? '#8c52ff' : disabled ? '#c0c4cc' : 'var(--text-primary)',
+                                    fontSize: '12px',
+                                    fontWeight: active ? 600 : 500,
+                                    cursor: disabled ? 'default' : 'pointer',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    transition: 'background 0.15s, border-color 0.15s',
+                                }}
+                            >
+                                {chip.emoji && <span>{chip.emoji}</span>}
+                                <span>{chip.label}</span>
+                                <span style={{ fontSize: '11px', opacity: 0.7 }}>({chip.count})</span>
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+
             <PeriodFilter
                 periodFilter={shipPeriodFilter} setPeriodFilter={setShipPeriodFilter}
                 customMonth={shipCustomMonth} setCustomMonth={setShipCustomMonth}
@@ -1052,15 +1163,21 @@ export default function ShippingList({
                                         />
                                     </th>
                                 )}
+                                {!isDevolucao && (
+                                    <SortTh field="confianca" style={{textAlign: 'center', width: '60px'}}>Alerta</SortTh>
+                                )}
                                 <SortTh field="nfNumero">NF</SortTh>
                                 <SortTh field="date">Data/Hora</SortTh>
-                                <th style={{textAlign: 'center', background: '#FFECB5'}}>Cliente</th>
+                                <th style={{textAlign: 'center', background: '#FFECB5', maxWidth: '180px'}}>Cliente</th>
                                 <SortTh field="localOrigem">{isDevolucao ? 'HUB Destino' : 'Origem'}</SortTh>
                                 <SortTh field="transportadora">Transportadora</SortTh>
                                 <th style={{textAlign: 'center', background: '#FFECB5'}}>Rastreio</th>
                                 <th style={{textAlign: 'center', background: '#FFECB5'}}>Status</th>
+                                {!isDevolucao && (
+                                    <th style={{textAlign: 'center', background: '#FFECB5'}}>Última movimentação</th>
+                                )}
                                 {isDevolucao && <th style={{textAlign: 'center', background: '#FFECB5'}}>Motivo</th>}
-                                <th style={{textAlign: 'left', background: '#FFECB5'}}>Ações</th>
+                                <th style={{textAlign: 'center', background: '#FFECB5', minWidth: '180px', whiteSpace: 'nowrap'}}>Ações</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1078,15 +1195,33 @@ export default function ShippingList({
                                             ) : null}
                                         </td>
                                     )}
+                                    {!isDevolucao && (
+                                        <td style={{textAlign: 'center'}}>
+                                            <ConfidenceBadge
+                                                shipping={s}
+                                                canVerify={canEdit}
+                                                onClickVerify={() => setVerificationModalShipping(s)}
+                                            />
+                                        </td>
+                                    )}
                                     <td style={{textAlign: 'center'}}>
                                         <strong>{s.nfNumero}</strong>
                                     </td>
                                     <td style={{fontSize: '12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap', textAlign: 'center'}}>
                                         {formatDate(s.date)}
                                     </td>
-                                    <td style={{textAlign: 'center'}}>
-                                        {s.cliente}
-                                        {s.destino && <div style={{fontSize: '10px', color: 'var(--text-muted)'}}>{s.destino.substring(0, 30)}...</div>}
+                                    <td style={{textAlign: 'center', maxWidth: '180px'}}>
+                                        <div style={{overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}} title={s.cliente}>
+                                            {s.cliente}
+                                        </div>
+                                        {s.destino && (
+                                            <div
+                                                style={{fontSize: '10px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}
+                                                title={s.destino}
+                                            >
+                                                {s.destino}
+                                            </div>
+                                        )}
                                     </td>
                                     <td style={{fontSize: '13px', textAlign: 'center'}}>{isDevolucao ? (formatHubName(s.hubDestino) || '-') : formatHubName(s.localOrigem)}</td>
                                     <td style={{fontSize: '13px', textAlign: 'center'}}>
@@ -1321,13 +1456,41 @@ export default function ShippingList({
                                             </div>
                                         )}
                                     </td>
+                                    {!isDevolucao && (() => {
+                                        const conf = classifyConfidence(s);
+                                        // Células ⚪ (entregue/local/devolução/coleta) mostram apenas "—"
+                                        if (conf.nivel === CONFIANCA_NIVEIS.NA) {
+                                            return (
+                                                <td style={{textAlign: 'center', fontSize: '12px', color: 'var(--text-muted)'}}>—</td>
+                                            );
+                                        }
+                                        const temEvento = conf.temDataUltimoEvento;
+                                        const ref = conf.dataReferencia;
+                                        const diasStr = conf.diasUteisSemMov === 0
+                                            ? 'hoje'
+                                            : `há ${conf.diasUteisSemMov} dia(s) útil(eis)`;
+                                        return (
+                                            <td style={{textAlign: 'center', fontSize: '12px', whiteSpace: 'nowrap'}}
+                                                title={conf.motivo}>
+                                                <div style={{color: 'var(--text-primary)', fontWeight: 500}}>
+                                                    {diasStr}
+                                                </div>
+                                                <div style={{fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px'}}>
+                                                    {temEvento ? 'último evento' : 'desde o despacho'}
+                                                    {ref && (
+                                                        <>: {ref.toLocaleDateString('pt-BR')}</>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        );
+                                    })()}
                                     {isDevolucao && (
                                         <td style={{fontSize: '12px', color: 'var(--text-secondary)', textAlign: 'center'}}>
                                             {s.motivoDevolucao || '-'}
                                         </td>
                                     )}
-                                    <td style={{textAlign: 'left'}}>
-                                        <div style={{display: 'inline-flex', gap: '4px', flexWrap: 'wrap', justifyContent: 'flex-start'}}>
+                                    <td style={{textAlign: 'center'}}>
+                                        <div className="shipping-actions-row" style={{display: 'inline-flex', gap: '4px', flexWrap: 'nowrap', justifyContent: 'center', alignItems: 'center'}}>
                                             {/* WhatsApp copy — visible to all */}
                                             <button
                                                 className="btn btn-secondary btn-sm"
@@ -1852,6 +2015,19 @@ export default function ShippingList({
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Modal de Verificação Manual de Rastreio (Fase 1 — Confiança) */}
+            {verificationModalShipping && (
+                <ManualVerificationModal
+                    shipping={verificationModalShipping}
+                    onClose={() => setVerificationModalShipping(null)}
+                    onSaved={(updated) => {
+                        setVerificationModalShipping(null);
+                        if (onRefresh) onRefresh();
+                        else if (onUpdate) onUpdate(updated);
+                    }}
+                />
             )}
         </div>
     );
