@@ -31,6 +31,9 @@ export const statusList = {
     'TENTATIVA_ENTREGA':   { label: 'Tentativa de Entrega',   color: '#d97706', textColor: '#92400E', bg: 'rgba(217,119,6,0.18)' },
     'ENTREGUE':            { label: 'Entregue',               color: '#39845f', textColor: '#2a6348', bg: 'rgba(57,132,95,0.20)' },
     'DEVOLVIDO':           { label: 'Devolvido',              color: '#893030', textColor: '#6c2626', bg: 'rgba(137,48,48,0.18)' },
+    // Entrega 1 — Taxonomia de Devolução (terminais)
+    'ETIQUETA_CANCELADA':  { label: 'Etiqueta cancelada',     color: '#6b7280', textColor: '#4b5563', bg: 'rgba(107,114,128,0.18)' },
+    'EXTRAVIADO':          { label: 'Extraviado',             color: '#7f1d1d', textColor: '#661414', bg: 'rgba(127,29,29,0.18)' },
 };
 
 export const STATUS_TRANSITIONS = {
@@ -41,6 +44,10 @@ export const STATUS_TRANSITIONS = {
     'TENTATIVA_ENTREGA':   ['SAIU_ENTREGA', 'ENTREGUE', 'DEVOLVIDO'],
     'ENTREGUE':            [],
     'DEVOLVIDO':           [],
+    // Terminais — reclassificação entre DEVOLVIDO/ETIQUETA_CANCELADA/EXTRAVIADO é
+    // feita via modal admin-only (ReclassificationModal), não pelo dropdown comum.
+    'ETIQUETA_CANCELADA':  [],
+    'EXTRAVIADO':          [],
 };
 
 export default function ShippingManager({

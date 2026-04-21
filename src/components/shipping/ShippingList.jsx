@@ -22,6 +22,7 @@ import { formatHubName } from '@/utils/hubs';
 import { classifyConfidence, CONFIANCA_NIVEIS } from '@/utils/confidence';
 import ConfidenceBadge from '@/components/shipping/ConfidenceBadge';
 import ManualVerificationModal from '@/components/shipping/ManualVerificationModal';
+import ReclassificationModal from '@/components/shipping/ReclassificationModal';
 
 
 // Resize image helper
@@ -80,8 +81,13 @@ export default function ShippingList({
     const [statusFilter, setStatusFilter] = useState('all');
     // Confiança de Rastreio (Fase 1) — chips "Precisam verificar", "Loggi suspeitos", "Correios travados"
     const [confidenceFilter, setConfidenceFilter] = useState('all');
+    // Sub-aba Devoluções — chips de tipo terminal (Entrega 1 da Taxonomia de Devolução).
+    // 'all' | 'DEVOLVIDO' | 'ETIQUETA_CANCELADA' | 'EXTRAVIADO'. Filtro por status.
+    const [tipoDevolucaoFilter, setTipoDevolucaoFilter] = useState('all');
     // Modal de verificação manual (chamado a partir do badge 🔴/🟡)
     const [verificationModalShipping, setVerificationModalShipping] = useState(null);
+    // Modal de reclassificação manual (Entrega 1 Taxonomia de Devolução — admin only).
+    const [reclassModalShipping, setReclassModalShipping] = useState(null);
     const [shipPeriodFilter, setShipPeriodFilter] = useState('30');
     const [shipCustomMonth, setShipCustomMonth] = useState(new Date().getMonth());
     const [shipCustomYear, setShipCustomYear] = useState(new Date().getFullYear());
@@ -417,7 +423,16 @@ export default function ShippingList({
         return true;
     }, []);
 
+    // Helper: aplica o filtro de "tipo de devolução" (chips da Entrega 1).
+    // 'all' = todos; caso contrário, filtra por status terminal específico.
+    const matchesTipoDevolucaoFilter = useCallback((s, filter) => {
+        if (filter === 'all') return true;
+        return s.status === filter;
+    }, []);
+
     // Contagens pré-filtros (exceto confiança) para mostrar ao lado dos chips.
+    // `shippings` já vem filtrado por tipo (despacho/devolução) no ShippingManager,
+    // então os counts são naturalmente escopados à sub-aba ativa.
     const confidenceCounts = useMemo(() => {
         const base = filterByPeriod(shippings, shipPeriodFilter, shipCustomMonth, shipCustomYear, 'date')
             .filter(s => {
@@ -426,14 +441,33 @@ export default function ShippingList({
                                      (s.cliente || '').toLowerCase().includes(search) ||
                                      (s.codigoRastreio || '').toLowerCase().includes(search);
                 const matchesStatus = statusFilter === 'all' || s.status === statusFilter || (statusFilter === 'EM_TRANSITO' && s.status === 'TENTATIVA_ENTREGA');
-                return matchesSearch && matchesStatus;
+                // Chips de Alerta também respeitam o chip de tipo-devolução ativo
+                // (para contar apenas dentro do subconjunto visível da sub-aba).
+                const matchesTipoDev = matchesTipoDevolucaoFilter(s, tipoDevolucaoFilter);
+                return matchesSearch && matchesStatus && matchesTipoDev;
             });
         return {
             precisam_verificar: base.filter(s => matchesConfidenceFilter(s, 'precisam_verificar')).length,
             loggi_suspeitos: base.filter(s => matchesConfidenceFilter(s, 'loggi_suspeitos')).length,
             correios_travados: base.filter(s => matchesConfidenceFilter(s, 'correios_travados')).length,
         };
-    }, [shippings, searchTerm, statusFilter, shipPeriodFilter, shipCustomMonth, shipCustomYear, matchesConfidenceFilter]);
+    }, [shippings, searchTerm, statusFilter, tipoDevolucaoFilter, shipPeriodFilter, shipCustomMonth, shipCustomYear, matchesConfidenceFilter, matchesTipoDevolucaoFilter]);
+
+    // Contagens por tipo de devolução (para exibir ao lado dos chips na sub-aba Devoluções).
+    const tipoDevolucaoCounts = useMemo(() => {
+        const base = filterByPeriod(shippings, shipPeriodFilter, shipCustomMonth, shipCustomYear, 'date')
+            .filter(s => {
+                const search = searchTerm.toLowerCase();
+                return (s.nfNumero || '').toLowerCase().includes(search) ||
+                       (s.cliente || '').toLowerCase().includes(search) ||
+                       (s.codigoRastreio || '').toLowerCase().includes(search);
+            });
+        return {
+            DEVOLVIDO: base.filter(s => s.status === 'DEVOLVIDO').length,
+            ETIQUETA_CANCELADA: base.filter(s => s.status === 'ETIQUETA_CANCELADA').length,
+            EXTRAVIADO: base.filter(s => s.status === 'EXTRAVIADO').length,
+        };
+    }, [shippings, searchTerm, shipPeriodFilter, shipCustomMonth, shipCustomYear]);
 
     // Filtrar despachos
     const filteredShippings = useMemo(() => {
@@ -444,10 +478,12 @@ export default function ShippingList({
                                  (s.cliente || '').toLowerCase().includes(search) ||
                                  (s.codigoRastreio || '').toLowerCase().includes(search);
             const matchesStatus = statusFilter === 'all' || s.status === statusFilter || (statusFilter === 'EM_TRANSITO' && s.status === 'TENTATIVA_ENTREGA');
-            return matchesSearch && matchesStatus && matchesConfidenceFilter(s, confidenceFilter);
+            return matchesSearch && matchesStatus
+                && matchesConfidenceFilter(s, confidenceFilter)
+                && matchesTipoDevolucaoFilter(s, tipoDevolucaoFilter);
         });
         return items;
-    }, [shippings, searchTerm, statusFilter, confidenceFilter, shipPeriodFilter, shipCustomMonth, shipCustomYear, matchesConfidenceFilter]);
+    }, [shippings, searchTerm, statusFilter, confidenceFilter, tipoDevolucaoFilter, shipPeriodFilter, shipCustomMonth, shipCustomYear, matchesConfidenceFilter, matchesTipoDevolucaoFilter]);
 
     // Ordem de urgência p/ sort "Mais urgente primeiro" (maior = mais urgente).
     const urgencyRank = { urgente: 3, atencao: 2, ok: 1, na: 0 };
@@ -553,12 +589,13 @@ export default function ShippingList({
     };
 
     // Status progression — only advances, never regresses
-    const STATUS_RANK = { DESPACHADO: 0, AGUARDANDO_COLETA: 0.5, EM_TRANSITO: 1, SAIU_ENTREGA: 2, TENTATIVA_ENTREGA: 2, ENTREGUE: 3, DEVOLVIDO: 3 };
-    const VALID_STATUSES = ['DESPACHADO', 'AGUARDANDO_COLETA', 'EM_TRANSITO', 'SAIU_ENTREGA', 'TENTATIVA_ENTREGA', 'ENTREGUE', 'DEVOLVIDO'];
+    const STATUS_RANK = { DESPACHADO: 0, AGUARDANDO_COLETA: 0.5, EM_TRANSITO: 1, SAIU_ENTREGA: 2, TENTATIVA_ENTREGA: 2, ENTREGUE: 3, DEVOLVIDO: 3, ETIQUETA_CANCELADA: 3, EXTRAVIADO: 3 };
+    const VALID_STATUSES = ['DESPACHADO', 'AGUARDANDO_COLETA', 'EM_TRANSITO', 'SAIU_ENTREGA', 'TENTATIVA_ENTREGA', 'ENTREGUE', 'DEVOLVIDO', 'ETIQUETA_CANCELADA', 'EXTRAVIADO'];
+    const TERMINAL_STATUSES = new Set(['ENTREGUE', 'DEVOLVIDO', 'ETIQUETA_CANCELADA', 'EXTRAVIADO']);
 
     const shouldUpdateStatus = (currentStatus, newStatus) => {
         if (!VALID_STATUSES.includes(newStatus)) return false;
-        if (currentStatus === 'ENTREGUE' || currentStatus === 'DEVOLVIDO') return false;
+        if (TERMINAL_STATUSES.has(currentStatus)) return false;
         return (STATUS_RANK[newStatus] ?? -1) > (STATUS_RANK[currentStatus] ?? -1);
     };
 
@@ -1058,10 +1095,58 @@ export default function ShippingList({
                 )}
             </div>
 
-            {/* Chips de "Alerta de Rastreio" — só para despachos (devolução é outro fluxo).
+            {/* Chips de "Tipo de Devolução" — só na sub-aba Devoluções (Entrega 1 da
+                Taxonomia). Filtra por status terminal. "Todos" limpa o filtro. Chips
+                mutuamente exclusivos, operam sobre os dados já escopados à sub-aba. */}
+            {isDevolucao && (
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 500 }}>
+                        Tipo:
+                    </span>
+                    {[
+                        { key: 'all', label: 'Todos', count: shippings.length },
+                        { key: 'DEVOLVIDO', label: 'Devolução real', count: tipoDevolucaoCounts.DEVOLVIDO, color: '#893030' },
+                        { key: 'ETIQUETA_CANCELADA', label: 'Etiqueta cancelada', count: tipoDevolucaoCounts.ETIQUETA_CANCELADA, color: '#6b7280' },
+                        { key: 'EXTRAVIADO', label: 'Extraviado', count: tipoDevolucaoCounts.EXTRAVIADO, color: '#7f1d1d' },
+                    ].map(chip => {
+                        const active = tipoDevolucaoFilter === chip.key;
+                        const disabled = !active && chip.key !== 'all' && chip.count === 0;
+                        const accent = chip.color || '#8c52ff';
+                        return (
+                            <button
+                                key={chip.key}
+                                onClick={() => { if (!disabled) setTipoDevolucaoFilter(chip.key); }}
+                                disabled={disabled}
+                                title={active ? 'Filtro ativo' : `Filtrar por ${chip.label.toLowerCase()}`}
+                                style={{
+                                    padding: '4px 12px',
+                                    borderRadius: '4px',
+                                    border: `1px solid ${active ? accent : '#e5e7eb'}`,
+                                    background: active ? `${accent}22` : disabled ? '#f9fafb' : '#fff',
+                                    color: active ? accent : disabled ? '#c0c4cc' : 'var(--text-primary)',
+                                    fontSize: '12px',
+                                    fontWeight: active ? 600 : 500,
+                                    cursor: disabled ? 'default' : 'pointer',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    transition: 'background 0.15s, border-color 0.15s',
+                                }}
+                            >
+                                <span>{chip.label}</span>
+                                <span style={{ fontSize: '11px', opacity: 0.7 }}>({chip.count})</span>
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+
+            {/* Chips de "Alerta de Rastreio" — aparecem em ambas as sub-abas (Entrega 1
+                expandiu este sistema para devoluções). Os counts são naturalmente
+                escopados à sub-aba pois `shippings` já vem pré-filtrado por tipo.
                 Sem chip "Todos": nenhum filtro ativo = mostra tudo. Clicar no chip ativo
                 desativa (toggle-off). Chips continuam mutuamente exclusivos. */}
-            {!isDevolucao && (confidenceCounts.precisam_verificar > 0 || confidenceCounts.loggi_suspeitos > 0 || confidenceCounts.correios_travados > 0 || confidenceFilter !== 'all') && (
+            {(confidenceCounts.precisam_verificar > 0 || confidenceCounts.loggi_suspeitos > 0 || confidenceCounts.correios_travados > 0 || confidenceFilter !== 'all') && (
                 <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
                     <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 500 }}>
                         Alerta:
@@ -1163,9 +1248,7 @@ export default function ShippingList({
                                         />
                                     </th>
                                 )}
-                                {!isDevolucao && (
-                                    <SortTh field="confianca" style={{textAlign: 'center', width: '60px'}}>Alerta</SortTh>
-                                )}
+                                <SortTh field="confianca" style={{textAlign: 'center', width: '60px'}}>Alerta</SortTh>
                                 <SortTh field="nfNumero">NF</SortTh>
                                 <SortTh field="date">Data/Hora</SortTh>
                                 <th style={{textAlign: 'center', background: '#FFECB5', maxWidth: '180px'}}>Cliente</th>
@@ -1173,9 +1256,7 @@ export default function ShippingList({
                                 <SortTh field="transportadora">Transportadora</SortTh>
                                 <th style={{textAlign: 'center', background: '#FFECB5'}}>Rastreio</th>
                                 <th style={{textAlign: 'center', background: '#FFECB5'}}>Status</th>
-                                {!isDevolucao && (
-                                    <th style={{textAlign: 'center', background: '#FFECB5'}}>Última movimentação</th>
-                                )}
+                                <th style={{textAlign: 'center', background: '#FFECB5'}}>Última movimentação</th>
                                 {isDevolucao && <th style={{textAlign: 'center', background: '#FFECB5'}}>Motivo</th>}
                                 <th style={{textAlign: 'center', background: '#FFECB5', minWidth: '180px', whiteSpace: 'nowrap'}}>Ações</th>
                             </tr>
@@ -1195,15 +1276,13 @@ export default function ShippingList({
                                             ) : null}
                                         </td>
                                     )}
-                                    {!isDevolucao && (
-                                        <td style={{textAlign: 'center'}}>
-                                            <ConfidenceBadge
-                                                shipping={s}
-                                                canVerify={canEdit}
-                                                onClickVerify={() => setVerificationModalShipping(s)}
-                                            />
-                                        </td>
-                                    )}
+                                    <td style={{textAlign: 'center'}}>
+                                        <ConfidenceBadge
+                                            shipping={s}
+                                            canVerify={canEdit}
+                                            onClickVerify={() => setVerificationModalShipping(s)}
+                                        />
+                                    </td>
                                     <td style={{textAlign: 'center'}}>
                                         <strong>{s.nfNumero}</strong>
                                     </td>
@@ -1456,9 +1535,9 @@ export default function ShippingList({
                                             </div>
                                         )}
                                     </td>
-                                    {!isDevolucao && (() => {
+                                    {(() => {
                                         const conf = classifyConfidence(s);
-                                        // Células ⚪ (entregue/local/devolução/coleta) mostram apenas "—"
+                                        // Células ⚪ (entregue/local/coleta/terminais de devolução) mostram apenas "—"
                                         if (conf.nivel === CONFIANCA_NIVEIS.NA) {
                                             return (
                                                 <td style={{textAlign: 'center', fontSize: '12px', color: 'var(--text-muted)'}}>—</td>
@@ -1532,6 +1611,19 @@ export default function ShippingList({
                                                     style={{fontSize: '10px', padding: '4px 8px'}}
                                                 >
                                                     {buscandoNF === s.id ? '...' : '🔍 ME'}
+                                                </button>
+                                            )}
+                                            {/* Reclassificar — admin only, para status terminais negativos.
+                                                Entrega 1 da Taxonomia de Devolução: permite mover entre
+                                                DEVOLVIDO/ETIQUETA_CANCELADA/EXTRAVIADO. */}
+                                            {isStockAdmin && (s.status === 'DEVOLVIDO' || s.status === 'ETIQUETA_CANCELADA' || s.status === 'EXTRAVIADO') && (
+                                                <button
+                                                    className="btn btn-icon btn-secondary btn-sm"
+                                                    onClick={() => setReclassModalShipping(s)}
+                                                    title="Reclassificar devolução (admin)"
+                                                    style={{fontSize: '11px', padding: '4px 8px', borderColor: '#8c52ff', color: '#8c52ff'}}
+                                                >
+                                                    ↺
                                                 </button>
                                             )}
                                             {canEdit && (<button
@@ -2024,6 +2116,21 @@ export default function ShippingList({
                     onClose={() => setVerificationModalShipping(null)}
                     onSaved={(updated) => {
                         setVerificationModalShipping(null);
+                        if (onRefresh) onRefresh();
+                        else if (onUpdate) onUpdate(updated);
+                    }}
+                />
+            )}
+
+            {/* Modal de Reclassificação Manual — Entrega 1 Taxonomia de Devolução (admin only) */}
+            {reclassModalShipping && (
+                <ReclassificationModal
+                    shipping={reclassModalShipping}
+                    onClose={() => setReclassModalShipping(null)}
+                    onSaved={(updated) => {
+                        setReclassModalShipping(null);
+                        setSuccess(`Reclassificado como ${updated.status}`);
+                        setTimeout(() => setSuccess(''), 4000);
                         if (onRefresh) onRefresh();
                         else if (onUpdate) onUpdate(updated);
                     }}

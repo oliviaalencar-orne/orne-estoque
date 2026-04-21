@@ -58,8 +58,15 @@ const COLORS = {
   na: { fg: '#6b6b6b', bg: 'rgba(180, 180, 180, 0.2)' },
 };
 
-// Status que não precisam de avaliação.
-const TERMINAL_STATUSES = new Set(['ENTREGUE', 'DEVOLVIDO']);
+// Status que não precisam de avaliação (caso encerrado do ponto de vista de rastreio).
+// DEVOLVIDO = devolução real recebida no HUB; ETIQUETA_CANCELADA/EXTRAVIADO = terminais
+// administrativos introduzidos pela Entrega 1 da Taxonomia de Devolução.
+const TERMINAL_STATUSES = new Set([
+  'ENTREGUE',
+  'DEVOLVIDO',
+  'ETIQUETA_CANCELADA',
+  'EXTRAVIADO',
+]);
 const PRE_DISPATCH_STATUSES = new Set(['AGUARDANDO_COLETA']);
 
 /**
@@ -168,9 +175,9 @@ function _compute(shipping, now) {
   if (PRE_DISPATCH_STATUSES.has(status)) {
     return buildResult('na', 'Aguardando coleta (problema interno, não de rastreio)', { transporte });
   }
-  if (shipping.tipo === 'devolucao') {
-    return buildResult('na', 'Fluxo de devolução — acompanhar separadamente', { transporte });
-  }
+  // Nota: devoluções em trânsito (status intermediário) agora recebem Alerta igual
+  // ao despacho. Os terminais (DEVOLVIDO/ETIQUETA_CANCELADA/EXTRAVIADO) já caem em
+  // TERMINAL_STATUSES acima e retornam ⚪. Ver Entrega 1 da Taxonomia de Devolução.
   if (shipping.entregaLocal === true || transporte === 'local') {
     return buildResult('na', 'Entrega local — usa comprovante, não rastreio', { transporte });
   }

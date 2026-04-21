@@ -43,8 +43,11 @@ function formatDateBR(iso) {
     }
 }
 
-function decisaoLabel(decisao) {
-    if (decisao === 'confirmado_entregue') return 'confirmado entregue';
+function decisaoLabel(decisao, isDevolucao = false) {
+    if (decisao === 'confirmado_entregue') {
+        // Entrega 1 — Taxonomia de Devolução: no fluxo reverso, "entregue" = recebido no HUB.
+        return isDevolucao ? 'recebido no HUB' : 'confirmado entregue';
+    }
     if (decisao === 'ainda_em_transito') return 'ainda em trânsito';
     return decisao || '—';
 }
@@ -63,18 +66,22 @@ export default function ManualVerificationModal({ shipping, onClose, onSaved }) 
     const conf = useMemo(() => classifyConfidence(shipping), [shipping]);
     const transportadora = getTransportadoraReal(shipping);
     const historico = shipping.verificacaoManual?.historico || [];
+    // Contexto de devolução — muda copy de "entregue" → "recebido no HUB" (fluxo reverso).
+    const isDevolucao = shipping.tipo === 'devolucao';
 
     // "Ativa" = verificação com decisão não-nula. Pós-undo, decisao=null
     // e o modal volta a oferecer os 2 botões de criação.
     const verificacaoAtiva = shipping.verificacaoManual?.decisao ? shipping.verificacaoManual : null;
 
     // Read-only: estados ⚪ naturais (sem verificação manual ativa).
-    //   - ENTREGUE/DEVOLVIDO pelo rastreio
-    //   - AGUARDANDO_COLETA, devolução, entrega local
+    //   - ENTREGUE/DEVOLVIDO/ETIQUETA_CANCELADA/EXTRAVIADO pelo rastreio
+    //   - AGUARDANDO_COLETA, entrega local
     // Nesses casos não há o que verificar, só mostrar o contexto.
     const readOnlyNatural = !verificacaoAtiva && conf.nivel === CONFIANCA_NIVEIS.NA;
     const isEntregue = shipping.status === 'ENTREGUE';
     const isDevolvido = shipping.status === 'DEVOLVIDO';
+    const isEtiquetaCancelada = shipping.status === 'ETIQUETA_CANCELADA';
+    const isExtraviado = shipping.status === 'EXTRAVIADO';
 
     // Nome do autor da verificação ativa. Prefere o que foi gravado no JSONB;
     // faz lookup no user_profiles para registros legados (sem por_usuario_nome).
@@ -238,7 +245,7 @@ export default function ManualVerificationModal({ shipping, onClose, onSaved }) 
             const dataEntrega = shipping.rastreioInfo?.dataUltimoEvento || shipping.date;
             readOnlyMessage = (
                 <>
-                    <strong>Entrega registrada pelo rastreio</strong>
+                    <strong>{isDevolucao ? 'Recebimento no HUB registrado pelo rastreio' : 'Entrega registrada pelo rastreio'}</strong>
                     {dataEntrega && <> em <strong>{formatDateBR(dataEntrega)}</strong></>}.
                     {shipping.rastreioInfo?.ultimoEvento && (
                         <div style={{ marginTop: '6px', fontStyle: 'italic' }}>
@@ -258,13 +265,21 @@ export default function ManualVerificationModal({ shipping, onClose, onSaved }) 
                     )}
                 </>
             );
+        } else if (isEtiquetaCancelada) {
+            readOnlyMessage = (
+                <>
+                    <strong>Etiqueta cancelada</strong> — o envio nunca saiu da origem (transportadora cancelou a postagem).
+                </>
+            );
+        } else if (isExtraviado) {
+            readOnlyMessage = (
+                <>
+                    <strong>Pacote marcado como extraviado.</strong> Caso encerrado do ponto de vista de rastreio. Se houver tratativa com a transportadora ou o cliente, registre separadamente.
+                </>
+            );
         } else if (shipping.status === 'AGUARDANDO_COLETA') {
             readOnlyMessage = (
                 <><strong>Aguardando coleta pela transportadora.</strong> Problema interno (fluxo operacional), não de rastreio.</>
-            );
-        } else if (shipping.tipo === 'devolucao') {
-            readOnlyMessage = (
-                <><strong>Fluxo de devolução.</strong> Acompanhar pela tela de devoluções.</>
             );
         } else if (shipping.entregaLocal || conf.transporte === 'local') {
             readOnlyMessage = (
@@ -342,7 +357,7 @@ export default function ManualVerificationModal({ shipping, onClose, onSaved }) 
                             <span>Verificação ativa</span>
                         </div>
                         <div style={{ color: '#7C2D12', lineHeight: 1.5 }}>
-                            Marcado como <strong>"{decisaoLabel(verificacaoAtiva.decisao)}"</strong>
+                            Marcado como <strong>"{decisaoLabel(verificacaoAtiva.decisao, isDevolucao)}"</strong>
                             {autorNome && <> por <strong>{autorNome}</strong></>}
                             {verificacaoAtiva.data && <> em <strong>{formatDateBR(verificacaoAtiva.data)}</strong></>}
                             {verificacaoAtiva.nota && (
@@ -395,8 +410,8 @@ export default function ManualVerificationModal({ shipping, onClose, onSaved }) 
 
                         <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '12px', fontStyle: 'italic' }}>
                             {verificacaoAtiva
-                                ? 'Salvar uma nova decisão substitui a verificação ativa e empilha a anterior no histórico. Nenhuma opção altera o status do despacho.'
-                                : 'Nenhuma destas opções altera o status do despacho. Ambas apenas registram a sua verificação manual no histórico.'}
+                                ? `Salvar uma nova decisão substitui a verificação ativa e empilha a anterior no histórico. Nenhuma opção altera o status ${isDevolucao ? 'da devolução' : 'do despacho'}.`
+                                : `Nenhuma destas opções altera o status ${isDevolucao ? 'da devolução' : 'do despacho'}. Ambas apenas registram a sua verificação manual no histórico.`}
                         </div>
 
                         <div className="btn-group" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -406,7 +421,7 @@ export default function ManualVerificationModal({ shipping, onClose, onSaved }) 
                                 onClick={() => salvar('confirmado_entregue')}
                                 disabled={saving}
                             >
-                                {saving ? 'Salvando...' : '✅ Confirmar entregue'}
+                                {saving ? 'Salvando...' : (isDevolucao ? '✅ Confirmar recebido no HUB' : '✅ Confirmar entregue')}
                             </button>
                             <button
                                 className="btn btn-secondary"
@@ -452,7 +467,7 @@ export default function ManualVerificationModal({ shipping, onClose, onSaved }) 
                                     <div style={{ color: 'var(--text-secondary)' }}>
                                         {decisaoEmoji(h.decisao)}{' '}
                                         <span style={{ textTransform: 'capitalize' }}>
-                                            {decisaoLabel(h.decisao)}
+                                            {decisaoLabel(h.decisao, isDevolucao)}
                                         </span>
                                         {h.por_usuario_nome && <> por <strong>{h.por_usuario_nome}</strong></>}
                                         {h.data && <> · {formatDateBR(h.data)}</>}
