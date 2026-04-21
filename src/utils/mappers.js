@@ -80,6 +80,7 @@ export const mapShippingFromDB = (row) => ({
   hubDestino: row.hub_destino || '',
   tinyNfId: row.tiny_nf_id || null,
   chaveAcesso: row.chave_acesso || '',
+  verificacaoManual: row.verificacao_manual || null,
 });
 
 export const mapSeparationFromDB = (row) => ({
