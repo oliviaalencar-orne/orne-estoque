@@ -531,13 +531,13 @@ export default function ShippingList({
         }
     };
 
-    const SortTh = ({ field, children, ...rest }) => {
+    const SortTh = ({ field, children, style: extraStyle, ...rest }) => {
         const active = sortField === field;
         const iconName = active ? (sortDir === 'asc' ? 'arrowUp' : 'arrowDown') : 'arrowUpDown';
         return (
             <th
                 onClick={() => handleSort(field)}
-                style={{cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap', textAlign: 'center', background: '#FFECB5'}}
+                style={{cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap', textAlign: 'center', background: '#FFECB5', ...(extraStyle || {})}}
                 {...rest}
             >
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', justifyContent: 'center' }}>
@@ -1058,28 +1058,34 @@ export default function ShippingList({
                 )}
             </div>
 
-            {/* Chips de "Confiança de Rastreio" — só para despachos (devolução é outro fluxo). */}
+            {/* Chips de "Alerta de Rastreio" — só para despachos (devolução é outro fluxo).
+                Sem chip "Todos": nenhum filtro ativo = mostra tudo. Clicar no chip ativo
+                desativa (toggle-off). Chips continuam mutuamente exclusivos. */}
             {!isDevolucao && (confidenceCounts.precisam_verificar > 0 || confidenceCounts.loggi_suspeitos > 0 || confidenceCounts.correios_travados > 0 || confidenceFilter !== 'all') && (
                 <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
                     <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 500 }}>
-                        Confiança:
+                        Alerta:
                     </span>
                     {[
-                        { key: 'all', label: 'Todos', emoji: '', count: null },
                         { key: 'precisam_verificar', label: 'Precisam verificar', emoji: '🟡🔴', count: confidenceCounts.precisam_verificar },
                         { key: 'loggi_suspeitos', label: 'Loggi suspeitos', emoji: '🟡', count: confidenceCounts.loggi_suspeitos },
                         { key: 'correios_travados', label: 'Correios travados', emoji: '🔴', count: confidenceCounts.correios_travados },
                     ].map(chip => {
                         const active = confidenceFilter === chip.key;
-                        const disabled = chip.key !== 'all' && chip.count === 0;
+                        const disabled = !active && chip.count === 0;
                         return (
                             <button
                                 key={chip.key}
-                                onClick={() => !disabled && setConfidenceFilter(chip.key)}
+                                onClick={() => {
+                                    if (disabled) return;
+                                    // Toggle: clicar no chip ativo desativa (volta ao 'all' = mostra tudo).
+                                    setConfidenceFilter(active ? 'all' : chip.key);
+                                }}
                                 disabled={disabled}
+                                title={active ? 'Clique para remover este filtro' : `Filtrar por ${chip.label.toLowerCase()}`}
                                 style={{
                                     padding: '4px 12px',
-                                    borderRadius: '16px',
+                                    borderRadius: '4px',
                                     border: `1px solid ${active ? '#8c52ff' : '#e5e7eb'}`,
                                     background: active ? 'rgba(140, 82, 255, 0.2)' : disabled ? '#f9fafb' : '#fff',
                                     color: active ? '#8c52ff' : disabled ? '#c0c4cc' : 'var(--text-primary)',
@@ -1094,9 +1100,7 @@ export default function ShippingList({
                             >
                                 {chip.emoji && <span>{chip.emoji}</span>}
                                 <span>{chip.label}</span>
-                                {chip.count !== null && (
-                                    <span style={{ fontSize: '11px', opacity: 0.7 }}>({chip.count})</span>
-                                )}
+                                <span style={{ fontSize: '11px', opacity: 0.7 }}>({chip.count})</span>
                             </button>
                         );
                     })}
@@ -1160,11 +1164,11 @@ export default function ShippingList({
                                     </th>
                                 )}
                                 {!isDevolucao && (
-                                    <SortTh field="confianca">Confiança</SortTh>
+                                    <SortTh field="confianca" style={{textAlign: 'center', width: '60px'}}>Alerta</SortTh>
                                 )}
                                 <SortTh field="nfNumero">NF</SortTh>
                                 <SortTh field="date">Data/Hora</SortTh>
-                                <th style={{textAlign: 'center', background: '#FFECB5'}}>Cliente</th>
+                                <th style={{textAlign: 'center', background: '#FFECB5', maxWidth: '180px'}}>Cliente</th>
                                 <SortTh field="localOrigem">{isDevolucao ? 'HUB Destino' : 'Origem'}</SortTh>
                                 <SortTh field="transportadora">Transportadora</SortTh>
                                 <th style={{textAlign: 'center', background: '#FFECB5'}}>Rastreio</th>
@@ -1173,7 +1177,7 @@ export default function ShippingList({
                                     <th style={{textAlign: 'center', background: '#FFECB5'}}>Última movimentação</th>
                                 )}
                                 {isDevolucao && <th style={{textAlign: 'center', background: '#FFECB5'}}>Motivo</th>}
-                                <th style={{textAlign: 'left', background: '#FFECB5'}}>Ações</th>
+                                <th style={{textAlign: 'center', background: '#FFECB5', minWidth: '180px', whiteSpace: 'nowrap'}}>Ações</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1206,9 +1210,18 @@ export default function ShippingList({
                                     <td style={{fontSize: '12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap', textAlign: 'center'}}>
                                         {formatDate(s.date)}
                                     </td>
-                                    <td style={{textAlign: 'center'}}>
-                                        {s.cliente}
-                                        {s.destino && <div style={{fontSize: '10px', color: 'var(--text-muted)'}}>{s.destino.substring(0, 30)}...</div>}
+                                    <td style={{textAlign: 'center', maxWidth: '180px'}}>
+                                        <div style={{overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}} title={s.cliente}>
+                                            {s.cliente}
+                                        </div>
+                                        {s.destino && (
+                                            <div
+                                                style={{fontSize: '10px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}
+                                                title={s.destino}
+                                            >
+                                                {s.destino}
+                                            </div>
+                                        )}
                                     </td>
                                     <td style={{fontSize: '13px', textAlign: 'center'}}>{isDevolucao ? (formatHubName(s.hubDestino) || '-') : formatHubName(s.localOrigem)}</td>
                                     <td style={{fontSize: '13px', textAlign: 'center'}}>
@@ -1476,8 +1489,8 @@ export default function ShippingList({
                                             {s.motivoDevolucao || '-'}
                                         </td>
                                     )}
-                                    <td style={{textAlign: 'left'}}>
-                                        <div style={{display: 'inline-flex', gap: '4px', flexWrap: 'wrap', justifyContent: 'flex-start'}}>
+                                    <td style={{textAlign: 'center'}}>
+                                        <div className="shipping-actions-row" style={{display: 'inline-flex', gap: '4px', flexWrap: 'nowrap', justifyContent: 'center', alignItems: 'center'}}>
                                             {/* WhatsApp copy — visible to all */}
                                             <button
                                                 className="btn btn-secondary btn-sm"

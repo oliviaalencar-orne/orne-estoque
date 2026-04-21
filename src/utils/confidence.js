@@ -34,11 +34,13 @@ export const CONFIANCA_NIVEIS = Object.freeze({
   NA: 'na',
 });
 
+// Textos visíveis ao usuário usam o vocabulário "alerta" (pedido #3 de UX).
+// Os identificadores internos (nivel=ok/atencao/urgente/na) permanecem.
 const LABELS = {
-  ok: 'No prazo',
-  atencao: 'Atenção',
-  urgente: 'Verificar',
-  na: 'Sem avaliação',
+  ok: 'Sem alerta',
+  atencao: 'Em alerta',
+  urgente: 'Alerta urgente',
+  na: 'Sem alerta aplicável',
 };
 
 const EMOJIS = {

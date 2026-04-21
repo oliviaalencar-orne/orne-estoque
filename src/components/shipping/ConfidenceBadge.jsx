@@ -1,13 +1,22 @@
 /**
- * ConfidenceBadge.jsx — Badge visual de Confiança de Rastreio (Fase 1).
+ * ConfidenceBadge.jsx — Badge visual de Alerta de Rastreio (Fase 1).
  *
- * Mostra 🟢/🟡/🔴/⚪ com cor de fundo da paleta Orne e tooltip com motivo.
- * Quando o nível é 🟡 ou 🔴 e o usuário pode verificar (admin/operador),
- * o badge vira botão clicável que abre o modal de verificação manual.
- * Caso contrário, é apenas um span informativo.
+ * Renderiza um círculo sólido pequeno (10px) com a cor do nível, sem
+ * pílula ou label. O tooltip (title) consolida as informações para o
+ * operador passar o mouse e ler.
+ *
+ * Clicabilidade:
+ *   - Quando `canVerify=true`, o badge é SEMPRE clicável (inclusive ⚪).
+ *     O modal decide o que mostrar:
+ *       · 🟡/🔴  → formulário de verificação manual
+ *       · ⚪ com verificacaoManual ativa → banner + desfazer
+ *       · ⚪ natural (ENTREGUE/DEVOLVIDO/etc) → modal read-only
+ *   - Quando `canVerify=false`, é apenas um span informativo com tooltip.
  */
 import React from 'react';
-import { classifyConfidence, CONFIANCA_NIVEIS } from '@/utils/confidence';
+import { classifyConfidence } from '@/utils/confidence';
+
+const SIZE_PX = 10;
 
 export default function ConfidenceBadge({ shipping, canVerify, onClickVerify }) {
   const conf = classifyConfidence(shipping);
@@ -27,38 +36,39 @@ export default function ConfidenceBadge({ shipping, canVerify, onClickVerify }) 
   }
   const tooltip = tooltipParts.join('\n');
 
-  const isActionable = canVerify
-    && (conf.nivel === CONFIANCA_NIVEIS.URGENTE || conf.nivel === CONFIANCA_NIVEIS.ATENCAO);
-
-  const baseStyle = {
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '4px',
-    padding: '3px 10px',
-    borderRadius: '12px',
-    background: conf.color.bg,
-    color: conf.color.fg,
-    fontSize: '12px',
-    fontWeight: 600,
-    lineHeight: '1.4',
-    whiteSpace: 'nowrap',
-    border: `1px solid ${conf.color.fg}30`,
+  const dotStyle = {
+    display: 'inline-block',
+    width: `${SIZE_PX}px`,
+    height: `${SIZE_PX}px`,
+    borderRadius: '50%',
+    background: conf.color.fg,
+    verticalAlign: 'middle',
   };
 
-  if (isActionable) {
+  if (canVerify) {
+    // Botão transparente centraliza o dot e fornece área de clique maior (18x18)
+    // sem mudar o tamanho visual do indicador.
     return (
       <button
         type="button"
         onClick={onClickVerify}
-        title={`${tooltip}\n\nClique para verificar manualmente.`}
+        title={`${tooltip}\n\nClique para ver detalhes.`}
+        aria-label={`${conf.label}: ${conf.motivo}`}
         style={{
-          ...baseStyle,
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: '20px',
+          height: '20px',
+          padding: 0,
+          border: 'none',
+          background: 'transparent',
           cursor: 'pointer',
+          borderRadius: '50%',
           transition: 'transform 0.1s, box-shadow 0.1s',
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.transform = 'scale(1.04)';
+          e.currentTarget.style.transform = 'scale(1.15)';
           e.currentTarget.style.boxShadow = `0 0 0 2px ${conf.color.fg}30`;
         }}
         onMouseLeave={(e) => {
@@ -66,16 +76,18 @@ export default function ConfidenceBadge({ shipping, canVerify, onClickVerify }) 
           e.currentTarget.style.boxShadow = 'none';
         }}
       >
-        <span aria-hidden="true">{conf.emoji}</span>
-        <span>{conf.label}</span>
+        <span aria-hidden="true" style={dotStyle} />
       </button>
     );
   }
 
   return (
-    <span title={tooltip} style={baseStyle}>
-      <span aria-hidden="true">{conf.emoji}</span>
-      <span>{conf.label}</span>
+    <span
+      title={tooltip}
+      aria-label={`${conf.label}: ${conf.motivo}`}
+      style={{ display: 'inline-flex', alignItems: 'center', width: '20px', height: '20px', justifyContent: 'center' }}
+    >
+      <span aria-hidden="true" style={dotStyle} />
     </span>
   );
 }

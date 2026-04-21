@@ -31,7 +31,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import * as Sentry from '@sentry/react';
 import { supabaseClient } from '@/config/supabase';
-import { classifyConfidence } from '@/utils/confidence';
+import { classifyConfidence, CONFIANCA_NIVEIS } from '@/utils/confidence';
 import { getTransportadoraReal } from '@/utils/transportadora';
 
 function formatDateBR(iso) {
@@ -67,6 +67,14 @@ export default function ManualVerificationModal({ shipping, onClose, onSaved }) 
     // "Ativa" = verificação com decisão não-nula. Pós-undo, decisao=null
     // e o modal volta a oferecer os 2 botões de criação.
     const verificacaoAtiva = shipping.verificacaoManual?.decisao ? shipping.verificacaoManual : null;
+
+    // Read-only: estados ⚪ naturais (sem verificação manual ativa).
+    //   - ENTREGUE/DEVOLVIDO pelo rastreio
+    //   - AGUARDANDO_COLETA, devolução, entrega local
+    // Nesses casos não há o que verificar, só mostrar o contexto.
+    const readOnlyNatural = !verificacaoAtiva && conf.nivel === CONFIANCA_NIVEIS.NA;
+    const isEntregue = shipping.status === 'ENTREGUE';
+    const isDevolvido = shipping.status === 'DEVOLVIDO';
 
     // Nome do autor da verificação ativa. Prefere o que foi gravado no JSONB;
     // faz lookup no user_profiles para registros legados (sem por_usuario_nome).
@@ -218,25 +226,80 @@ export default function ManualVerificationModal({ shipping, onClose, onSaved }) 
         }
     }
 
+    // Título e subtítulo variam por modo (read-only vs editável)
+    const modalTitle = readOnlyNatural
+        ? 'Detalhes de rastreio'
+        : 'Verificação manual de rastreio';
+
+    // Texto explicativo do estado read-only natural
+    let readOnlyMessage = null;
+    if (readOnlyNatural) {
+        if (isEntregue) {
+            const dataEntrega = shipping.rastreioInfo?.dataUltimoEvento || shipping.date;
+            readOnlyMessage = (
+                <>
+                    <strong>Entrega registrada pelo rastreio</strong>
+                    {dataEntrega && <> em <strong>{formatDateBR(dataEntrega)}</strong></>}.
+                    {shipping.rastreioInfo?.ultimoEvento && (
+                        <div style={{ marginTop: '6px', fontStyle: 'italic' }}>
+                            Último evento: "{shipping.rastreioInfo.ultimoEvento}"
+                        </div>
+                    )}
+                </>
+            );
+        } else if (isDevolvido) {
+            readOnlyMessage = (
+                <>
+                    <strong>Pacote devolvido ao remetente.</strong>
+                    {shipping.motivoDevolucao && (
+                        <div style={{ marginTop: '6px' }}>
+                            Motivo: <em>"{shipping.motivoDevolucao}"</em>
+                        </div>
+                    )}
+                </>
+            );
+        } else if (shipping.status === 'AGUARDANDO_COLETA') {
+            readOnlyMessage = (
+                <><strong>Aguardando coleta pela transportadora.</strong> Problema interno (fluxo operacional), não de rastreio.</>
+            );
+        } else if (shipping.tipo === 'devolucao') {
+            readOnlyMessage = (
+                <><strong>Fluxo de devolução.</strong> Acompanhar pela tela de devoluções.</>
+            );
+        } else if (shipping.entregaLocal || conf.transporte === 'local') {
+            readOnlyMessage = (
+                <><strong>Entrega local.</strong> Use o comprovante em vez do rastreio.</>
+            );
+        } else {
+            readOnlyMessage = <>{conf.motivo}</>;
+        }
+    }
+
     return (
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal-content" style={{ maxWidth: '520px' }} onClick={(e) => e.stopPropagation()}>
-                <h2 className="modal-title">Verificação manual de rastreio</h2>
+                <h2 className="modal-title">{modalTitle}</h2>
                 <p className="modal-subtitle">
                     NF <strong>{shipping.nfNumero || '-'}</strong> — {shipping.cliente || '-'}
                 </p>
 
-                {/* Resumo do estado atual (confiança calculada) */}
+                {/* Resumo do estado atual (alerta calculado) */}
                 <div style={{
                     background: conf.color.bg,
                     border: `1px solid ${conf.color.fg}40`,
-                    borderRadius: '8px',
+                    borderRadius: '4px',
                     padding: '12px',
                     marginBottom: '16px',
                     fontSize: '13px',
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                        <span style={{ fontSize: '18px' }}>{conf.emoji}</span>
+                        <span style={{
+                            display: 'inline-block',
+                            width: '10px',
+                            height: '10px',
+                            borderRadius: '50%',
+                            background: conf.color.fg,
+                        }} />
                         <strong style={{ color: conf.color.fg }}>{conf.label}</strong>
                     </div>
                     <div style={{ color: 'var(--text-secondary)' }}>{conf.motivo}</div>
@@ -248,12 +311,28 @@ export default function ManualVerificationModal({ shipping, onClose, onSaved }) 
                     </div>
                 </div>
 
+                {/* Mensagem read-only para ⚪ naturais */}
+                {readOnlyNatural && readOnlyMessage && (
+                    <div style={{
+                        background: 'var(--bg-tertiary)',
+                        border: '1px solid var(--border-default)',
+                        borderRadius: '4px',
+                        padding: '12px',
+                        marginBottom: '16px',
+                        fontSize: '13px',
+                        color: 'var(--text-primary)',
+                        lineHeight: 1.5,
+                    }}>
+                        {readOnlyMessage}
+                    </div>
+                )}
+
                 {/* Banner de verificação ATIVA — com botão Desfazer */}
                 {verificacaoAtiva && (
                     <div style={{
                         background: '#FFF7ED',
                         border: '1px solid #FDBA74',
-                        borderRadius: '8px',
+                        borderRadius: '4px',
                         padding: '12px',
                         marginBottom: '16px',
                         fontSize: '13px',
@@ -285,65 +364,81 @@ export default function ManualVerificationModal({ shipping, onClose, onSaved }) 
                     </div>
                 )}
 
-                <div className="form-group">
-                    <label className="form-label">
-                        Observação (opcional)
-                        <span style={{ color: 'var(--text-muted)', fontWeight: 400, marginLeft: '6px' }}>
-                            — o que você verificou?
-                        </span>
-                    </label>
-                    <textarea
-                        className="form-input"
-                        rows={3}
-                        value={nota}
-                        onChange={(e) => setNota(e.target.value)}
-                        placeholder="Ex: falei com cliente no WhatsApp, confirmou recebimento hoje"
-                        maxLength={500}
-                        disabled={saving}
-                    />
-                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                        {nota.length}/500 caracteres
-                    </div>
-                </div>
+                {!readOnlyNatural && (
+                    <>
+                        <div className="form-group">
+                            <label className="form-label">
+                                Observação (opcional)
+                                <span style={{ color: 'var(--text-muted)', fontWeight: 400, marginLeft: '6px' }}>
+                                    — o que você verificou?
+                                </span>
+                            </label>
+                            <textarea
+                                className="form-input"
+                                rows={3}
+                                value={nota}
+                                onChange={(e) => setNota(e.target.value)}
+                                placeholder="Ex: falei com cliente no WhatsApp, confirmou recebimento hoje"
+                                maxLength={500}
+                                disabled={saving}
+                            />
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                                {nota.length}/500 caracteres
+                            </div>
+                        </div>
 
-                {error && (
-                    <div className="alert alert-danger" style={{ marginBottom: '12px' }}>
-                        {error}
-                    </div>
+                        {error && (
+                            <div className="alert alert-danger" style={{ marginBottom: '12px' }}>
+                                {error}
+                            </div>
+                        )}
+
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '12px', fontStyle: 'italic' }}>
+                            {verificacaoAtiva
+                                ? 'Salvar uma nova decisão substitui a verificação ativa e empilha a anterior no histórico. Nenhuma opção altera o status do despacho.'
+                                : 'Nenhuma destas opções altera o status do despacho. Ambas apenas registram a sua verificação manual no histórico.'}
+                        </div>
+
+                        <div className="btn-group" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                            <button
+                                className="btn btn-primary"
+                                style={{ background: '#39845f', borderColor: '#39845f', flex: 1, minWidth: '180px' }}
+                                onClick={() => salvar('confirmado_entregue')}
+                                disabled={saving}
+                            >
+                                {saving ? 'Salvando...' : '✅ Confirmar entregue'}
+                            </button>
+                            <button
+                                className="btn btn-secondary"
+                                style={{ flex: 1, minWidth: '180px' }}
+                                onClick={() => salvar('ainda_em_transito')}
+                                disabled={saving}
+                            >
+                                {saving ? 'Salvando...' : '📦 Ainda em trânsito'}
+                            </button>
+                            <button
+                                className="btn btn-secondary"
+                                style={{ minWidth: '100px' }}
+                                onClick={onClose}
+                                disabled={saving}
+                            >
+                                Cancelar
+                            </button>
+                        </div>
+                    </>
                 )}
 
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '12px', fontStyle: 'italic' }}>
-                    {verificacaoAtiva
-                        ? 'Salvar uma nova decisão substitui a verificação ativa e empilha a anterior no histórico. Nenhuma opção altera o status do despacho.'
-                        : 'Nenhuma destas opções altera o status do despacho. Ambas apenas registram a sua verificação manual no histórico.'}
-                </div>
-
-                <div className="btn-group" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                    <button
-                        className="btn btn-primary"
-                        style={{ background: '#39845f', borderColor: '#39845f', flex: 1, minWidth: '180px' }}
-                        onClick={() => salvar('confirmado_entregue')}
-                        disabled={saving}
-                    >
-                        {saving ? 'Salvando...' : '✅ Confirmar entregue'}
-                    </button>
-                    <button
-                        className="btn btn-secondary"
-                        style={{ flex: 1, minWidth: '180px' }}
-                        onClick={() => salvar('ainda_em_transito')}
-                        disabled={saving}
-                    >
-                        {saving ? 'Salvando...' : '📦 Ainda em trânsito'}
-                    </button>
-                    <button
-                        className="btn btn-secondary"
-                        style={{ minWidth: '100px' }}
-                        onClick={onClose}
-                        disabled={saving}
-                    >
-                        Cancelar
-                    </button>
-                </div>
+                {readOnlyNatural && (
+                    <div className="btn-group" style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                        <button
+                            className="btn btn-secondary"
+                            style={{ minWidth: '100px' }}
+                            onClick={onClose}
+                        >
+                            Fechar
+                        </button>
+                    </div>
+                )}
 
                 {/* Histórico (collapsed, se existir) */}
                 {historico.length > 0 && (
