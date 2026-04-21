@@ -63,25 +63,39 @@ const TERMINAL_STATUSES = new Set(['ENTREGUE', 'DEVOLVIDO']);
 const PRE_DISPATCH_STATUSES = new Set(['AGUARDANDO_COLETA']);
 
 /**
- * Thresholds por transportadora (dias úteis sem movimento).
- *   < ok       → 🟢
- *   [ok, atencao) → 🟡
- *   >= atencao → 🔴
+ * Limiares específicos por transportadora, ajustados empiricamente.
  *
- * Loggi tende a travar cedo (3-7 dias = risco médio; 7+ = perdido).
- * Correios costuma ter lacunas longas legítimas; só vira 🔴 em 10+.
+ *   LIMIAR_LOGGI_URGENTE_DIAS = 7  → pós-calibração (7 dias úteis sem
+ *     movimento é sinal forte de pacote travado em CD intermediário).
+ *   LIMIAR_CORREIOS_URGENTE_DIAS = 4 → pós-feedback staging: Correios
+ *     costuma ter lacunas curtas legítimas em trânsito. 4 dias úteis
+ *     sem evento é o ponto em que começa a valer a pena checar.
+ *
+ * Para adicionar uma transportadora nova com regra própria: registre
+ * em THRESHOLDS e adicione o case em classificarTransporte. Demais
+ * transportadoras caem no perfil 'outras' (conservador, sem ruído).
  */
+export const LIMIAR_LOGGI_URGENTE_DIAS = 7;
+export const LIMIAR_CORREIOS_URGENTE_DIAS = 4;
+
+/**
+ * Configuração de limiares (dias úteis sem movimento).
+ *   < ok       → 🟢
+ *   [ok, atencao) → 🟡 (apenas se atencao != null)
+ *   >= atencao OU (atencao=null e dias >= ok) → 🔴
+ *
+ * `atencao: null` significa "sem faixa amarela" — pula direto de 🟢
+ * para 🔴 ao atingir o limiar. É o padrão para transportadoras com
+ * sinal binário (ou está fluindo, ou travou).
+ */
+const THRESHOLDS = {
+  loggi:    { ok: 3, atencao: LIMIAR_LOGGI_URGENTE_DIAS },     // 🟢 <3, 🟡 3-6, 🔴 7+
+  correios: { ok: LIMIAR_CORREIOS_URGENTE_DIAS, atencao: null }, // 🟢 <4, 🔴 4+ (sem amarelo)
+  outras:   { ok: 3, atencao: 10 },                             // 🟢 <3, 🟡 3-9, 🔴 10+
+};
+
 function thresholdsFor(transporte) {
-  switch (transporte) {
-    case 'loggi':
-      return { ok: 3, atencao: 7 };
-    case 'correios':
-      return { ok: 3, atencao: 10 };
-    case 'outras':
-    case 'sem_transporte':
-    default:
-      return { ok: 3, atencao: 10 };
-  }
+  return THRESHOLDS[transporte] || THRESHOLDS.outras;
 }
 
 // ---- Memoização -----------------------------------------------------------
@@ -198,9 +212,13 @@ function _compute(shipping, now) {
     ? `${dias} dia(s) útil(eis) desde a última movimentação`
     : `${dias} dia(s) útil(eis) desde o despacho (rastreio ainda não reportou evento)`;
 
+  // Classificação:
+  //   dias < ok                   → 🟢
+  //   ok <= dias < atencao        → 🟡 (se atencao definido)
+  //   dias >= atencao OU sem fase amarela → 🔴
   let nivel;
   if (dias < ok) nivel = 'ok';
-  else if (dias < atencao) nivel = 'atencao';
+  else if (atencao != null && dias < atencao) nivel = 'atencao';
   else nivel = 'urgente';
 
   return buildResult(nivel, motivo, {

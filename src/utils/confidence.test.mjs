@@ -11,9 +11,12 @@ import { classifyConfidence, CONFIANCA_NIVEIS, clearConfidenceCache } from './co
 const NOW = new Date(2026, 3, 21, 14, 0, 0); // 2026-04-21 14h
 const HOJE_MANHA = new Date(2026, 3, 21, 9, 0, 0);
 const ONTEM = new Date(2026, 3, 20);       // segunda
-const SEIS_DIAS_UTEIS_ATRAS = new Date(2026, 3, 13); // 2 semanas menos 2 dias → ~6 úteis
-const OITO_DIAS_UTEIS_ATRAS = new Date(2026, 3, 9);  // ~8 úteis atrás
-const DOZE_DIAS_UTEIS_ATRAS = new Date(2026, 2, 30); // ~16 dias corridos → ~12 úteis
+const DOIS_DIAS_UTEIS_ATRAS = new Date(2026, 3, 17);   // sexta → 2 úteis até terça
+const TRES_DIAS_UTEIS_ATRAS = new Date(2026, 3, 16);   // quinta → 3 úteis
+const QUATRO_DIAS_UTEIS_ATRAS = new Date(2026, 3, 15); // quarta → 4 úteis
+const SEIS_DIAS_UTEIS_ATRAS = new Date(2026, 3, 13); // segunda → ~6 úteis
+const OITO_DIAS_UTEIS_ATRAS = new Date(2026, 3, 9);  // quinta → ~8 úteis
+const DOZE_DIAS_UTEIS_ATRAS = new Date(2026, 2, 30); // ~12 úteis
 
 test.beforeEach(() => clearConfidenceCache());
 
@@ -79,7 +82,47 @@ test('Loggi com 8 dias úteis sem movimento → 🔴 urgente', () => {
   assert.equal(r.nivel, 'urgente');
 });
 
-test('Correios com 8 dias úteis sem movimento → 🟡 (threshold maior)', () => {
+// ---- Calibração Correios (pós-feedback staging) -------------------------
+// Correios usa limiar específico de 4 dias úteis (sem faixa amarela):
+// 🟢 <4 úteis  |  🔴 >=4 úteis. Evita falsos positivos em trânsitos
+// normais, que frequentemente têm lacunas de 2-3 dias entre eventos.
+
+test('Correios com 2 dias úteis sem movimento → 🟢', () => {
+  const r = classifyConfidence({
+    id: '9a',
+    status: 'EM_TRANSITO',
+    date: SEIS_DIAS_UTEIS_ATRAS,
+    rastreioInfo: { dataUltimoEvento: DOIS_DIAS_UTEIS_ATRAS.toISOString() },
+    transportadora: 'Correios',
+  }, NOW);
+  assert.equal(r.nivel, 'ok');
+  assert.equal(r.diasUteisSemMov, 2);
+});
+
+test('Correios com 3 dias úteis sem movimento → 🟢 (abaixo do limiar)', () => {
+  const r = classifyConfidence({
+    id: '9b',
+    status: 'EM_TRANSITO',
+    date: SEIS_DIAS_UTEIS_ATRAS,
+    rastreioInfo: { dataUltimoEvento: TRES_DIAS_UTEIS_ATRAS.toISOString() },
+    transportadora: 'Correios',
+  }, NOW);
+  assert.equal(r.nivel, 'ok');
+});
+
+test('Correios com 4 dias úteis sem movimento → 🔴 (pula direto, sem faixa amarela)', () => {
+  const r = classifyConfidence({
+    id: '9c',
+    status: 'EM_TRANSITO',
+    date: OITO_DIAS_UTEIS_ATRAS,
+    rastreioInfo: { dataUltimoEvento: QUATRO_DIAS_UTEIS_ATRAS.toISOString() },
+    transportadora: 'Correios',
+  }, NOW);
+  assert.equal(r.nivel, 'urgente');
+  assert.equal(r.diasUteisSemMov, 4);
+});
+
+test('Correios com 8 dias úteis sem movimento → 🔴 urgente', () => {
   const r = classifyConfidence({
     id: '9',
     status: 'EM_TRANSITO',
@@ -87,7 +130,27 @@ test('Correios com 8 dias úteis sem movimento → 🟡 (threshold maior)', () =
     rastreioInfo: { dataUltimoEvento: OITO_DIAS_UTEIS_ATRAS.toISOString() },
     transportadora: 'Correios',
   }, NOW);
-  assert.equal(r.nivel, 'atencao');
+  assert.equal(r.nivel, 'urgente');
+});
+
+test('Correios nunca cai em atencao (sem faixa amarela)', () => {
+  // Varre de 4 a 12 úteis — todos devem ser urgente, nenhum atencao.
+  const anchors = [
+    QUATRO_DIAS_UTEIS_ATRAS,
+    SEIS_DIAS_UTEIS_ATRAS,
+    OITO_DIAS_UTEIS_ATRAS,
+    DOZE_DIAS_UTEIS_ATRAS,
+  ];
+  for (const d of anchors) {
+    const r = classifyConfidence({
+      id: `cor-${d.toISOString()}`,
+      status: 'EM_TRANSITO',
+      date: DOZE_DIAS_UTEIS_ATRAS,
+      rastreioInfo: { dataUltimoEvento: d.toISOString() },
+      transportadora: 'Correios',
+    }, NOW);
+    assert.notEqual(r.nivel, 'atencao', `Correios ${d.toISOString()} não deve ser atencao`);
+  }
 });
 
 test('Correios com 12 dias úteis sem movimento → 🔴 urgente', () => {
