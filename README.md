@@ -55,6 +55,45 @@ de extensões (`chrome-extension://`, `moz-extension://`) e
 "ID do erro" que aparece na tela de fallback. Busque por esse ID no
 dashboard Sentry.
 
+### Cron de rastreio: pg_cron + Vercel Cron (redundância dupla)
+
+A atualização automática de rastreios (`/api/cron/update-tracking`) é
+disparada por **dois** schedulers em paralelo:
+
+1. **Vercel Cron** — `0 11 * * *` (08h BRT), configurado em `vercel.json`.
+   Hobby plan, sem SLA; já apresentou falhas em dias aleatórios.
+2. **pg_cron** (Supabase) — 2x/dia: `0 11 * * *` e `0 21 * * *` (08h e
+   18h BRT). Chama a mesma rota Vercel via `pg_net`. Secret lido do
+   `vault.decrypted_secrets` com nome `vercel_cron_secret`.
+
+Migration: `supabase/migrations/20260422_pg_cron_update_tracking.sql`.
+Função: `public.trigger_vercel_cron_update_tracking()`.
+
+**Consultar execuções do pg_cron:**
+
+```sql
+-- últimas execuções agendadas
+SELECT jobname, status, start_time, end_time, return_message
+FROM cron.job_run_details
+ORDER BY start_time DESC
+LIMIT 20;
+
+-- respostas HTTP do pg_net (status Vercel, erros, tempo)
+SELECT id, status_code, LEFT(content, 200) AS content, error_msg, created
+FROM net._http_response
+ORDER BY created DESC
+LIMIT 20;
+```
+
+**Disparar manualmente** (útil para catch-up ou debug):
+
+```sql
+SELECT public.trigger_vercel_cron_update_tracking();
+```
+
+Retorna o `request_id` do pg_net — cruze com `net._http_response` após
+alguns segundos para ver a resposta da Vercel.
+
 ## Estrutura relevante
 
 ```
