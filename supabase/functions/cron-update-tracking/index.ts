@@ -171,7 +171,16 @@ Deno.serve(async (req: Request) => {
     }
 
     const allShippingsRaw = await shippingsRes.json() as Array<Record<string, any>>;
-    const allShippings = allShippingsRaw.filter((s) => !s.entrega_local);
+    // Safety net: além da flag entrega_local=true, filtramos também
+    // shippings cuja transportadora identifica entrega local mas a
+    // flag booleana ficou out-of-sync (bug de cadastro upstream). O
+    // UPDATE corretivo já rodou em prod (448 linhas), mas essa defesa
+    // protege contra novas mal-marcações futuras.
+    const allShippings = allShippingsRaw.filter((s) =>
+      !s.entrega_local
+      && s.transportadora !== 'Entrega Local'
+      && s.transportadora !== 'Transporte Local'
+    );
     summary.fases.busca.pendentes_total = allShippingsRaw.length;
     summary.fases.busca.entregas_locais_ignoradas =
       allShippingsRaw.length - allShippings.length;
