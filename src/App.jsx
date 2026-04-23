@@ -228,10 +228,20 @@ export default function App() {
         })
       );
 
-      // Separations — realtime
+      // Separations — realtime (EXCLUINDO 'despachado')
+      //
+      // MOTIVO: PostgREST tem max_rows default de 1000. Quando a tabela
+      // separations passa de 1000 linhas (~1104 em 23/04/2026), um fetch
+      // sem filtro trunca silenciosamente e rows mais recentes (incluindo
+      // pendentes) ficam fora do retorno — causou bug de "separações
+      // sumindo" reportado pela admin. Despachadas são terminais e não
+      // precisam aparecer na tela de separações ativas (admin consulta
+      // pela aba Despachos/Shippings). NÃO REMOVER este filtro sem plano
+      // de paginação no lugar.
       channels.push(
         setupSupabaseCollection('separations', setSeparations, {
           transform: mapSeparationFromDB,
+          dbFilter: (q) => q.neq('status', 'despachado'),
         })
       );
 
@@ -292,10 +302,14 @@ export default function App() {
         })
       );
 
-      // Separations — realtime
+      // Separations — realtime (EXCLUINDO 'despachado')
+      // Mesmo filtro aplicado no branch equipe/operador acima — ver
+      // comentário detalhado lá. Despachadas são terminais e saem do
+      // fetch para evitar o teto de 1000 rows do PostgREST.
       channels.push(
         setupSupabaseCollection('separations', setSeparations, {
           transform: mapSeparationFromDB,
+          dbFilter: (q) => q.neq('status', 'despachado'),
         })
       );
 
