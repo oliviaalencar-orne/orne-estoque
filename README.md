@@ -55,19 +55,52 @@ de extensões (`chrome-extension://`, `moz-extension://`) e
 "ID do erro" que aparece na tela de fallback. Busque por esse ID no
 dashboard Sentry.
 
-### Cron de rastreio: pg_cron + Vercel Cron (redundância dupla)
+### Cron de rastreio
 
-A atualização automática de rastreios (`/api/cron/update-tracking`) é
-disparada por **dois** schedulers em paralelo:
+A atualização automática de rastreios é orquestrada pela Edge Function
+`cron-update-tracking` no Supabase. Ela busca shippings pendentes,
+delega chamadas à `rastrear-envio` (ME + fallback Correios/melhorrastreio)
+e persiste os resultados. Duração típica 50-120s para 200+ pendentes.
 
-1. **Vercel Cron** — `0 11 * * *` (08h BRT), configurado em `vercel.json`.
-   Hobby plan, sem SLA; já apresentou falhas em dias aleatórios.
-2. **pg_cron** (Supabase) — 2x/dia: `0 11 * * *` e `0 21 * * *` (08h e
-   18h BRT). Chama a mesma rota Vercel via `pg_net`. Secret lido do
-   `vault.decrypted_secrets` com nome `vercel_cron_secret`.
+**Arquitetura atual (pg_cron → EF direto):**
 
-Migration: `supabase/migrations/20260422_pg_cron_update_tracking.sql`.
-Função: `public.trigger_vercel_cron_update_tracking()`.
+```
+pg_cron (Supabase) ──► trigger_cron_update_tracking_ef() ──► cron-update-tracking EF ──► rastrear-envio EF ──► DB
+                            (pg_net + JWT service_role,                (teto 150s, retorna summary estruturado)
+                             timeout 160s)
+```
+
+**Por que EF direto em vez do wrapper Vercel?** O wrapper Vercel
+(`/api/cron/update-tracking`) tem teto de 60s no plano Hobby. A EF tem
+teto de 150s. Chamar a EF direto via `pg_net` deu visibilidade completa
+do return path (status, duration, body) dentro de `net._http_response`.
+O wrapper Vercel é mantido como terceira camada de redundância (ver abaixo).
+
+**Schedules (4x/dia, espaçados no expediente):**
+
+| Job | Cron | BRT |
+|---|---|---|
+| `cron-ef-08h-brt` | `0 11 * * *` | 08:00 — início |
+| `cron-ef-12h-brt` | `0 15 * * *` | 12:00 — pico |
+| `cron-ef-16h-brt` | `0 19 * * *` | 16:00 — fim da tarde |
+| `cron-ef-20h-brt` | `0 23 * * *` | 20:00 — noite |
+
+**Redundâncias (3 camadas):**
+
+1. **pg_cron (principal)** — 4x/dia chamando EF direto. Secret
+   `production_service_role_key` (JWT legacy) no vault.
+2. **Vercel Cron (fallback)** — `0 11 * * *` em `vercel.json` chamando
+   o wrapper `/api/cron/update-tracking`, que por sua vez chama a EF.
+   Sob carga que ultrapasse 60s o wrapper morre mas a EF continua
+   (trabalho é persistido; apenas o return path é perdido). Mantido por
+   7 dias após corte do pg_cron antigo como safety net.
+3. **Disparo manual** — `SELECT public.trigger_cron_update_tracking_ef();`
+   (catch-up ou debug).
+
+Migrations:
+- `20260422_pg_cron_update_tracking.sql` — setup inicial pg_net/pg_cron.
+- `20260423_trigger_cron_ef_direct.sql` — função `trigger_cron_update_tracking_ef`.
+- `20260423b_pg_cron_ef_4x_daily.sql` — substitui 2 jobs antigos pelos 4 novos.
 
 **Consultar execuções do pg_cron:**
 
@@ -78,21 +111,38 @@ FROM cron.job_run_details
 ORDER BY start_time DESC
 LIMIT 20;
 
--- respostas HTTP do pg_net (status Vercel, erros, tempo)
-SELECT id, status_code, LEFT(content, 200) AS content, error_msg, created
+-- respostas HTTP do pg_net (status 200/erros/duration da EF)
+SELECT id, status_code, LEFT(content::text, 300) AS content, error_msg, created
 FROM net._http_response
 ORDER BY created DESC
 LIMIT 20;
+
+-- Jobs atualmente agendados
+SELECT jobname, schedule, command, active FROM cron.job ORDER BY schedule;
 ```
 
 **Disparar manualmente** (útil para catch-up ou debug):
 
 ```sql
+-- Preferência: EF direto (visibilidade completa, ~60-120s)
+SELECT public.trigger_cron_update_tracking_ef();
+
+-- Alternativa: via Vercel wrapper (legado, timeout em 60s se EF demorar)
 SELECT public.trigger_vercel_cron_update_tracking();
 ```
 
 Retorna o `request_id` do pg_net — cruze com `net._http_response` após
-alguns segundos para ver a resposta da Vercel.
+a execução para ver o summary JSON da EF (fases, duration_ms, errors).
+
+**Desabilitar Vercel cron (após 7 dias de pg_cron estável):**
+
+```bash
+# Remover o bloco `crons:` de vercel.json
+# Commit + push em main → próximo deploy desabilita
+```
+
+Validar que pg_cron rodou no horário esperado via
+`cron.job_run_details` antes de desativar a redundância.
 
 ## Estrutura relevante
 
