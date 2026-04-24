@@ -21,16 +21,23 @@ import { supabaseClient } from '@/config/supabase';
  * @param {Function} [options.onLoaded] - callback(items, rawData) after initial load
  * @param {string}   [options.selectFields] - Supabase select fields (default '*')
  * @param {Function} [options.dbFilter] - query → query filter applied to DB query
+ * @param {Object}   [options.orderBy] - { column: string, ascending?: boolean } - DB-level ordering
+ * @param {number}   [options.limit] - max rows (applied as range(0, limit-1)) — contorna o teto silencioso de 1000 do PostgREST
  * @returns {Object} Supabase channel (for cleanup)
  */
 export function setupSupabaseCollection(tableName, setState, options = {}) {
-  const { transform, filter, onLoaded, selectFields, dbFilter } = options;
+  const { transform, filter, onLoaded, selectFields, dbFilter, orderBy, limit } = options;
 
-  // Initial fetch with optional select fields and DB filters
-  let query = supabaseClient.from(tableName).select(selectFields || '*');
-  if (dbFilter) query = dbFilter(query);
+  // Build initial query once and reuse config for refetch
+  const buildQuery = () => {
+    let q = supabaseClient.from(tableName).select(selectFields || '*');
+    if (dbFilter) q = dbFilter(q);
+    if (orderBy) q = q.order(orderBy.column, { ascending: !!orderBy.ascending });
+    if (limit) q = q.range(0, limit - 1);
+    return q;
+  };
 
-  query.then(({ data, error }) => {
+  buildQuery().then(({ data, error }) => {
     if (error) {
       console.error('Erro ao buscar ' + tableName + ':', error);
       return;
@@ -50,11 +57,9 @@ export function setupSupabaseCollection(tableName, setState, options = {}) {
     const changes = [...pendingChanges];
     pendingChanges = [];
 
-    // Many changes (sync in progress) → full refetch
+    // Many changes (sync in progress) → full refetch (mesmas opções da primeira carga)
     if (changes.length > 20) {
-      let refetchQuery = supabaseClient.from(tableName).select(selectFields || '*');
-      if (dbFilter) refetchQuery = dbFilter(refetchQuery);
-      refetchQuery.then(({ data, error }) => {
+      buildQuery().then(({ data, error }) => {
         if (error) { console.error('Erro ao refetch ' + tableName + ':', error); return; }
         if (!data) return;
         const items = transform ? data.map(transform) : data;

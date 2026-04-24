@@ -160,7 +160,13 @@ export function useShippings(user, isStockAdmin, isOperador) {
   );
 
   const refreshShippings = useCallback(async () => {
-    const { data, error } = await supabaseClient.from('shippings').select('*');
+    // 1000 mais recentes — alinhado com setupSupabaseCollection no App.jsx.
+    // Sem order+range o PostgREST corta em 1000 aleatórios (bug reincidente).
+    const { data, error } = await supabaseClient
+      .from('shippings')
+      .select('*')
+      .order('date', { ascending: false })
+      .range(0, 999);
     if (error) {
       console.error('Erro ao recarregar shippings:', error);
       return;

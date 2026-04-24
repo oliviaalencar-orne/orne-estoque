@@ -20,9 +20,20 @@ import { criarEntradasDevolucao } from '@/utils/devolucaoEntries';
 import { getTransportadoraReal, classificarTransporte } from '@/utils/transportadora';
 import { formatHubName } from '@/utils/hubs';
 import { classifyConfidence, CONFIANCA_NIVEIS } from '@/utils/confidence';
+import { mapShippingFromDB } from '@/utils/mappers';
 import ConfidenceBadge from '@/components/shipping/ConfidenceBadge';
 import ManualVerificationModal from '@/components/shipping/ManualVerificationModal';
 import ReclassificationModal from '@/components/shipping/ReclassificationModal';
+
+// Sanitiza termo de busca para uso em PostgREST .or() + .ilike().
+// Remove caracteres que quebram a expressão .or() (vírgulas, parênteses) e
+// escapa curingas ilike (%, _, \) para buscas literais.
+function sanitizeIlike(term) {
+    return String(term || '')
+        .replace(/[,()]/g, ' ')
+        .replace(/[%_\\]/g, '\\$&')
+        .trim();
+}
 
 
 // Resize image helper
@@ -78,6 +89,13 @@ export default function ShippingList({
     const canEdit = isStockAdmin || isOperador;
     const canDelete = isStockAdmin;
     const [searchTerm, setSearchTerm] = useState('');
+    // Busca server-side: quando o state local de shippings não contém a NF
+    // (ex.: despacho de 3 meses atrás, fora dos 1000 mais recentes carregados),
+    // o termo é pesquisado direto no banco e os matches são mesclados ao state
+    // local. Ver useEffect logo abaixo. remoteMatches preserva shape de
+    // shipping pós-mapeamento para permitir merge sem transform extra.
+    const [remoteMatches, setRemoteMatches] = useState([]);
+    const [remoteLoading, setRemoteLoading] = useState(false);
     const [statusFilter, setStatusFilter] = useState('all');
     // Confiança de Rastreio (Fase 1) — chips "Precisam verificar", "Loggi suspeitos", "Correios travados"
     const [confidenceFilter, setConfidenceFilter] = useState('all');
@@ -129,6 +147,74 @@ export default function ShippingList({
     // ESC limpa seleção múltipla de entregas locais (ignora se modal aberto ou input focado)
     const clearDeliverySelection = useCallback(() => setSelectedForDelivery(new Set()), []);
     useEscapeDeselect(clearDeliverySelection);
+
+    // Busca server-side (histórico amplo) — adição de escopo abril/2026.
+    //
+    // Motivação: state local tem 1000 mais recentes; admin precisa achar NF
+    // fora desse recorte (ex.: contestação de entrega antiga). Esta effect
+    // dispara .or(...ilike) direto no banco quando termo >= 2, debounce 300ms,
+    // com AbortController pra cancelar requests em voo se admin continua
+    // digitando. Resultado é mesclado ao state local no memo mergedShippings.
+    useEffect(() => {
+        const term = searchTerm.trim();
+        if (term.length < 2) {
+            setRemoteMatches([]);
+            setRemoteLoading(false);
+            return;
+        }
+        const controller = new AbortController();
+        setRemoteLoading(true);
+        const timerId = setTimeout(async () => {
+            const safe = sanitizeIlike(term);
+            if (!safe) {
+                setRemoteMatches([]);
+                setRemoteLoading(false);
+                return;
+            }
+            try {
+                const tipoFiltro = tipo === 'devolucao' ? 'devolucao' : 'despacho';
+                const { data, error } = await supabaseClient
+                    .from('shippings')
+                    .select('*')
+                    .or(`nf_numero.ilike.%${safe}%,cliente.ilike.%${safe}%,codigo_rastreio.ilike.%${safe}%`)
+                    .eq('tipo', tipoFiltro)
+                    .limit(100)
+                    .abortSignal(controller.signal);
+                if (error) {
+                    // abortSignal pode manifestar como error — ignorar aborts
+                    if (error.code !== '20' && error.name !== 'AbortError') {
+                        console.error('Busca server-side shippings falhou:', error);
+                    }
+                    return;
+                }
+                setRemoteMatches((data || []).map(mapShippingFromDB));
+            } catch (e) {
+                if (e.name !== 'AbortError') console.error('Busca server-side exception:', e);
+            } finally {
+                setRemoteLoading(false);
+            }
+        }, 300);
+        return () => {
+            clearTimeout(timerId);
+            controller.abort();
+        };
+    }, [searchTerm, tipo]);
+
+    // Shippings a considerar nos filtros: state local + matches remotos (dedup por id).
+    // Sempre derivado — mesmo com remoteMatches vazio, cai em shippings original.
+    const mergedShippings = useMemo(() => {
+        if (remoteMatches.length === 0) return shippings;
+        const seen = new Set(shippings.map(s => s.id));
+        const extras = remoteMatches.filter(m => !seen.has(m.id));
+        return extras.length === 0 ? shippings : [...shippings, ...extras];
+    }, [shippings, remoteMatches]);
+
+    // Quantos resultados vieram só do server-side (para exibir "+N do histórico").
+    const remoteExtraCount = useMemo(() => {
+        if (remoteMatches.length === 0) return 0;
+        const seen = new Set(shippings.map(s => s.id));
+        return remoteMatches.filter(m => !seen.has(m.id)).length;
+    }, [shippings, remoteMatches]);
 
     // Load existing delivery token when editing a shipping
     useEffect(() => {
@@ -431,10 +517,10 @@ export default function ShippingList({
     }, []);
 
     // Contagens pré-filtros (exceto confiança) para mostrar ao lado dos chips.
-    // `shippings` já vem filtrado por tipo (despacho/devolução) no ShippingManager,
-    // então os counts são naturalmente escopados à sub-aba ativa.
+    // `mergedShippings` = state local (1000 mais recentes) + matches remotos da
+    // busca server-side, já dedup por id. Counts naturalmente incluem histórico.
     const confidenceCounts = useMemo(() => {
-        const base = filterByPeriod(shippings, shipPeriodFilter, shipCustomMonth, shipCustomYear, 'date')
+        const base = filterByPeriod(mergedShippings, shipPeriodFilter, shipCustomMonth, shipCustomYear, 'date')
             .filter(s => {
                 const search = searchTerm.toLowerCase();
                 const matchesSearch = (s.nfNumero || '').toLowerCase().includes(search) ||
@@ -451,11 +537,11 @@ export default function ShippingList({
             loggi_suspeitos: base.filter(s => matchesConfidenceFilter(s, 'loggi_suspeitos')).length,
             correios_travados: base.filter(s => matchesConfidenceFilter(s, 'correios_travados')).length,
         };
-    }, [shippings, searchTerm, statusFilter, tipoDevolucaoFilter, shipPeriodFilter, shipCustomMonth, shipCustomYear, matchesConfidenceFilter, matchesTipoDevolucaoFilter]);
+    }, [mergedShippings, searchTerm, statusFilter, tipoDevolucaoFilter, shipPeriodFilter, shipCustomMonth, shipCustomYear, matchesConfidenceFilter, matchesTipoDevolucaoFilter]);
 
     // Contagens por tipo de devolução (para exibir ao lado dos chips na sub-aba Devoluções).
     const tipoDevolucaoCounts = useMemo(() => {
-        const base = filterByPeriod(shippings, shipPeriodFilter, shipCustomMonth, shipCustomYear, 'date')
+        const base = filterByPeriod(mergedShippings, shipPeriodFilter, shipCustomMonth, shipCustomYear, 'date')
             .filter(s => {
                 const search = searchTerm.toLowerCase();
                 return (s.nfNumero || '').toLowerCase().includes(search) ||
@@ -467,11 +553,11 @@ export default function ShippingList({
             ETIQUETA_CANCELADA: base.filter(s => s.status === 'ETIQUETA_CANCELADA').length,
             EXTRAVIADO: base.filter(s => s.status === 'EXTRAVIADO').length,
         };
-    }, [shippings, searchTerm, shipPeriodFilter, shipCustomMonth, shipCustomYear]);
+    }, [mergedShippings, searchTerm, shipPeriodFilter, shipCustomMonth, shipCustomYear]);
 
     // Filtrar despachos
     const filteredShippings = useMemo(() => {
-        let items = filterByPeriod(shippings, shipPeriodFilter, shipCustomMonth, shipCustomYear, 'date');
+        let items = filterByPeriod(mergedShippings, shipPeriodFilter, shipCustomMonth, shipCustomYear, 'date');
         items = items.filter(s => {
             const search = searchTerm.toLowerCase();
             const matchesSearch = (s.nfNumero || '').toLowerCase().includes(search) ||
@@ -483,7 +569,7 @@ export default function ShippingList({
                 && matchesTipoDevolucaoFilter(s, tipoDevolucaoFilter);
         });
         return items;
-    }, [shippings, searchTerm, statusFilter, confidenceFilter, tipoDevolucaoFilter, shipPeriodFilter, shipCustomMonth, shipCustomYear, matchesConfidenceFilter, matchesTipoDevolucaoFilter]);
+    }, [mergedShippings, searchTerm, statusFilter, confidenceFilter, tipoDevolucaoFilter, shipPeriodFilter, shipCustomMonth, shipCustomYear, matchesConfidenceFilter, matchesTipoDevolucaoFilter]);
 
     // Ordem de urgência p/ sort "Mais urgente primeiro" (maior = mais urgente).
     const urgencyRank = { urgente: 3, atencao: 2, ok: 1, na: 0 };
@@ -969,7 +1055,7 @@ export default function ShippingList({
                 Para equipe, a busca é integrada à linha das status tabs abaixo. */}
             {!isEquipe && (
                 <div style={{display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center'}}>
-                    <div className="search-box" style={{flex: 1, minWidth: '200px', marginBottom: 0}}>
+                    <div className="search-box" style={{flex: 1, minWidth: '200px', marginBottom: 0, position: 'relative'}}>
                         <span className="search-icon"><Icon name="search" size={14} /></span>
                         <input
                             type="text"
@@ -978,6 +1064,16 @@ export default function ShippingList({
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
+                        {(remoteLoading || remoteExtraCount > 0) && (
+                            <div style={{
+                                position: 'absolute', top: '100%', left: 0, marginTop: '4px',
+                                fontSize: '11px', color: 'var(--text-muted)',
+                            }}>
+                                {remoteLoading
+                                    ? 'Buscando no histórico...'
+                                    : `+${remoteExtraCount} do histórico`}
+                            </div>
+                        )}
                     </div>
                     {canEdit && (
                         <button
@@ -1082,7 +1178,7 @@ export default function ShippingList({
                     })()}
                 </div>
                 {isEquipe && (
-                    <div className="search-box" style={{flex: '1 1 200px', minWidth: '180px', maxWidth: '320px', marginBottom: 0}}>
+                    <div className="search-box" style={{flex: '1 1 200px', minWidth: '180px', maxWidth: '320px', marginBottom: 0, position: 'relative'}}>
                         <span className="search-icon"><Icon name="search" size={14} /></span>
                         <input
                             type="text"
@@ -1091,6 +1187,16 @@ export default function ShippingList({
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
+                        {(remoteLoading || remoteExtraCount > 0) && (
+                            <div style={{
+                                position: 'absolute', top: '100%', left: 0, marginTop: '4px',
+                                fontSize: '11px', color: 'var(--text-muted)',
+                            }}>
+                                {remoteLoading
+                                    ? 'Buscando no histórico...'
+                                    : `+${remoteExtraCount} do histórico`}
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
