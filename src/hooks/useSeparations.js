@@ -11,7 +11,10 @@ export function useSeparations(user, isStockAdmin, isOperador = false) {
 
   const addSeparation = useCallback(
     async (separation) => {
-      if (!isStockAdmin) {
+      // Admin ou operador podem criar separações. Operador foi habilitado
+      // em abril/2026 para suportar o fluxo Import XML (admin decision),
+      // alinhando com a política já existente em updateSeparation.
+      if (!canEditSeparation) {
         throw new Error('Sem permissão para esta ação');
       }
       const newSeparation = {
@@ -25,6 +28,7 @@ export function useSeparations(user, isStockAdmin, isOperador = false) {
         produtos: separation.produtos || [],
         shipping_id: separation.shippingId || '',
         hub_id: separation.hubId || null,
+        chave_acesso: separation.chaveAcesso || null,
         date: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         user_id: separation.userId || user?.email || '',
@@ -43,6 +47,7 @@ export function useSeparations(user, isStockAdmin, isOperador = false) {
         userId: newSeparation.user_id,
         status: newSeparation.status,
         hubId: newSeparation.hub_id || '',
+        chaveAcesso: newSeparation.chave_acesso || null,
       };
       setSeparations(prev => {
         if (prev.find(s => s.id === created.id)) return prev;
@@ -50,7 +55,7 @@ export function useSeparations(user, isStockAdmin, isOperador = false) {
       });
       return created;
     },
-    [user, isStockAdmin]
+    [user, canEditSeparation]
   );
 
   const updateSeparation = useCallback(
