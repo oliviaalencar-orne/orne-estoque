@@ -177,6 +177,9 @@ export default function XMLNFeImport({
       return;
     }
 
+    // Cada upload é independente: erros antigos não poluem o header deste
+    // lote (evita "2 com erro" de uploads anteriores ao lado de "2 OK" do atual).
+    setArquivosComErro([]);
     setParsing(true);
     setParseProgress({ atual: 0, total: files.length });
     const novasLinhas = [];
@@ -698,10 +701,7 @@ export default function XMLNFeImport({
         <EditProdutosModal
           linha={linhaEditProdutos}
           onClose={() => setEditProdutosModal(null)}
-          onSave={(novosProdutos) => {
-            updateLinha(linhaEditProdutos.id, { produtos: novosProdutos });
-            setEditProdutosModal(null);
-          }}
+          onChangeProdutos={(novosProdutos) => updateLinha(linhaEditProdutos.id, { produtos: novosProdutos })}
         />
       )}
 
@@ -815,21 +815,32 @@ function ResolveSkuModal({ linha, produto, allProducts, canCreateProduct, onClos
 }
 
 // ─── Modal: Edição de produtos da linha ────────────────────────────────────
+//
+// Edit-in-place: cada mudança no input/remoção propaga imediatamente para o
+// state do pai via onChangeProdutos. Não há "Salvar" vs "Cancelar" — fechar
+// de qualquer forma (botão Fechar, backdrop, Esc) preserva as alterações.
+// Isso elimina a ambiguidade em que o usuário fechava sem clicar em "Salvar"
+// e perdia edições silenciosamente.
 
-function EditProdutosModal({ linha, onClose, onSave }) {
-  const [produtos, setProdutos] = useState(linha.produtos);
+function EditProdutosModal({ linha, onClose, onChangeProdutos }) {
+  const produtos = linha.produtos;
 
   const updateProduto = (idx, updates) => {
-    setProdutos(prev => prev.map((p, i) => i === idx ? { ...p, ...updates } : p));
+    const next = produtos.map((p, i) => i === idx ? { ...p, ...updates } : p);
+    onChangeProdutos(next);
   };
   const remover = (idx) => {
-    setProdutos(prev => prev.filter((_, i) => i !== idx));
+    const next = produtos.filter((_, i) => i !== idx);
+    onChangeProdutos(next);
   };
 
   return (
     <ModalShell onClose={onClose} width="720px">
-      <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '12px' }}>
+      <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '4px' }}>
         Produtos — NF {linha.numeroNf}
+      </div>
+      <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '12px' }}>
+        Alterações são aplicadas automaticamente.
       </div>
 
       {produtos.length === 0 ? (
@@ -849,7 +860,7 @@ function EditProdutosModal({ linha, onClose, onSave }) {
           </thead>
           <tbody>
             {produtos.map((p, i) => (
-              <tr key={i}>
+              <tr key={p.skuOriginal + '_' + i}>
                 <td style={{ fontFamily: 'monospace' }}>{p.skuOriginal}</td>
                 <td>{p.descricao}</td>
                 <td>
@@ -889,15 +900,7 @@ function EditProdutosModal({ linha, onClose, onSave }) {
       )}
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
-        <button className="btn btn-secondary" type="button" onClick={onClose}>Cancelar</button>
-        <button
-          className="btn btn-primary"
-          type="button"
-          onClick={() => onSave(produtos)}
-          disabled={produtos.length === 0}
-        >
-          Salvar alterações
-        </button>
+        <button className="btn btn-primary" type="button" onClick={onClose}>Fechar</button>
       </div>
     </ModalShell>
   );
