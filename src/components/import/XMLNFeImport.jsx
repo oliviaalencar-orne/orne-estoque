@@ -69,6 +69,12 @@ function buildProdutoLinha(produtoXml, allProducts) {
     unidade: produtoXml.unidade,
     matches,
     produtoEstoque,
+    // Paridade com SeparationForm — campo persistido e consultado por
+    // disabled={!doNossoEstoque || !vinculado} na regra do Baixa.
+    vinculado: !!produtoEstoque,
+    // Ambos NOSSO e Baixa começam desmarcados por padrão (decisão admin).
+    doNossoEstoque: false,
+    baixarEstoque: false,
   };
 }
 
@@ -264,7 +270,7 @@ export default function XMLNFeImport({
         const matches = p.matches.some(m => m.id === produtoEstoque.id)
           ? p.matches
           : [produtoEstoque, ...p.matches];
-        return { ...p, produtoEstoque, matches };
+        return { ...p, produtoEstoque, matches, vinculado: true };
       });
       return { ...l, produtos };
     }));
@@ -346,13 +352,16 @@ export default function XMLNFeImport({
           sku: p.produtoEstoque?.sku || p.sku,
           nome: p.produtoEstoque?.name || p.descricao,
           quantidade: p.quantidade,
+          unidade: p.unidade || 'UN',
           ean: p.produtoEstoque?.ean || '',
-          baixarEstoque: false,
-          nfOrigem: '',
           produtoEstoque: p.produtoEstoque || null,
+          vinculado: !!p.vinculado,
           autoVinculado: !!p.produtoEstoque,
-          doNossoEstoque: !!p.produtoEstoque,
+          doNossoEstoque: !!p.doNossoEstoque,
+          baixarEstoque: !!p.baixarEstoque,
+          nfOrigem: '',
           observacao: '',
+          manual: false,
         }));
         await onPrepareSeparationFromXml({
           nfNumero: l.numeroNf,
@@ -834,13 +843,24 @@ function EditProdutosModal({ linha, onClose, onChangeProdutos }) {
     onChangeProdutos(next);
   };
 
+  // Side-effect de desmarcar NOSSO: replica SeparationForm.jsx:273-282.
+  // Zera Baixa e limpa NF origem automaticamente.
+  const toggleNosso = (idx, val) => {
+    const p = produtos[idx];
+    updateProduto(idx, {
+      doNossoEstoque: val,
+      baixarEstoque: val ? p.baixarEstoque : false,
+      nfOrigem: val ? (p.nfOrigem || '') : '',
+    });
+  };
+
   return (
-    <ModalShell onClose={onClose} width="720px">
+    <ModalShell onClose={onClose} width="760px">
       <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '4px' }}>
         Produtos — NF {linha.numeroNf}
       </div>
       <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '12px' }}>
-        Alterações são aplicadas automaticamente.
+        Alterações são aplicadas automaticamente. "Baixa" só habilita com "NOSSO" marcado e produto vinculado ao cadastro.
       </div>
 
       {produtos.length === 0 ? (
@@ -855,46 +875,69 @@ function EditProdutosModal({ linha, onClose, onChangeProdutos }) {
               <th>Descrição</th>
               <th>Quantidade</th>
               <th>Vinculado</th>
+              <th style={{ textAlign: 'center' }}>NOSSO</th>
+              <th style={{ textAlign: 'center' }}>Baixa</th>
               <th style={{ width: '60px' }}></th>
             </tr>
           </thead>
           <tbody>
-            {produtos.map((p, i) => (
-              <tr key={p.skuOriginal + '_' + i}>
-                <td style={{ fontFamily: 'monospace' }}>{p.skuOriginal}</td>
-                <td>{p.descricao}</td>
-                <td>
-                  <input
-                    type="number"
-                    className="form-input"
-                    min={1}
-                    value={p.quantidade}
-                    onChange={(e) => {
-                      const n = Math.max(1, Math.round(Number(e.target.value) || 1));
-                      updateProduto(i, { quantidade: n });
-                    }}
-                    style={{ width: '80px', padding: '4px 6px' }}
-                  />
-                </td>
-                <td style={{ fontSize: '11px' }}>
-                  {p.produtoEstoque
-                    ? <span style={{ color: 'var(--success, #39845f)' }}>✓ {p.produtoEstoque.name}</span>
-                    : p.matches.length === 0
-                      ? <span style={{ color: 'var(--danger, #893030)' }}>sem match</span>
-                      : <span style={{ color: '#92400e' }}>{p.matches.length} matches</span>}
-                </td>
-                <td>
-                  <button
-                    type="button"
-                    onClick={() => remover(i)}
-                    className="btn btn-secondary"
-                    style={{ fontSize: '11px', padding: '3px 8px' }}
-                  >
-                    remover
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {produtos.map((p, i) => {
+              const baixaDisabled = !p.doNossoEstoque || !p.vinculado;
+              return (
+                <tr key={p.skuOriginal + '_' + i}>
+                  <td style={{ fontFamily: 'monospace' }}>{p.skuOriginal}</td>
+                  <td>{p.descricao}</td>
+                  <td>
+                    <input
+                      type="number"
+                      className="form-input"
+                      min={1}
+                      value={p.quantidade}
+                      onChange={(e) => {
+                        const n = Math.max(1, Math.round(Number(e.target.value) || 1));
+                        updateProduto(i, { quantidade: n });
+                      }}
+                      style={{ width: '80px', padding: '4px 6px' }}
+                    />
+                  </td>
+                  <td style={{ fontSize: '11px' }}>
+                    {p.produtoEstoque
+                      ? <span style={{ color: 'var(--success, #39845f)' }}>✓ {p.produtoEstoque.name}</span>
+                      : p.matches.length === 0
+                        ? <span style={{ color: 'var(--danger, #893030)' }}>sem match</span>
+                        : <span style={{ color: '#92400e' }}>{p.matches.length} matches</span>}
+                  </td>
+                  <td style={{ textAlign: 'center' }}>
+                    <input
+                      type="checkbox"
+                      checked={!!p.doNossoEstoque}
+                      onChange={(e) => toggleNosso(i, e.target.checked)}
+                      aria-label="Produto do nosso estoque"
+                    />
+                  </td>
+                  <td style={{ textAlign: 'center' }}>
+                    <input
+                      type="checkbox"
+                      checked={!!p.baixarEstoque}
+                      disabled={baixaDisabled}
+                      onChange={(e) => updateProduto(i, { baixarEstoque: e.target.checked })}
+                      aria-label="Baixar do estoque ao despachar"
+                      title={baixaDisabled ? 'Marque "NOSSO" e vincule ao cadastro para habilitar' : ''}
+                    />
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      onClick={() => remover(i)}
+                      className="btn btn-secondary"
+                      style={{ fontSize: '11px', padding: '3px 8px' }}
+                    >
+                      remover
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       )}

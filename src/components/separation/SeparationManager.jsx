@@ -109,14 +109,10 @@ export default function SeparationManager({
 
   // XML import (abril 2026) — batch mode: confirm pipeline creates one separation per file.
   // Duplicatas já foram tratadas no preview (confirmaDup), então salva direto.
+  // O XMLNFeImport já entrega produtos com todas as flags corretas
+  // (doNossoEstoque, baixarEstoque, vinculado, unidade, manual).
+  // Não sobrescrever aqui — respeitar o que o admin marcou no modal de edição.
   const handlePrepareSeparationFromXml = async (data) => {
-    const produtos = (data.produtos || []).map(p => ({
-      ...p,
-      doNossoEstoque: !!p.produtoEstoque,
-      baixarEstoque: false,
-      observacao: p.observacao || '',
-    }));
-
     await onAdd({
       nfNumero: data.nfNumero || '',
       chaveAcesso: data.chaveAcesso || null,
@@ -126,7 +122,7 @@ export default function SeparationManager({
       transportadora: data.transportadora || '',
       status: 'pendente',
       hubId: data.hubId || (selectedHubId !== 'all' ? selectedHubId : ''),
-      produtos,
+      produtos: data.produtos || [],
       userId: user?.email || '',
     });
     return true;
