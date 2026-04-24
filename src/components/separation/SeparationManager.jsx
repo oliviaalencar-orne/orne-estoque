@@ -11,6 +11,7 @@ import { supabaseClient } from '@/config/supabase';
 import { buildSeparationMessage, openWhatsAppWithMessage, copyToClipboard } from '@/utils/separationMessage';
 import { formatHubName } from '@/utils/hubs';
 import TinyNFeImport from '@/components/import/TinyNFeImport';
+import XMLNFeImport from '@/components/import/XMLNFeImport';
 import SeparationList from './SeparationList';
 import SeparationForm from './SeparationForm';
 import HubsModal from './HubsModal';
@@ -105,6 +106,31 @@ export default function SeparationManager({
     if (existingSeparation) return { type: 'separation', label: `Em separacao (${existingSeparation.status})` };
     return null;
   }, [shippings, separations]);
+
+  // XML import (abril 2026) — batch mode: confirm pipeline creates one separation per file.
+  // Duplicatas já foram tratadas no preview (confirmaDup), então salva direto.
+  const handlePrepareSeparationFromXml = async (data) => {
+    const produtos = (data.produtos || []).map(p => ({
+      ...p,
+      doNossoEstoque: !!p.produtoEstoque,
+      baixarEstoque: false,
+      observacao: p.observacao || '',
+    }));
+
+    await onAdd({
+      nfNumero: data.nfNumero || '',
+      chaveAcesso: data.chaveAcesso || null,
+      cliente: data.cliente || '',
+      destino: data.destino || '',
+      observacoes: data.observacoes || '',
+      transportadora: data.transportadora || '',
+      status: 'pendente',
+      hubId: data.hubId || (selectedHubId !== 'all' ? selectedHubId : ''),
+      produtos,
+      userId: user?.email || '',
+    });
+    return true;
+  };
 
   const handlePrepareSeparationFromTiny = async (data, options = {}) => {
     const nf = data.nfNumero || '';
@@ -822,6 +848,15 @@ export default function SeparationManager({
               <Icon name="sync" size={14} /> Importar NF (Tiny)
             </button>
           )}
+          {canEditSeparation && (
+            <button
+              className={`filter-tab ${activeView === 'new-xml' ? 'active' : ''}`}
+              onClick={() => { setActiveView('new-xml'); setEditingSeparation(null); }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            >
+              <Icon name="file" size={14} /> Importar por XML
+            </button>
+          )}
           {isStockAdmin && (
             <button
               className={`filter-tab ${activeView === 'new-manual' ? 'active' : ''}`}
@@ -854,6 +889,23 @@ export default function SeparationManager({
           showHubBadge={selectedHubId === 'all'}
           isStockAdmin={isStockAdmin}
           isOperador={isOperador}
+        />
+      )}
+
+      {activeView === 'new-xml' && (
+        <XMLNFeImport
+          products={products || []}
+          shippings={shippings || []}
+          separations={separations || []}
+          hubs={hubs}
+          locaisOrigem={locaisOrigem}
+          defaultHubId={selectedHubId !== 'all' ? selectedHubId : ''}
+          categories={categories}
+          isStockAdmin={isStockAdmin}
+          isOperador={isOperador}
+          onPrepareSeparationFromXml={handlePrepareSeparationFromXml}
+          onAddProduct={onAddProduct}
+          onAddCategory={onAddCategory}
         />
       )}
 
