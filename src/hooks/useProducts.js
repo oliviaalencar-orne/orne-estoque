@@ -138,10 +138,12 @@ export function useProducts(user, isStockAdmin) {
    */
   const refetchData = useCallback(
     async (setEntries, setExits) => {
+      // entries/exits: 1000 mais recentes (preventivo — teto silencioso
+      // do PostgREST). Alinhado com setupSupabaseCollection no App.jsx.
       const [prodData, entRes, exitRes] = await Promise.all([
         fetchAllRows('products', PRODUCT_FIELDS, PRODUCT_FILTERS),
-        supabaseClient.from('entries').select('*'),
-        supabaseClient.from('exits').select('*'),
+        supabaseClient.from('entries').select('*').order('date', { ascending: false }).range(0, 999),
+        supabaseClient.from('exits').select('*').order('date', { ascending: false }).range(0, 999),
       ]);
       if (prodData.length > 0) setProducts(prodData.map(mapProductFromDB));
       if (entRes.data) setEntries(entRes.data.map(mapEntryFromDB));

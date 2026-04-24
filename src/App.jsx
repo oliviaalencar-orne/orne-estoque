@@ -221,10 +221,12 @@ export default function App() {
       // Equipe products — paginated via RPC (for StockView server-side search)
       equipeInitLoad();
 
-      // Shippings — realtime
+      // Shippings — realtime (1000 mais recentes; ver comentário no bloco admin)
       channels.push(
         setupSupabaseCollection('shippings', setShippings, {
           transform: mapShippingFromDB,
+          orderBy: { column: 'date', ascending: false },
+          limit: 1000,
         })
       );
 
@@ -282,23 +284,41 @@ export default function App() {
       channels.push(subscribeRefetch('products', loadProducts));
 
       // Entries — realtime
+      //
+      // Carregamos os 1000 mais recentes. entries hoje tem ~217 linhas em
+      // produção, cabe folgado, mas estamos aplicando preventivamente a
+      // mesma regra do PostgREST (teto silencioso de 1000) — ver shippings
+      // abaixo. Quando passar de 1000, o comportamento permanece consistente
+      // (os mais recentes ficam visíveis).
       channels.push(
         setupSupabaseCollection('entries', setEntries, {
           transform: mapEntryFromDB,
+          orderBy: { column: 'date', ascending: false },
+          limit: 1000,
         })
       );
 
-      // Exits — realtime
+      // Exits — realtime (1000 mais recentes — mesmo racional de entries)
       channels.push(
         setupSupabaseCollection('exits', setExits, {
           transform: mapExitFromDB,
+          orderBy: { column: 'date', ascending: false },
+          limit: 1000,
         })
       );
 
-      // Shippings — realtime
+      // Shippings — realtime (1000 mais recentes)
+      //
+      // Corrigindo bug do limite 1000 do PostgREST em shippings (1184+ linhas
+      // em prod, 24/04/2026). Sem order+limit o fetch corta em 1000 rows
+      // aleatórios (heap order) e despachos recém-criados sumiam da aba
+      // Despachos. order desc por date traz o que interessa e cabe na cota.
+      // Admin tem busca server-side quando precisa achar NF fora dos 1000.
       channels.push(
         setupSupabaseCollection('shippings', setShippings, {
           transform: mapShippingFromDB,
+          orderBy: { column: 'date', ascending: false },
+          limit: 1000,
         })
       );
 
