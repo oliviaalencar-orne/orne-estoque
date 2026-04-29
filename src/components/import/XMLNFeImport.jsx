@@ -46,6 +46,23 @@ function sentryTag(action, extras = {}) {
   };
 }
 
+// Aplica o toggle de NOSSO em um produto da linha, replicando o side-effect
+// de SeparationForm.jsx:273-282: desmarcar zera baixarEstoque e limpa nfOrigem.
+// Retorna nova lista (imutável) para uso direto em onChangeProdutos/updateLinha.
+// Usado pelo EditProdutosModal e pelos toggles inline da tabela de preview —
+// fonte única de regra para garantir paridade de comportamento.
+function applyNossoToggle(produtos, idx, val) {
+  return produtos.map((p, i) => {
+    if (i !== idx) return p;
+    return {
+      ...p,
+      doNossoEstoque: val,
+      baixarEstoque: val ? p.baixarEstoque : false,
+      nfOrigem: val ? (p.nfOrigem || '') : '',
+    };
+  });
+}
+
 function calcStatus(linha) {
   // erro: algum produto sem match
   const temProdutoSemMatch = linha.produtos.some(p => p.matches.length === 0);
@@ -548,6 +565,8 @@ export default function XMLNFeImport({
                   <th>Destino</th>
                   <th>Produtos</th>
                   <th>Valor</th>
+                  <th style={{ textAlign: 'center', width: '60px' }} title="Produto do nosso estoque">NOSSO</th>
+                  <th style={{ textAlign: 'center', width: '60px' }} title="Baixar do estoque ao despachar">Baixa</th>
                   <th>HUB</th>
                   <th>Transportadora</th>
                   <th>Observações</th>
@@ -622,6 +641,59 @@ export default function XMLNFeImport({
                         })}
                       </td>
                       <td style={{ whiteSpace: 'nowrap' }}>{fmtValor(l.valorTotal)}</td>
+                      {/* Toggles inline NOSSO + Baixa — só quando a linha tem exatamente 1 produto.
+                          Caso contrário (raro: NF com múltiplos itens), admin abre modal pra
+                          ajustar individualmente. Wrapper 40x40 garante área de toque mobile. */}
+                      {l.produtos.length === 1 ? (() => {
+                        const p = l.produtos[0];
+                        const baixaDisabled = !p.doNossoEstoque || !p.vinculado;
+                        const tdBase = { textAlign: 'center', padding: 0 };
+                        const labelBase = {
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '40px',
+                          height: '40px',
+                          cursor: 'pointer',
+                        };
+                        return (
+                          <>
+                            <td style={tdBase}>
+                              <label style={labelBase}>
+                                <input
+                                  type="checkbox"
+                                  checked={!!p.doNossoEstoque}
+                                  onChange={(e) => updateLinha(l.id, {
+                                    produtos: applyNossoToggle(l.produtos, 0, e.target.checked),
+                                  })}
+                                  aria-label="Produto do nosso estoque"
+                                />
+                              </label>
+                            </td>
+                            <td style={tdBase}>
+                              <label style={{ ...labelBase, cursor: baixaDisabled ? 'not-allowed' : 'pointer' }}
+                                title={baixaDisabled ? 'Marque "NOSSO" e vincule ao cadastro para habilitar' : ''}>
+                                <input
+                                  type="checkbox"
+                                  checked={!!p.baixarEstoque}
+                                  disabled={baixaDisabled}
+                                  onChange={(e) => updateLinha(l.id, {
+                                    produtos: l.produtos.map((q, i) => i === 0 ? { ...q, baixarEstoque: e.target.checked } : q),
+                                  })}
+                                  aria-label="Baixar do estoque ao despachar"
+                                />
+                              </label>
+                            </td>
+                          </>
+                        );
+                      })() : (
+                        <>
+                          <td colSpan={2} style={{ textAlign: 'center', fontSize: '11px', color: 'var(--text-muted)' }}
+                              title="Múltiplos produtos — abra o modal para configurar individualmente">
+                            {l.produtos.length} itens · ver modal
+                          </td>
+                        </>
+                      )}
                       <td>
                         <select
                           className="form-select"
@@ -843,19 +915,14 @@ function EditProdutosModal({ linha, onClose, onChangeProdutos }) {
     onChangeProdutos(next);
   };
 
-  // Side-effect de desmarcar NOSSO: replica SeparationForm.jsx:273-282.
-  // Zera Baixa e limpa NF origem automaticamente.
+  // Side-effect de desmarcar NOSSO via helper compartilhado (applyNossoToggle).
+  // Mesma regra usada pelos toggles inline da tabela de preview.
   const toggleNosso = (idx, val) => {
-    const p = produtos[idx];
-    updateProduto(idx, {
-      doNossoEstoque: val,
-      baixarEstoque: val ? p.baixarEstoque : false,
-      nfOrigem: val ? (p.nfOrigem || '') : '',
-    });
+    onChangeProdutos(applyNossoToggle(produtos, idx, val));
   };
 
   return (
-    <ModalShell onClose={onClose} width="760px">
+    <ModalShell onClose={onClose} width="min(90vw, 1200px)">
       <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '4px' }}>
         Produtos — NF {linha.numeroNf}
       </div>
@@ -868,10 +935,11 @@ function EditProdutosModal({ linha, onClose, onChangeProdutos }) {
           Nenhum produto nesta linha.
         </div>
       ) : (
-        <table className="table" style={{ fontSize: '12px' }}>
+        <div style={{ overflowX: 'auto' }}>
+        <table className="table" style={{ fontSize: '12px', tableLayout: 'auto' }}>
           <thead>
             <tr>
-              <th>SKU XML</th>
+              <th style={{ minWidth: '160px', maxWidth: '320px' }}>SKU XML</th>
               <th>Descrição</th>
               <th>Quantidade</th>
               <th>Vinculado</th>
@@ -885,7 +953,7 @@ function EditProdutosModal({ linha, onClose, onChangeProdutos }) {
               const baixaDisabled = !p.doNossoEstoque || !p.vinculado;
               return (
                 <tr key={p.skuOriginal + '_' + i}>
-                  <td style={{ fontFamily: 'monospace' }}>{p.skuOriginal}</td>
+                  <td style={{ fontFamily: 'monospace', wordBreak: 'break-all', maxWidth: '320px' }}>{p.skuOriginal}</td>
                   <td>{p.descricao}</td>
                   <td>
                     <input
@@ -940,6 +1008,7 @@ function EditProdutosModal({ linha, onClose, onChangeProdutos }) {
             })}
           </tbody>
         </table>
+        </div>
       )}
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px' }}>
