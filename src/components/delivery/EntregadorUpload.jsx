@@ -6,9 +6,6 @@
  */
 import React, { useState, useEffect, useRef } from 'react';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://ppslljqxsdsdmwfiayok.supabase.co';
-const FUNCTIONS_URL = `${SUPABASE_URL}/functions/v1`;
-
 async function comprimirImagem(file, maxWidth = 1200, quality = 0.8) {
   return new Promise((resolve) => {
     const img = new Image();
@@ -63,6 +60,30 @@ const btnPrimary = {
 const btnDisabled = { ...btnPrimary, background: '#d1d5db', color: '#9ca3af', cursor: 'default' };
 
 export default function EntregadorUpload({ token }) {
+  const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+
+  // Fail-loud contido: se a variável não foi injetada (build/dev sem .env.local),
+  // não tentamos cair em produção silenciosamente. O resto do app (rota admin)
+  // segue funcionando — só esta rota pública mostra UI de erro.
+  if (!SUPABASE_URL) {
+    console.error(
+      '[EntregadorUpload] VITE_SUPABASE_URL não configurada. ' +
+      'Crie .env.local na raiz do projeto com credenciais de STAGING. Veja .env.example.'
+    );
+    return (
+      <div style={pageStyle}><div style={cardStyle}><div style={logoStyle}>ORNE</div>
+        <div style={{ textAlign: 'center', padding: '20px 0' }}>
+          <div style={{ fontSize: '40px', marginBottom: '12px' }}>{'⚠️'}</div>
+          <p style={{ color: '#374151', fontSize: '15px', lineHeight: 1.5 }}>
+            Página em manutenção. Entre em contato com o administrador.
+          </p>
+        </div>
+      </div></div>
+    );
+  }
+
+  const FUNCTIONS_URL = `${SUPABASE_URL}/functions/v1`;
+
   const [estado, setEstado] = useState('carregando');
   const [dados, setDados] = useState(null);
   const [erro, setErro] = useState('');
