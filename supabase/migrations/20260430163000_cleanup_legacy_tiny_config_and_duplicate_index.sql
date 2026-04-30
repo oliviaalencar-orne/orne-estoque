@@ -1,0 +1,42 @@
+-- Cleanup retroativo de drift detectado pela auditoria ampla (Decisão 3):
+--
+--   2.1 — DROP TABLE public.tiny_config (legacy, A3)
+--         Tabela existia em prod com 3 rows (last activity 2026-02-19,
+--         tokens OAuth Tiny ERP expirados). Substituída pela
+--         tiny_config_shared no fluxo per-user → shared. Zero referências
+--         no código (grep em src/ api/ supabase/: 14 hits, todos para
+--         tiny_config_shared). Backup CSV preservado localmente pela
+--         admin antes do drop.
+--
+--   2.3 — DROP INDEX public.idx_products_tiny_id (E5)
+--         Duplicata funcional do idx_products_tiny_id_unique. Ambos
+--         eram UNIQUE em products(tiny_id), com WHERE clauses
+--         diferentes mas que cobrem exatamente o mesmo conjunto de
+--         10760 rows hoje (zero rows com tiny_id='' em prod). Removendo
+--         o mais estrito; idx_products_tiny_id_unique permanece como
+--         único garantidor da unicidade.
+--
+-- Pré-validação (executada em 30/04/2026):
+--   - pg_depend em tiny_config: apenas dependências internas (deptype
+--     i/a/n). Sem views, functions, triggers ou referências externas.
+--     CASCADE limpa apenas: type composto auto-gerado, TOAST, defaults,
+--     constraints (PK, UNIQUE user_id, FK→auth.users), policy RLS.
+--   - tiny_id='': zero rows. Remover o mais estrito não muda
+--     comportamento atual.
+--
+-- Idempotência:
+--   - DROP TABLE IF EXISTS    → no-op em staging (não existe lá) e em
+--     futuras reaplicações.
+--   - DROP INDEX IF EXISTS    → idem.
+--   - Em prod: DROPs reais (são as únicas operações destrutivas
+--     desta migration).
+--
+-- Rollback: para tiny_config, recuperar do CSV em
+-- _archive/data/tiny_config_backup_20260430.csv (preservado localmente
+-- pela admin antes do drop). Para o index, recriar com:
+--   CREATE UNIQUE INDEX idx_products_tiny_id ON public.products
+--   USING btree (tiny_id) WHERE (tiny_id IS NOT NULL);
+
+DROP TABLE IF EXISTS public.tiny_config CASCADE;
+
+DROP INDEX IF EXISTS public.idx_products_tiny_id;
