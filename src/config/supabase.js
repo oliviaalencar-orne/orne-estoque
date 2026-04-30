@@ -1,6 +1,21 @@
 import { createClient } from '@supabase/supabase-js';
 
-export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://ppslljqxsdsdmwfiayok.supabase.co';
-export const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBwc2xsanF4c2RzZG13ZmlheW9rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA2NDUzNjQsImV4cCI6MjA4NjIyMTM2NH0.-7oJxDaw2nwc2uN410OGwavefzjZ-AjfmkK8QxpB7cM';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  const missingVars = [];
+  if (!SUPABASE_URL) missingVars.push('VITE_SUPABASE_URL');
+  if (!SUPABASE_ANON_KEY) missingVars.push('VITE_SUPABASE_ANON_KEY');
+
+  throw new Error(
+    `[Orne Estoque] Configuração Supabase ausente: ${missingVars.join(', ')}.\n\n` +
+    `Para rodar em desenvolvimento, crie um arquivo .env.local na raiz do projeto com:\n` +
+    `  VITE_SUPABASE_URL=https://<seu-projeto-staging>.supabase.co\n` +
+    `  VITE_SUPABASE_ANON_KEY=<sua-chave-anon-staging>\n\n` +
+    `Veja .env.example como referência. Use credenciais de STAGING para desenvolvimento local — nunca produção.`
+  );
+}
+
+export { SUPABASE_URL, SUPABASE_ANON_KEY };
 export const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
