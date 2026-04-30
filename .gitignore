@@ -62,3 +62,8 @@ Thumbs.db
 .node_repl_history
 .dataconnect
 .env*.local
+
+# Local archive — backups de dados sensíveis (secretos OAuth, dumps de tabelas
+# com credenciais, etc) que precisam ser preservados localmente antes de
+# operações destrutivas mas NUNCA devem ser commitados em repo público.
+_archive/
