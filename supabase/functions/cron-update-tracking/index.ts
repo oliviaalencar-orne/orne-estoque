@@ -155,9 +155,14 @@ Deno.serve(async (req: Request) => {
 
   try {
     // ── Fase 1: buscar shippings pendentes ──────────────────────
+    // rastreio_origem: adicionado ao select para filtrar Fase 2 a apenas
+    // shippings declarados como auto_me. Manual/externo são pulados —
+    // sistema reconhece que rastreio é responsabilidade do operador (ou
+    // de sistema externo). Ver migration
+    // 20260502120000_add_rastreio_origem_to_shippings.sql.
     const query = new URLSearchParams({
       select:
-        'id,nf_numero,cliente,status,codigo_rastreio,melhor_envio_id,transportadora,entrega_local',
+        'id,nf_numero,cliente,status,codigo_rastreio,melhor_envio_id,transportadora,entrega_local,rastreio_origem',
       or:
         '(status.eq.DESPACHADO,status.eq.AGUARDANDO_COLETA,status.eq.EM_TRANSITO,status.eq.SAIU_ENTREGA,status.eq.TENTATIVA_ENTREGA)',
     });
@@ -190,12 +195,27 @@ Deno.serve(async (req: Request) => {
     );
 
     // ── Fase 2: NF search (shippings sem código) ────────────────
+    // Filtro adicional `rastreio_origem === 'auto_me'`. Shippings
+    // marcados como `manual` ou `externo` são pulados da busca por NF
+    // — o sistema reconhece que rastreio é gerenciado fora do cron.
+    // Sem essa restrição, ~14 NFs/rodada eram tentadas inutilmente
+    // (ver investigação 30/04 e 02/05).
+    //
+    // DÍVIDA TÉCNICA CONHECIDA: shippings cujo melhor_envio_id foi
+    // populado pelo botão "Vincular ME em lote" (ShippingList.jsx:985)
+    // ou pelo auto-PATCH da EF rastrear-envio podem manter
+    // rastreio_origem='manual' por não atualizarem o campo no update.
+    // Esses shippings serão excluídos da Fase 2, mas continuam sendo
+    // atualizados pela Fase 3a (filtra apenas por melhor_envio_id).
+    // A correção desses caminhos fica para PR futura junto com fix
+    // do endpoint searchME.
     const semRastreio = allShippings.filter(
       (s) =>
         (!s.codigo_rastreio || !s.codigo_rastreio.trim()) &&
         (!s.melhor_envio_id || !s.melhor_envio_id.trim()) &&
         s.nf_numero && s.nf_numero.trim() &&
-        s.status === 'DESPACHADO',
+        s.status === 'DESPACHADO' &&
+        s.rastreio_origem === 'auto_me',
     );
     summary.fases.nf.tentativas = semRastreio.length;
 

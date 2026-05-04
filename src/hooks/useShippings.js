@@ -72,6 +72,18 @@ export function useShippings(user, isStockAdmin, isOperador) {
         entrada_criada: shipping.entradaCriada || false,
         motivo_devolucao: shipping.motivoDevolucao || '',
         hub_destino: shipping.hubDestino || '',
+        // rastreio_origem: 'auto_me' se shipping nasce com vínculo direto à
+        // integração ME (operador colou o melhor_envio_id ao criar). 'manual'
+        // caso contrário — sistema reconhece que rastreio será adicionado
+        // pelo operador depois e o cron pula. Heurística idêntica ao
+        // backfill da migration 20260502120000_add_rastreio_origem_to_shippings.
+        //
+        // INVARIANTE: addShipping é a garantia primária de que
+        // rastreio_origem='auto_me' ⇔ shipping tem vínculo ME. Outros
+        // callers que populam melhorEnvioId via update precisam atualizar
+        // rastreio_origem junto. Ver comentário no filtro Fase 2 do cron
+        // (cron-update-tracking/index.ts) para o detalhe da dívida atual.
+        rastreio_origem: shipping.melhorEnvioId ? 'auto_me' : 'manual',
       };
       const { error } = await supabaseClient.from('shippings').upsert(newShipping);
       if (error) {
@@ -120,6 +132,11 @@ export function useShippings(user, isStockAdmin, isOperador) {
       if (data.motivoDevolucao !== undefined) mapped.motivo_devolucao = data.motivoDevolucao;
       if (data.hubDestino !== undefined) mapped.hub_destino = data.hubDestino;
       if (data.entradaCriada !== undefined) mapped.entrada_criada = data.entradaCriada;
+      // Callers que populam melhorEnvioId via integração ME devem passar
+      // também rastreioOrigem='auto_me' para preservar a invariante
+      // (rastreio_origem='auto_me' ⇔ vínculo ME). Ver tentarBuscarRastreioME
+      // em ShippingManager.jsx e buscarRastreioNF em ShippingList.jsx.
+      if (data.rastreioOrigem !== undefined) mapped.rastreio_origem = data.rastreioOrigem;
       const { data: updated, error } = await supabaseClient
         .from('shippings')
         .update(mapped)
