@@ -84,6 +84,9 @@ export const mapShippingFromDB = (row) => ({
   // Entrega 1 — Taxonomia de Devolução: auditoria de reclassificações
   reclassificacaoAutomatica: row.reclassificacao_automatica || null,
   reclassificacaoManual: row.reclassificacao_manual || null,
+  // rastreio_origem: 'auto_me' | 'manual' | 'externo'.
+  // Default 'manual' garante segurança caso row antigo sem coluna apareça.
+  rastreioOrigem: row.rastreio_origem || 'manual',
 });
 
 export const mapSeparationFromDB = (row) => ({
