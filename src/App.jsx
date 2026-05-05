@@ -153,7 +153,11 @@ export default function App() {
   // ── Stock calculation ─────────────────────────────────────────────────
   // Equipe: uses precomputed stock map from RPC (avoids loading entries/exits)
   // Admin: computes from entries/exits as before
-  const { stockMap, currentStock } = useStock(products, entries, exits, isEquipe ? equipeStockMap : null);
+  // separations (5º arg): alimenta o indicador "em separação" em StockView.
+  // Caminho A — visual apenas, sem afetar movimentação real. Equipe não vê o
+  // alerta porque consume `equipeProducts` direto da RPC `get_products_with_stock`,
+  // que não passa por este hook (decisão consciente da Frente 5).
+  const { stockMap, currentStock } = useStock(products, entries, exits, isEquipe ? equipeStockMap : null, separations);
 
   // ── UI-only states ────────────────────────────────────────────────────
   const [syncStatus, setSyncStatus] = useState('syncing');
