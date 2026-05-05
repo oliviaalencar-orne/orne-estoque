@@ -959,7 +959,11 @@ export default function ShippingList({
                 const updateData = {
                     ultimaAtualizacaoRastreio: new Date().toISOString(),
                 };
-                if (result.melhor_envio_id) updateData.melhorEnvioId = result.melhor_envio_id;
+                if (result.melhor_envio_id) {
+                    updateData.melhorEnvioId = result.melhor_envio_id;
+                    // Preserva invariante rastreio_origem='auto_me' ⇔ vínculo ME.
+                    updateData.rastreioOrigem = 'auto_me';
+                }
                 if (result.codigo_rastreio) updateData.codigoRastreio = result.codigo_rastreio;
                 if (result.link_rastreio) updateData.linkRastreio = result.link_rastreio;
                 if (result.transportadora) updateData.transportadora = result.transportadora;
