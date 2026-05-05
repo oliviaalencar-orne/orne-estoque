@@ -586,10 +586,10 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                         }}>
                             {p.currentQuantity}
                         </span>
-                        {/* Frente 5 \u2014 Alerta "em separa\u00E7\u00E3o" (Caminho A: visual apenas).
-                            Linha secund\u00E1ria pequena exibida apenas quando h\u00E1 separa\u00E7\u00F5es
+                        {/* Frente 5 — Alerta "em separação" (Caminho A: visual apenas).
+                            Linha secundária pequena exibida apenas quando há separações
                             ativas (status pendente/separado/embalado) com baixarEstoque=true
-                            para este SKU. Tooltip lista NFs e total. N\u00E3o interfere em
+                            para este SKU. Tooltip lista NFs e total. Não interfere em
                             currentQuantity nem no sort por estoque. */}
                         {p.inSeparationQty > 0 && (
                             <div
@@ -603,7 +603,7 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                                 onMouseEnter={(e) => showHoverTooltip(e, (
                                     <>
                                         {Object.entries(p.inSeparationNfs || {}).map(([nf, qtd]) => (
-                                            <div key={nf}>NF {nf} \u2014 {qtd} un</div>
+                                            <div key={nf}>NF {nf} — {qtd} un</div>
                                         ))}
                                         <div style={{
                                             marginTop: '6px',
@@ -611,14 +611,14 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                                             borderTop: '1px solid rgba(255,255,255,0.2)',
                                             fontWeight: 600,
                                         }}>
-                                            Total: {p.inSeparationQty} un em separa\u00E7\u00E3o
+                                            Total: {p.inSeparationQty} un em separação
                                         </div>
                                     </>
                                 ))}
                                 onMouseLeave={hideHoverTooltip}
                                 onClick={(e) => e.stopPropagation()}
                             >
-                                ({p.inSeparationQty} em separa\u00E7\u00E3o)
+                                ({p.inSeparationQty} em separação)
                             </div>
                         )}
                     </td>
