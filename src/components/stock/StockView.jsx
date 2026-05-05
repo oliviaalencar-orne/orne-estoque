@@ -504,23 +504,26 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
         return Object.entries(saldoPorNF).filter(([, dados]) => dados.entradas - dados.saidas > 0);
     };
 
-    // Observation tooltip state
-    const [obsTooltip, setObsTooltip] = React.useState(null);
+    // Hover tooltip state — generalizado na Frente 5 para aceitar qualquer
+    // ReactNode em `content` (antes só strings em `text`). Reutilizado por
+    // (a) ícone de observações do produto e (b) alerta "em separação" na
+    // coluna Estoque.
+    const [hoverTooltip, setHoverTooltip] = React.useState(null);
 
-    const showObsTooltip = (e, text) => {
+    const showHoverTooltip = (e, content) => {
         e.stopPropagation();
         const rect = e.currentTarget.getBoundingClientRect();
         const spaceBelow = window.innerHeight - rect.bottom;
         const openUp = spaceBelow < 120;
-        setObsTooltip({
-            text,
+        setHoverTooltip({
+            content,
             left: rect.left + rect.width / 2,
             top: openUp ? rect.top - 8 : rect.bottom + 8,
             openUp,
         });
     };
 
-    const hideObsTooltip = () => setObsTooltip(null);
+    const hideHoverTooltip = () => setHoverTooltip(null);
 
     // Render a product row — clicar abre o modal de detalhes.
     const renderProductRow = (p) => {
@@ -561,8 +564,8 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                             {p.observations && p.observations.trim() && (
                                 <span
                                     style={{display: 'inline-flex', alignItems: 'center', cursor: 'help', flexShrink: 0}}
-                                    onMouseEnter={(e) => showObsTooltip(e, p.observations)}
-                                    onMouseLeave={hideObsTooltip}
+                                    onMouseEnter={(e) => showHoverTooltip(e, <>{p.observations}</>)}
+                                    onMouseLeave={hideHoverTooltip}
                                     onClick={(e) => e.stopPropagation()}
                                 >
                                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{opacity: 0.75}}>
@@ -583,6 +586,41 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                         }}>
                             {p.currentQuantity}
                         </span>
+                        {/* Frente 5 — Alerta "em separação" (Caminho A: visual apenas).
+                            Linha secundária pequena exibida apenas quando há separações
+                            ativas (status pendente/separado/embalado) com baixarEstoque=true
+                            para este SKU. Tooltip lista NFs e total. Não interfere em
+                            currentQuantity nem no sort por estoque. */}
+                        {p.inSeparationQty > 0 && (
+                            <div
+                                style={{
+                                    fontSize: '11px',
+                                    color: 'var(--text-muted)',
+                                    marginTop: '2px',
+                                    cursor: 'help',
+                                    fontWeight: 400,
+                                }}
+                                onMouseEnter={(e) => showHoverTooltip(e, (
+                                    <>
+                                        {Object.entries(p.inSeparationNfs || {}).map(([nf, qtd]) => (
+                                            <div key={nf}>NF {nf} — {qtd} un</div>
+                                        ))}
+                                        <div style={{
+                                            marginTop: '6px',
+                                            paddingTop: '6px',
+                                            borderTop: '1px solid rgba(255,255,255,0.2)',
+                                            fontWeight: 600,
+                                        }}>
+                                            Total: {p.inSeparationQty} un em separação
+                                        </div>
+                                    </>
+                                ))}
+                                onMouseLeave={hideHoverTooltip}
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                ({p.inSeparationQty} em separação)
+                            </div>
+                        )}
                     </td>
                     <td className="hide-mobile col-center" style={{fontSize: '12px', color: 'var(--text-secondary)'}}>
                         {p.unitPrice > 0 ? `R$ ${formatBRL(p.unitPrice)}` : '\u2014'}
@@ -1004,12 +1042,12 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                 />
             )}
 
-            {obsTooltip && (
+            {hoverTooltip && (
                 <div style={{
                     position: 'fixed',
-                    left: obsTooltip.left,
-                    top: obsTooltip.openUp ? 'auto' : obsTooltip.top,
-                    bottom: obsTooltip.openUp ? (window.innerHeight - obsTooltip.top) + 'px' : 'auto',
+                    left: hoverTooltip.left,
+                    top: hoverTooltip.openUp ? 'auto' : hoverTooltip.top,
+                    bottom: hoverTooltip.openUp ? (window.innerHeight - hoverTooltip.top) + 'px' : 'auto',
                     transform: 'translateX(-50%)',
                     maxWidth: '300px',
                     minWidth: '120px',
@@ -1026,7 +1064,7 @@ export default function StockView({ stock, categories, onUpdate, onDelete, searc
                     boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
                     pointerEvents: 'none',
                     textAlign: 'left',
-                }}>{obsTooltip.text}</div>
+                }}>{hoverTooltip.content}</div>
             )}
 
             <style>{`
