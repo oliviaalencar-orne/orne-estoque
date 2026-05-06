@@ -39,7 +39,19 @@ export function formatUserEmail(email) {
   return email.split('@')[0];
 }
 
-export default function PeriodFilter({ periodFilter, setPeriodFilter, customMonth, setCustomMonth, customYear, setCustomYear }) {
+export default function PeriodFilter({
+  periodFilter,
+  setPeriodFilter,
+  customMonth,
+  setCustomMonth,
+  customYear,
+  setCustomYear,
+  // Frente 2: quando true, remove marginBottom 16px do wrapper externo. Necessário
+  // quando o componente é colocado dentro de uma linha de filtros que já controla
+  // o spacing externo. StockView (consumidor anterior) continua usando default
+  // false — comportamento legado preservado.
+  noOuterMargin = false,
+}) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -64,7 +76,7 @@ export default function PeriodFilter({ periodFilter, setPeriodFilter, customMont
   };
 
   return (
-    <div ref={ref} style={{ position: 'relative', display: 'inline-block', marginBottom: '16px' }}>
+    <div ref={ref} style={{ position: 'relative', display: 'inline-block', marginBottom: noOuterMargin ? 0 : '16px' }}>
       <button
         onClick={() => setOpen(!open)}
         style={{

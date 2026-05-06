@@ -63,3 +63,51 @@ export const TIPO_TRANSPORTE_LABELS = {
   sem_transporte: 'Sem transporte',
 };
 
+/**
+ * Frente 2 — Filtro de Tipo de Transporte na aba Despachos.
+ *
+ * Granularidade ESTENDIDA em relação a `classificarTransporte`: o filtro precisa
+ * distinguir Melhor Envio / Total Express / Jadlog / Outro (que `classificarTransporte`
+ * agrupa em 'outras'). Função separada para preservar consumidores existentes
+ * (chips de Loggi suspeitos / Correios travados em ShippingList, getTransportadoraReal,
+ * matchesConfidenceFilter etc.) — qualquer mudança em `classificarTransporte` quebraria
+ * a UI desses filtros.
+ *
+ * Categorias retornadas (7 + sem_transporte):
+ *   loggi | correios | local | melhor_envio | total_express | jadlog | outro | sem_transporte
+ *
+ * @param {Object} sep - Separation/Shipping object (camelCase)
+ * @returns {string} categoria
+ */
+export function classificarTipoTransporteFiltro(sep) {
+  if (!sep) return 'sem_transporte';
+  if (sep.entregaLocal === true) return 'local';
+  const t = normalizar(sep.transportadora);
+  if (!t) return 'sem_transporte';
+  if (t.includes('entrega local') || t.includes('transporte local') || t === 'local') return 'local';
+  if (t.includes('loggi')) return 'loggi';
+  if (t.includes('correio')) return 'correios';
+  if (t.includes('melhor envio')) return 'melhor_envio';
+  if (t.includes('total express')) return 'total_express';
+  if (t.includes('jadlog')) return 'jadlog';
+  // Inclui o valor literal 'Outro' que o cliente usa explicitamente no banco,
+  // além de qualquer string não reconhecida pelos casos acima.
+  return 'outro';
+}
+
+/**
+ * Labels do filtro de Tipo de Transporte (Frente 2).
+ * `sem_transporte` intencionalmente fora — não vira opção do dropdown.
+ * Quando o filtro tem alguma categoria selecionada, shippings com transportadora
+ * vazia/null são excluídos (filtro estrito, análogo ao filtro de HUB).
+ */
+export const TIPO_TRANSPORTE_FILTRO_LABELS = {
+  loggi: 'Loggi',
+  correios: 'Correios',
+  melhor_envio: 'Melhor Envio',
+  total_express: 'Total Express',
+  jadlog: 'Jadlog',
+  local: 'Entrega Local',
+  outro: 'Outro',
+};
+

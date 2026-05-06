@@ -7,6 +7,7 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { Icon } from '@/utils/icons';
 import PeriodFilter, { filterByPeriod } from '@/components/ui/PeriodFilter';
+import MultiSelectChips from '@/components/ui/MultiSelectChips';
 import { useEscapeDeselect } from '@/hooks/useEscapeDeselect';
 import { fetchTrackingInfo, buscarRastreioPorNF, buscarRastreiosLoteME } from '@/services/trackingService';
 import { supabaseClient, SUPABASE_URL } from '@/config/supabase';
@@ -17,7 +18,12 @@ import {
 } from '@/utils/shippingMessage';
 import { getStatusLabel, getStatusColor } from '@/utils/statusLabels';
 import { criarEntradasDevolucao } from '@/utils/devolucaoEntries';
-import { getTransportadoraReal, classificarTransporte } from '@/utils/transportadora';
+import {
+    getTransportadoraReal,
+    classificarTransporte,
+    classificarTipoTransporteFiltro,
+    TIPO_TRANSPORTE_FILTRO_LABELS,
+} from '@/utils/transportadora';
 import { formatHubName } from '@/utils/hubs';
 import { classifyConfidence, CONFIANCA_NIVEIS } from '@/utils/confidence';
 import { mapShippingFromDB } from '@/utils/mappers';
@@ -96,12 +102,10 @@ export default function ShippingList({
     // shipping pós-mapeamento para permitir merge sem transform extra.
     const [remoteMatches, setRemoteMatches] = useState([]);
     const [remoteLoading, setRemoteLoading] = useState(false);
-    const [statusFilter, setStatusFilter] = useState('all');
     // Confiança de Rastreio (Fase 1) — chips "Precisam verificar", "Loggi suspeitos", "Correios travados"
     const [confidenceFilter, setConfidenceFilter] = useState('all');
-    // Sub-aba Devoluções — chips de tipo terminal (Entrega 1 da Taxonomia de Devolução).
-    // 'all' | 'DEVOLVIDO' | 'ETIQUETA_CANCELADA' | 'EXTRAVIADO'. Filtro por status.
-    const [tipoDevolucaoFilter, setTipoDevolucaoFilter] = useState('all');
+    // Filtro de "Tipo Devolução" foi removido na Frente 2 — Status (multi-select)
+    // já cobre os 3 valores terminais (DEVOLVIDO, ETIQUETA_CANCELADA, EXTRAVIADO).
     // Modal de verificação manual (chamado a partir do badge 🔴/🟡)
     const [verificationModalShipping, setVerificationModalShipping] = useState(null);
     // Modal de reclassificação manual (Entrega 1 Taxonomia de Devolução — admin only).
@@ -109,6 +113,30 @@ export default function ShippingList({
     const [shipPeriodFilter, setShipPeriodFilter] = useState('30');
     const [shipCustomMonth, setShipCustomMonth] = useState(new Date().getMonth());
     const [shipCustomYear, setShipCustomYear] = useState(new Date().getFullYear());
+    // Frente 2 — Filtros novos: HUB origem (multi) e Tipo transporte (multi).
+    //
+    // DÍVIDA CONHECIDA: estes filtros operam client-side sobre `mergedShippings`,
+    // que é state local (1000 mais recentes via useShippings) + matches da busca
+    // server-side por termo. Hoje em prod há 1.428 shippings totais — os 1000
+    // recentes cobrem com folga o caso operacional típico (despachos do mês).
+    // Para histórico antigo fora dos 1000, o operador precisa usar a busca por
+    // NF/cliente/rastreio (server-side) — os filtros novos NÃO disparam query
+    // server-side. Se a UX precisar de cobertura completa do histórico,
+    // considerar estender `useShippings` ou estender a busca server-side em PR
+    // futura. Status filter (filter-tabs) tem a mesma limitação hoje, então não
+    // estamos introduzindo regressão — só explicitando o trade-off.
+    //
+    // Filtros operam STRICT em valores vazios: quando o conjunto está vazio,
+    // mostra tudo; quando há ao menos um item selecionado, exclui shippings sem
+    // o campo correspondente (sem local_origem populado, sem transportadora
+    // populada). Decisão alinhada com a spec da Frente 2.
+    const [localOrigemFilter, setLocalOrigemFilter] = useState(new Set());
+    const [transportadoraFilter, setTransportadoraFilter] = useState(new Set());
+    // Filtro de Status migrado para multi-seleção (Frente 2).
+    // Set vazio = "Todos" (sem filtro). Set com itens = filtra por OR entre eles.
+    // Nota: chave 'EM_TRANSITO' continua agrupando 'TENTATIVA_ENTREGA' como
+    // antes (paridade com comportamento legado do filter-tab).
+    const [statusFilterSet, setStatusFilterSet] = useState(new Set());
     // Sort state for table columns
     const [sortField, setSortField] = useState('date');
     const [sortDir, setSortDir] = useState('desc');
@@ -509,16 +537,46 @@ export default function ShippingList({
         return true;
     }, []);
 
-    // Helper: aplica o filtro de "tipo de devolução" (chips da Entrega 1).
-    // 'all' = todos; caso contrário, filtra por status terminal específico.
-    const matchesTipoDevolucaoFilter = useCallback((s, filter) => {
-        if (filter === 'all') return true;
-        return s.status === filter;
+    // Frente 2 — matchers dos filtros novos.
+    //
+    // matchesStatusSet: paridade com comportamento legado do filter-tab.
+    // Set vazio = mostra tudo. Caso contrário, OR entre os status do Set, com
+    // a regra especial de 'EM_TRANSITO' agrupar 'TENTATIVA_ENTREGA' (preserva
+    // contrato anterior — operadores já dependem dessa agregação).
+    const matchesStatusSet = useCallback((s, set) => {
+        if (set.size === 0) return true;
+        if (set.has(s.status)) return true;
+        if (set.has('EM_TRANSITO') && s.status === 'TENTATIVA_ENTREGA') return true;
+        return false;
+    }, []);
+
+    // matchesLocalOrigem: usa formatHubName para mapear os 9 valores brutos
+    // do banco (HUB VG, G+SHIP VG, VILA GUILHERME, Loja Principal, etc.) aos
+    // 3 canônicos (G+SHIP VG/CWB/RJ). Filtro estrito em vazios — quando o Set
+    // tem ao menos um item, shippings sem local_origem populado são excluídos.
+    const matchesLocalOrigem = useCallback((s, set) => {
+        if (set.size === 0) return true;
+        const canonical = formatHubName(s.localOrigem || '');
+        if (!canonical) return false; // exclui vazios quando filtro ativo
+        return set.has(canonical);
+    }, []);
+
+    // matchesTransportadora: usa classificarTipoTransporteFiltro (7 categorias).
+    // Filtro estrito em vazios — quando o Set tem ao menos um item, shippings
+    // com transportadora não-populada (categoria 'sem_transporte') são excluídos.
+    const matchesTransportadora = useCallback((s, set) => {
+        if (set.size === 0) return true;
+        const categoria = classificarTipoTransporteFiltro(s);
+        if (categoria === 'sem_transporte') return false; // exclui vazios quando filtro ativo
+        return set.has(categoria);
     }, []);
 
     // Contagens pré-filtros (exceto confiança) para mostrar ao lado dos chips.
     // `mergedShippings` = state local (1000 mais recentes) + matches remotos da
     // busca server-side, já dedup por id. Counts naturalmente incluem histórico.
+    //
+    // Frente 2: counts dos chips de Alerta também respeitam HUB e Tipo Transporte
+    // — ficar dentro do subconjunto visível dado pelos filtros principais.
     const confidenceCounts = useMemo(() => {
         const base = filterByPeriod(mergedShippings, shipPeriodFilter, shipCustomMonth, shipCustomYear, 'date')
             .filter(s => {
@@ -526,36 +584,19 @@ export default function ShippingList({
                 const matchesSearch = (s.nfNumero || '').toLowerCase().includes(search) ||
                                      (s.cliente || '').toLowerCase().includes(search) ||
                                      (s.codigoRastreio || '').toLowerCase().includes(search);
-                const matchesStatus = statusFilter === 'all' || s.status === statusFilter || (statusFilter === 'EM_TRANSITO' && s.status === 'TENTATIVA_ENTREGA');
-                // Chips de Alerta também respeitam o chip de tipo-devolução ativo
-                // (para contar apenas dentro do subconjunto visível da sub-aba).
-                const matchesTipoDev = matchesTipoDevolucaoFilter(s, tipoDevolucaoFilter);
-                return matchesSearch && matchesStatus && matchesTipoDev;
+                const matchesStatus = matchesStatusSet(s, statusFilterSet);
+                const matchesHub = matchesLocalOrigem(s, localOrigemFilter);
+                const matchesTransp = matchesTransportadora(s, transportadoraFilter);
+                return matchesSearch && matchesStatus && matchesHub && matchesTransp;
             });
         return {
             precisam_verificar: base.filter(s => matchesConfidenceFilter(s, 'precisam_verificar')).length,
             loggi_suspeitos: base.filter(s => matchesConfidenceFilter(s, 'loggi_suspeitos')).length,
             correios_travados: base.filter(s => matchesConfidenceFilter(s, 'correios_travados')).length,
         };
-    }, [mergedShippings, searchTerm, statusFilter, tipoDevolucaoFilter, shipPeriodFilter, shipCustomMonth, shipCustomYear, matchesConfidenceFilter, matchesTipoDevolucaoFilter]);
+    }, [mergedShippings, searchTerm, statusFilterSet, localOrigemFilter, transportadoraFilter, shipPeriodFilter, shipCustomMonth, shipCustomYear, matchesConfidenceFilter, matchesStatusSet, matchesLocalOrigem, matchesTransportadora]);
 
-    // Contagens por tipo de devolução (para exibir ao lado dos chips na sub-aba Devoluções).
-    const tipoDevolucaoCounts = useMemo(() => {
-        const base = filterByPeriod(mergedShippings, shipPeriodFilter, shipCustomMonth, shipCustomYear, 'date')
-            .filter(s => {
-                const search = searchTerm.toLowerCase();
-                return (s.nfNumero || '').toLowerCase().includes(search) ||
-                       (s.cliente || '').toLowerCase().includes(search) ||
-                       (s.codigoRastreio || '').toLowerCase().includes(search);
-            });
-        return {
-            DEVOLVIDO: base.filter(s => s.status === 'DEVOLVIDO').length,
-            ETIQUETA_CANCELADA: base.filter(s => s.status === 'ETIQUETA_CANCELADA').length,
-            EXTRAVIADO: base.filter(s => s.status === 'EXTRAVIADO').length,
-        };
-    }, [mergedShippings, searchTerm, shipPeriodFilter, shipCustomMonth, shipCustomYear]);
-
-    // Filtrar despachos
+    // Filtrar despachos — Frente 2 adiciona localOrigem + transportadora à composição.
     const filteredShippings = useMemo(() => {
         let items = filterByPeriod(mergedShippings, shipPeriodFilter, shipCustomMonth, shipCustomYear, 'date');
         items = items.filter(s => {
@@ -563,13 +604,14 @@ export default function ShippingList({
             const matchesSearch = (s.nfNumero || '').toLowerCase().includes(search) ||
                                  (s.cliente || '').toLowerCase().includes(search) ||
                                  (s.codigoRastreio || '').toLowerCase().includes(search);
-            const matchesStatus = statusFilter === 'all' || s.status === statusFilter || (statusFilter === 'EM_TRANSITO' && s.status === 'TENTATIVA_ENTREGA');
-            return matchesSearch && matchesStatus
-                && matchesConfidenceFilter(s, confidenceFilter)
-                && matchesTipoDevolucaoFilter(s, tipoDevolucaoFilter);
+            return matchesSearch
+                && matchesStatusSet(s, statusFilterSet)
+                && matchesLocalOrigem(s, localOrigemFilter)
+                && matchesTransportadora(s, transportadoraFilter)
+                && matchesConfidenceFilter(s, confidenceFilter);
         });
         return items;
-    }, [mergedShippings, searchTerm, statusFilter, confidenceFilter, tipoDevolucaoFilter, shipPeriodFilter, shipCustomMonth, shipCustomYear, matchesConfidenceFilter, matchesTipoDevolucaoFilter]);
+    }, [mergedShippings, searchTerm, statusFilterSet, localOrigemFilter, transportadoraFilter, confidenceFilter, shipPeriodFilter, shipCustomMonth, shipCustomYear, matchesConfidenceFilter, matchesStatusSet, matchesLocalOrigem, matchesTransportadora]);
 
     // Ordem de urgência p/ sort "Mais urgente primeiro" (maior = mais urgente).
     const urgencyRank = { urgente: 3, atencao: 2, ok: 1, na: 0 };
@@ -1058,7 +1100,7 @@ export default function ShippingList({
             {/* Linha com busca + ações de rastreio — só renderiza para admin/operador.
                 Para equipe, a busca é integrada à linha das status tabs abaixo. */}
             {!isEquipe && (
-                <div style={{display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center'}}>
+                <div style={{display: 'flex', gap: '12px', marginBottom: '12px', paddingLeft: 0, marginLeft: 0, flexWrap: 'wrap', alignItems: 'center'}}>
                     <div className="search-box" style={{flex: 1, minWidth: '200px', marginBottom: 0, position: 'relative'}}>
                         <span className="search-icon"><Icon name="search" size={14} /></span>
                         <input
@@ -1140,47 +1182,66 @@ export default function ShippingList({
                 </div>
             )}
 
-            {/* Linha de status tabs. Para equipe, a busca acompanha na mesma linha.
-                Para admin/operador, a busca fica na linha anterior (com botões de rastreio).
+            {/* Frente 2 — Linha de filtros principais (reorganizada).
+                Ordem: Período → Status (multi-select recolhido) → HUB origem → Tipo transporte.
+                Equipe vê busca integrada na mesma linha (UX legada preservada).
+                Linha de chips de Alerta (confidence) continua abaixo, alinhada à mesma
+                borda esquerda. Linha de Tipo Devolução foi removida (status agora cobre).
 
-                Tabs com whiteSpace:nowrap + padding/fonte reduzidos p/ equipe para
-                caber todos em uma única linha sem quebras. */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
-                <div className="filter-tabs" style={{ marginBottom: 0, flex: isEquipe ? '4 1 480px' : '1 1 100%', flexWrap: 'nowrap' }}>
-                    {(() => {
-                        const tabStyle = {
-                            flex: 1, textAlign: 'center', justifyContent: 'center',
-                            whiteSpace: 'nowrap',
-                            ...(isEquipe ? { padding: '8px 4px', fontSize: '12px' } : {}),
-                        };
-                        return (
-                            <>
-                                <button
-                                    className={`filter-tab ${statusFilter === 'all' ? 'active' : ''}`}
-                                    onClick={() => setStatusFilter('all')}
-                                    style={tabStyle}
-                                >
-                                    Todos ({shippings.length})
-                                </button>
-                                {Object.entries(statusList)
-                                    .filter(([key]) => key !== 'TENTATIVA_ENTREGA' && !(isDevolucao && key === 'DEVOLVIDO'))
-                                    .map(([key, val]) => {
-                                        const label = isDevolucao ? (getStatusLabel(key, 'devolucao') || val.label) : val.label;
-                                        return (
-                                            <button
-                                                key={key}
-                                                className={`filter-tab ${statusFilter === key ? 'active' : ''}`}
-                                                onClick={() => setStatusFilter(key)}
-                                                style={tabStyle}
-                                            >
-                                                {label} ({shippings.filter(s => key === 'EM_TRANSITO' ? (s.status === 'EM_TRANSITO' || s.status === 'TENTATIVA_ENTREGA') : s.status === key).length})
-                                            </button>
-                                        );
-                                    })}
-                            </>
-                        );
-                    })()}
-                </div>
+                Alinhamento horizontal: padding/margin: 0 explícitos no container; cada
+                filho passa noOuterMargin=true para anular o marginBottom: 16px que
+                PeriodFilter/MultiSelectChips trazem do contrato standalone (StockView
+                continua usando default false → comportamento legado preservado). Assim
+                o spacing vertical das linhas é controlado SÓ pelo container, mantendo
+                rítmo consistente com a linha de busca acima e a linha de Alerta abaixo. */}
+            <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                marginBottom: '12px',
+                paddingLeft: 0,
+                marginLeft: 0,
+                flexWrap: 'wrap',
+            }}>
+                <PeriodFilter
+                    periodFilter={shipPeriodFilter} setPeriodFilter={setShipPeriodFilter}
+                    customMonth={shipCustomMonth} setCustomMonth={setShipCustomMonth}
+                    customYear={shipCustomYear} setCustomYear={setShipCustomYear}
+                    noOuterMargin
+                />
+                <MultiSelectChips
+                    label="Status"
+                    selected={statusFilterSet}
+                    onChange={setStatusFilterSet}
+                    minWidth={220}
+                    noOuterMargin
+                    options={Object.entries(statusList)
+                        .filter(([key]) => key !== 'TENTATIVA_ENTREGA' && !(isDevolucao && key === 'DEVOLVIDO'))
+                        .map(([key, val]) => ({
+                            value: key,
+                            label: isDevolucao ? (getStatusLabel(key, 'devolucao') || val.label) : val.label,
+                        }))}
+                />
+                <MultiSelectChips
+                    label="HUB"
+                    selected={localOrigemFilter}
+                    onChange={setLocalOrigemFilter}
+                    minWidth={180}
+                    noOuterMargin
+                    options={[
+                        { value: 'G+SHIP VG', label: 'G+SHIP VG' },
+                        { value: 'G+SHIP CWB', label: 'G+SHIP CWB' },
+                        { value: 'G+SHIP RJ', label: 'G+SHIP RJ' },
+                    ]}
+                />
+                <MultiSelectChips
+                    label="Tipo transporte"
+                    selected={transportadoraFilter}
+                    onChange={setTransportadoraFilter}
+                    minWidth={200}
+                    noOuterMargin
+                    options={Object.entries(TIPO_TRANSPORTE_FILTRO_LABELS).map(([value, label]) => ({ value, label }))}
+                />
                 {isEquipe && (
                     <div className="search-box" style={{flex: '1 1 200px', minWidth: '180px', maxWidth: '320px', marginBottom: 0, position: 'relative'}}>
                         <span className="search-icon"><Icon name="search" size={14} /></span>
@@ -1205,51 +1266,9 @@ export default function ShippingList({
                 )}
             </div>
 
-            {/* Chips de "Tipo de Devolução" — só na sub-aba Devoluções (Entrega 1 da
-                Taxonomia). Filtra por status terminal. "Todos" limpa o filtro. Chips
-                mutuamente exclusivos, operam sobre os dados já escopados à sub-aba. */}
-            {isDevolucao && (
-                <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
-                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 500 }}>
-                        Tipo:
-                    </span>
-                    {[
-                        { key: 'all', label: 'Todos', count: shippings.length },
-                        { key: 'DEVOLVIDO', label: 'Devolução real', count: tipoDevolucaoCounts.DEVOLVIDO, color: '#893030' },
-                        { key: 'ETIQUETA_CANCELADA', label: 'Etiqueta cancelada', count: tipoDevolucaoCounts.ETIQUETA_CANCELADA, color: '#6b7280' },
-                        { key: 'EXTRAVIADO', label: 'Extraviado', count: tipoDevolucaoCounts.EXTRAVIADO, color: '#7f1d1d' },
-                    ].map(chip => {
-                        const active = tipoDevolucaoFilter === chip.key;
-                        const disabled = !active && chip.key !== 'all' && chip.count === 0;
-                        const accent = chip.color || '#8c52ff';
-                        return (
-                            <button
-                                key={chip.key}
-                                onClick={() => { if (!disabled) setTipoDevolucaoFilter(chip.key); }}
-                                disabled={disabled}
-                                title={active ? 'Filtro ativo' : `Filtrar por ${chip.label.toLowerCase()}`}
-                                style={{
-                                    padding: '4px 12px',
-                                    borderRadius: '4px',
-                                    border: `1px solid ${active ? accent : '#e5e7eb'}`,
-                                    background: active ? `${accent}22` : disabled ? '#f9fafb' : '#fff',
-                                    color: active ? accent : disabled ? '#c0c4cc' : 'var(--text-primary)',
-                                    fontSize: '12px',
-                                    fontWeight: active ? 600 : 500,
-                                    cursor: disabled ? 'default' : 'pointer',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '6px',
-                                    transition: 'background 0.15s, border-color 0.15s',
-                                }}
-                            >
-                                <span>{chip.label}</span>
-                                <span style={{ fontSize: '11px', opacity: 0.7 }}>({chip.count})</span>
-                            </button>
-                        );
-                    })}
-                </div>
-            )}
+            {/* Linha de "Tipo de Devolução" foi removida na Frente 2 — os 3 valores
+                (DEVOLVIDO, ETIQUETA_CANCELADA, EXTRAVIADO) agora estão dentro do
+                dropdown de Status, redundância eliminada. */}
 
             {/* Chips de "Alerta de Rastreio" — aparecem em ambas as sub-abas (Entrega 1
                 expandiu este sistema para devoluções). Os counts são naturalmente
@@ -1257,7 +1276,7 @@ export default function ShippingList({
                 Sem chip "Todos": nenhum filtro ativo = mostra tudo. Clicar no chip ativo
                 desativa (toggle-off). Chips continuam mutuamente exclusivos. */}
             {(confidenceCounts.precisam_verificar > 0 || confidenceCounts.loggi_suspeitos > 0 || confidenceCounts.correios_travados > 0 || confidenceFilter !== 'all') && (
-                <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', paddingLeft: 0, marginLeft: 0, flexWrap: 'wrap', alignItems: 'center' }}>
                     <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 500 }}>
                         Alerta:
                     </span>
@@ -1302,11 +1321,7 @@ export default function ShippingList({
                 </div>
             )}
 
-            <PeriodFilter
-                periodFilter={shipPeriodFilter} setPeriodFilter={setShipPeriodFilter}
-                customMonth={shipCustomMonth} setCustomMonth={setShipCustomMonth}
-                customYear={shipCustomYear} setCustomYear={setShipCustomYear}
-            />
+            {/* PeriodFilter foi movido para a linha de filtros principais acima (Frente 2). */}
 
             {/* Multi-select action bar */}
             {!isDevolucao && selectedForDelivery.size > 0 && (
@@ -1336,6 +1351,24 @@ export default function ShippingList({
                 </div>
             )}
 
+            {/* Frente 2 — Contador sutil de "X de Y" acima da tabela.
+                Y = mergedShippings.length (universo carregado: state local 1000 mais
+                recentes + matches da busca server-side). X = filteredShippings.length
+                (após todos os filtros: período, status, HUB, tipo transporte, alerta,
+                tipo devolução, busca por termo). Compensa o "Todos (N)" que existia
+                no filter-tab antigo, agora que status virou dropdown recolhido. */}
+            {mergedShippings.length > 0 && (
+                <div style={{
+                    fontSize: '12px',
+                    color: 'var(--text-muted)',
+                    marginBottom: '8px',
+                    textAlign: 'right',
+                }}>
+                    {filteredShippings.length === mergedShippings.length
+                        ? `${mergedShippings.length} ${isDevolucao ? 'devoluções' : 'despachos'}`
+                        : `${filteredShippings.length} de ${mergedShippings.length} ${isDevolucao ? 'devoluções' : 'despachos'}`}
+                </div>
+            )}
             {sortedShippings.length === 0 ? (
                 <div className="empty-state">
                     <div className="empty-state-icon"><Icon name="shipping" size={48} /></div>
