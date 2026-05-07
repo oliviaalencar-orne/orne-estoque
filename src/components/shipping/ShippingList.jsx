@@ -113,6 +113,10 @@ export default function ShippingList({
     const [shipPeriodFilter, setShipPeriodFilter] = useState('30');
     const [shipCustomMonth, setShipCustomMonth] = useState(new Date().getMonth());
     const [shipCustomYear, setShipCustomYear] = useState(new Date().getFullYear());
+    // Frente 6 — Data específica (YYYY-MM-DD). Null até o user escolher um dia.
+    // Convive com shipPeriodFilter='data-especifica'. Veja PeriodFilter.jsx para
+    // o tratamento de timezone (parseLocalYMD evita UTC-shift no fuso BR).
+    const [shipCustomDate, setShipCustomDate] = useState(null);
     // Frente 2 — Filtros novos: HUB origem (multi) e Tipo transporte (multi).
     //
     // DÍVIDA CONHECIDA: estes filtros operam client-side sobre `mergedShippings`,
@@ -578,7 +582,7 @@ export default function ShippingList({
     // Frente 2: counts dos chips de Alerta também respeitam HUB e Tipo Transporte
     // — ficar dentro do subconjunto visível dado pelos filtros principais.
     const confidenceCounts = useMemo(() => {
-        const base = filterByPeriod(mergedShippings, shipPeriodFilter, shipCustomMonth, shipCustomYear, 'date')
+        const base = filterByPeriod(mergedShippings, shipPeriodFilter, shipCustomMonth, shipCustomYear, 'date', shipCustomDate)
             .filter(s => {
                 const search = searchTerm.toLowerCase();
                 const matchesSearch = (s.nfNumero || '').toLowerCase().includes(search) ||
@@ -594,11 +598,11 @@ export default function ShippingList({
             loggi_suspeitos: base.filter(s => matchesConfidenceFilter(s, 'loggi_suspeitos')).length,
             correios_travados: base.filter(s => matchesConfidenceFilter(s, 'correios_travados')).length,
         };
-    }, [mergedShippings, searchTerm, statusFilterSet, localOrigemFilter, transportadoraFilter, shipPeriodFilter, shipCustomMonth, shipCustomYear, matchesConfidenceFilter, matchesStatusSet, matchesLocalOrigem, matchesTransportadora]);
+    }, [mergedShippings, searchTerm, statusFilterSet, localOrigemFilter, transportadoraFilter, shipPeriodFilter, shipCustomMonth, shipCustomYear, shipCustomDate, matchesConfidenceFilter, matchesStatusSet, matchesLocalOrigem, matchesTransportadora]);
 
     // Filtrar despachos — Frente 2 adiciona localOrigem + transportadora à composição.
     const filteredShippings = useMemo(() => {
-        let items = filterByPeriod(mergedShippings, shipPeriodFilter, shipCustomMonth, shipCustomYear, 'date');
+        let items = filterByPeriod(mergedShippings, shipPeriodFilter, shipCustomMonth, shipCustomYear, 'date', shipCustomDate);
         items = items.filter(s => {
             const search = searchTerm.toLowerCase();
             const matchesSearch = (s.nfNumero || '').toLowerCase().includes(search) ||
@@ -611,7 +615,7 @@ export default function ShippingList({
                 && matchesConfidenceFilter(s, confidenceFilter);
         });
         return items;
-    }, [mergedShippings, searchTerm, statusFilterSet, localOrigemFilter, transportadoraFilter, confidenceFilter, shipPeriodFilter, shipCustomMonth, shipCustomYear, matchesConfidenceFilter, matchesStatusSet, matchesLocalOrigem, matchesTransportadora]);
+    }, [mergedShippings, searchTerm, statusFilterSet, localOrigemFilter, transportadoraFilter, confidenceFilter, shipPeriodFilter, shipCustomMonth, shipCustomYear, shipCustomDate, matchesConfidenceFilter, matchesStatusSet, matchesLocalOrigem, matchesTransportadora]);
 
     // Ordem de urgência p/ sort "Mais urgente primeiro" (maior = mais urgente).
     const urgencyRank = { urgente: 3, atencao: 2, ok: 1, na: 0 };
@@ -1207,6 +1211,7 @@ export default function ShippingList({
                     periodFilter={shipPeriodFilter} setPeriodFilter={setShipPeriodFilter}
                     customMonth={shipCustomMonth} setCustomMonth={setShipCustomMonth}
                     customYear={shipCustomYear} setCustomYear={setShipCustomYear}
+                    customDate={shipCustomDate} setCustomDate={setShipCustomDate}
                     noOuterMargin
                 />
                 <MultiSelectChips
