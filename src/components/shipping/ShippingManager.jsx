@@ -93,10 +93,10 @@ export default function ShippingManager({
     });
 
     // Auto-search ME for tracking data in background (fire-and-forget)
-    const tentarBuscarRastreioME = (shippingId, nfNumero, clienteNome) => {
+    const tentarBuscarRastreioME = (shippingId, nfNumero, clienteNome, cpfCnpjDestinatario) => {
         if (!nfNumero) return;
         // Run in background — don't block the UI
-        buscarRastreioPorNF(nfNumero, clienteNome).then(result => {
+        buscarRastreioPorNF(nfNumero, clienteNome, cpfCnpjDestinatario).then(result => {
             if (result?.encontrado) {
                 const updateData = {};
                 if (result.melhor_envio_id) {
@@ -110,9 +110,18 @@ export default function ShippingManager({
                 if (Object.keys(updateData).length > 0) {
                     onUpdate(shippingId, updateData);
                 }
+            } else {
+                // Frente 8.9 — heurística #1: explícito > silencioso. Antes este
+                // ramo simplesmente caía no .catch vazio (ou era ignorado), e o
+                // operador nunca sabia por que a NF ficava sem vínculo automático.
+                // nfNumero não é PII; CPF/CNPJ jamais é logado aqui.
+                console.warn('[tentarBuscarRastreioME] não encontrado para NF', nfNumero);
             }
-        }).catch(() => {
-            // Auto-ME search failed silently
+        }).catch((err) => {
+            // Frente 8.9 — antes era catch silencioso. Agora avisa no console
+            // (sem alertar o operador, é fire-and-forget). Pronto para Sentry
+            // breadcrumb na Fase B (quando ativo).
+            console.warn('[tentarBuscarRastreioME] falha não-fatal:', err?.message || 'unknown');
         });
     };
 
@@ -190,7 +199,7 @@ export default function ShippingManager({
                 }
                 // Auto-search ME for tracking
                 if (shippingId && shippingData.nfNumero) {
-                    tentarBuscarRastreioME(shippingId, shippingData.nfNumero, shippingData.cliente);
+                    tentarBuscarRastreioME(shippingId, shippingData.nfNumero, shippingData.cliente, shippingData.cpfCnpjDestinatario);
                 }
             }
             return true;
@@ -369,7 +378,7 @@ export default function ShippingManager({
 
             // Auto-search ME for tracking if no tracking code was provided (skip for local delivery)
             if (!isLocal && !form.codigoRastreio && !form.melhorEnvioId && form.nfNumero && shippingId) {
-                tentarBuscarRastreioME(shippingId, form.nfNumero, form.cliente);
+                tentarBuscarRastreioME(shippingId, form.nfNumero, form.cliente, form.cpfCnpjDestinatario);
             }
 
             setSuccess(isLocal ? 'Entrega local registrada! Aguardando comprovante do entregador.' : 'Despacho registrado com sucesso!');

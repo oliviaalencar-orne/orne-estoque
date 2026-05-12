@@ -65,6 +65,10 @@ export const mapShippingFromDB = (row) => ({
   status: row.status || 'DESPACHADO',
   hubTelefone: row.hub_telefone || '',
   telefoneCliente: row.telefone_cliente || '',
+  // CPF/CNPJ do destinatário sem formatação. Populado via forward-fill desde
+  // 12/05/2026 (Frente 8.9). NULL para shippings antigos ou criados sem dado.
+  // PII — não expor em UI nem logs.
+  cpfCnpjDestinatario: row.cpf_cnpj_destinatario || null,
   date: row.date,
   userId: row.user_id || '',
   ultimaAtualizacaoRastreio: row.ultima_atualizacao_rastreio || '',
@@ -94,6 +98,10 @@ export const mapSeparationFromDB = (row) => ({
   nfNumero: row.nf_numero || '',
   cliente: row.cliente || '',
   destino: row.destino || '',
+  // CPF/CNPJ do destinatário sem formatação. Capturado no import XML SEFAZ e
+  // propagado para shipping.cpf_cnpj_destinatario no envio (Frente 8.9).
+  // PII — não expor em UI nem logs.
+  cpfCnpjDestinatario: row.cpf_cnpj_destinatario || null,
   observacoes: row.observacoes || '',
   transportadora: row.transportadora || '',
   status: row.status || 'pendente',
