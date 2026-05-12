@@ -72,6 +72,11 @@ export function useShippings(user, isStockAdmin, isOperador) {
         entrada_criada: shipping.entradaCriada || false,
         motivo_devolucao: shipping.motivoDevolucao || '',
         hub_destino: shipping.hubDestino || '',
+        // Frente 8.9 — CPF/CNPJ do destinatário, propagado de separation
+        // quando o shipping nasce via SeparationManager (handleBatchDispatch /
+        // gerarLinkEntregadorDaSeparacao). NULL para shippings criados em
+        // outros fluxos sem o dado disponível. PII — não logar.
+        cpf_cnpj_destinatario: shipping.cpfCnpjDestinatario || null,
         // rastreio_origem: 'auto_me' se shipping nasce com vínculo direto à
         // integração ME (operador colou o melhor_envio_id ao criar). 'manual'
         // caso contrário — sistema reconhece que rastreio será adicionado

@@ -29,6 +29,9 @@ export function useSeparations(user, isStockAdmin, isOperador = false) {
         shipping_id: separation.shippingId || '',
         hub_id: separation.hubId || null,
         chave_acesso: separation.chaveAcesso || null,
+        // Forward-fill via XML SEFAZ (Frente 8.9). Helper normalizeCpfCnpj
+        // já garante 11/14 dígitos puros ou null. PII — não logar.
+        cpf_cnpj_destinatario: separation.cpfCnpjDestinatario || null,
         date: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         user_id: separation.userId || user?.email || '',

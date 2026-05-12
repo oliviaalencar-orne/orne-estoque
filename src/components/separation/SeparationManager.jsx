@@ -117,6 +117,9 @@ export default function SeparationManager({
       nfNumero: data.nfNumero || '',
       chaveAcesso: data.chaveAcesso || null,
       cliente: data.cliente || '',
+      // Forward-fill desde 12/05/2026 (Frente 8.9). XML SEFAZ é a única fonte
+      // hoje; outros fluxos (Tiny, manual) ainda enviam NULL — esperado.
+      cpfCnpjDestinatario: data.cpfCnpjDestinatario || null,
       destino: data.destino || '',
       observacoes: data.observacoes || '',
       transportadora: data.transportadora || '',
@@ -430,6 +433,9 @@ export default function SeparationManager({
         const shippingResult = await onAddShipping({
           nfNumero: sep.nfNumero || '',
           cliente: sep.cliente || '',
+          // Propaga CPF/CNPJ persistido na separation (Frente 8.9).
+          // NULL se separation legada sem o dado — comportamento esperado.
+          cpfCnpjDestinatario: sep.cpfCnpjDestinatario || null,
           destino: sep.destino || '',
           localOrigem,
           transportadora: isLocal ? 'Entrega Local' : (sep.transportadora || ''),
@@ -523,6 +529,8 @@ export default function SeparationManager({
         const shippingResult = await onAddShipping({
           nfNumero: sep.nfNumero || '',
           cliente: sep.cliente || '',
+          // Propaga CPF/CNPJ persistido na separation (Frente 8.9).
+          cpfCnpjDestinatario: sep.cpfCnpjDestinatario || null,
           destino: sep.destino || '',
           localOrigem,
           transportadora: 'Entrega Local',
