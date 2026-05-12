@@ -110,9 +110,18 @@ export default function ShippingManager({
                 if (Object.keys(updateData).length > 0) {
                     onUpdate(shippingId, updateData);
                 }
+            } else {
+                // Frente 8.9 — heurística #1: explícito > silencioso. Antes este
+                // ramo simplesmente caía no .catch vazio (ou era ignorado), e o
+                // operador nunca sabia por que a NF ficava sem vínculo automático.
+                // nfNumero não é PII; CPF/CNPJ jamais é logado aqui.
+                console.warn('[tentarBuscarRastreioME] não encontrado para NF', nfNumero);
             }
-        }).catch(() => {
-            // Auto-ME search failed silently
+        }).catch((err) => {
+            // Frente 8.9 — antes era catch silencioso. Agora avisa no console
+            // (sem alertar o operador, é fire-and-forget). Pronto para Sentry
+            // breadcrumb na Fase B (quando ativo).
+            console.warn('[tentarBuscarRastreioME] falha não-fatal:', err?.message || 'unknown');
         });
     };
 
