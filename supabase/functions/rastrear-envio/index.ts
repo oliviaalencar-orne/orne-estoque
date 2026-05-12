@@ -277,19 +277,94 @@ async function rastrearPorCodigo(codigos: string[]): Promise<Record<string, any>
 }
 
 async function searchME(q: string, token: string): Promise<any[]> { try { const r = await fetch(`https://melhorenvio.com.br/api/v2/me/orders?q=${encodeURIComponent(q)}&per_page=20`, { headers: ME_HEADERS(token) }); if (!r.ok) return []; const d = await r.json(); return d.data || d || []; } catch { return []; } }
-function matchNF(order: any, nf: string): boolean { const n = normalizeNF(nf); return [order.invoice, order.reference, order.protocol, order.name, order.tags, order.reminder, order.volumes?.[0]?.invoice, order.description, order.note].filter(Boolean).map(String).some(f => normalizeNF(f) === n || f.includes(n) || f.includes(nf)); }
+
+// Frente 8.9 — split exact vs loose:
+//  - EXACT_FIELDS (invoice/reference/protocol) e volumes[0].invoice exigem
+//    match exato após normalizeNF. Evita NF 725 casar com 7251 ou 17250
+//    quando o ME retorna ordens semelhantes na busca por CPF/CNPJ ou nome.
+//  - LOOSE_FIELDS (name/tags/reminder/description/note) ainda aceitam
+//    includes — operador pode ter digitado "NF 725" no meio de uma observação.
+const EXACT_FIELDS = ['invoice', 'reference', 'protocol'] as const;
+const LOOSE_FIELDS = ['name', 'tags', 'reminder', 'description', 'note'] as const;
+function matchNF(order: any, nf: string): boolean {
+  const n = normalizeNF(nf);
+  for (const f of EXACT_FIELDS) {
+    const v = order[f] == null ? '' : String(order[f]).trim();
+    if (v === n || v === nf) return true;
+  }
+  const vol = order.volumes?.[0]?.invoice == null ? '' : String(order.volumes[0].invoice).trim();
+  if (vol === n || vol === nf) return true;
+  for (const f of LOOSE_FIELDS) {
+    const v = order[f] == null ? '' : String(order[f]);
+    if (v.includes(n) || v.includes(nf)) return true;
+  }
+  return false;
+}
+
 function extractOrder(order: any): Record<string, any> { const tc = order.tracking || order.self_tracking || order.protocol || ''; const ms = order.status || 'pending'; let tr = 'Melhor Envio'; if (order.service) { const s = (order.service.name || order.service.company?.name || '').toLowerCase(); if (s.includes('correios') || s.includes('pac') || s.includes('sedex')) tr = 'Correios'; else if (s.includes('jadlog')) tr = 'Jadlog'; else if (s.includes('loggi')) tr = 'Loggi'; } const { trackingUrl } = detectCarrier(tc); return { encontrado: true, melhor_envio_id: order.id, codigo_rastreio: tc, link_rastreio: trackingUrl, transportadora: tr, status: STATUS_MAP[ms] || 'DESPACHADO', statusOriginal: ms }; }
-async function buscarPorNF(nfs: string[], clientes?: Record<string, string>): Promise<Record<string, any>> {
-  const token = Deno.env.get('MELHOR_ENVIO_TOKEN'); const results: Record<string, any> = {};
+
+async function buscarPorNF(
+  nfs: string[],
+  clientes?: Record<string, string>,
+  cpfCnpj?: Record<string, string>,
+): Promise<Record<string, any>> {
+  const token = Deno.env.get('MELHOR_ENVIO_TOKEN');
+  const results: Record<string, any> = {};
   if (!token) { for (const nf of nfs) results[nf] = { encontrado: false }; return results; }
   for (let i = 0; i < Math.min(nfs.length, 10); i++) {
-    const nf = nfs[i]; const cn = clientes?.[nf] || null; const debug: string[] = []; let found = false;
+    const nf = nfs[i];
+    const cn = clientes?.[nf] || null;
+    const debug: string[] = [];
+    let found = false;
+
+    // E1-E3: termo cru, normalizado, e prefixo "NF " (dedup).
+    // Frente 8.9: removida heurística "orders.length <= 5 assume primeiro" —
+    // produzia vínculos errados quando ME retornava pedidos semelhantes não
+    // relacionados. Sem matchNF passar, prossegue para próxima estratégia.
     for (const q of [nf, normalizeNF(nf), `NF ${normalizeNF(nf)}`].filter((v, j, a) => a.indexOf(v) === j)) {
-      const orders = await searchME(q, token); debug.push(`"${q}": ${orders.length}`);
-      if (orders.length > 0) { for (const o of orders) { if (matchNF(o, nf)) { results[nf] = extractOrder(o); results[nf].debug = debug; found = true; break; } } if (found) break; if (orders.length <= 5) { results[nf] = extractOrder(orders[0]); results[nf].debug = debug; found = true; break; } }
+      const orders = await searchME(q, token);
+      debug.push(`"${q}": ${orders.length}`);
+      if (orders.length > 0) {
+        for (const o of orders) {
+          if (matchNF(o, nf)) { results[nf] = extractOrder(o); results[nf].debug = debug; found = true; break; }
+        }
+        if (found) break;
+      }
       await new Promise(r => setTimeout(r, 500));
     }
-    if (!found && cn) { const orders = await searchME(cn, token); if (orders.length > 0) { for (const o of orders) { if (matchNF(o, nf)) { results[nf] = extractOrder(o); found = true; break; } } if (!found && orders.length === 1) { results[nf] = extractOrder(orders[0]); found = true; } } }
+
+    // E4: busca por nome do cliente. Mantida heurística "orders.length === 1
+    // assume único" — mais segura que <=5 porque nome único é raro suficiente.
+    if (!found && cn) {
+      const orders = await searchME(cn, token);
+      if (orders.length > 0) {
+        for (const o of orders) {
+          if (matchNF(o, nf)) { results[nf] = extractOrder(o); results[nf].debug = debug; found = true; break; }
+        }
+        if (!found && orders.length === 1) { results[nf] = extractOrder(orders[0]); results[nf].debug = debug; found = true; }
+      }
+    }
+
+    // E5 — Frente 8.9: busca por CPF/CNPJ do destinatário. Habilita vínculo
+    // para NFs < 4 chars que a API ME descarta no q= (heurística #16).
+    // PII: o valor do documento NUNCA entra no array `debug` (só o count).
+    if (!found && cpfCnpj?.[nf]) {
+      const doc = (cpfCnpj[nf] || '').replace(/\D/g, '');
+      if (doc.length === 11 || doc.length === 14) {
+        const orders = await searchME(doc, token);
+        debug.push(`cpfcnpj: ${orders.length}`);
+        for (const o of orders) {
+          if (matchNF(o, nf)) {
+            results[nf] = extractOrder(o);
+            results[nf].debug = debug;
+            results[nf]._strategy = 'cpf_cnpj';
+            found = true;
+            break;
+          }
+        }
+      }
+    }
+
     if (!found) results[nf] = { encontrado: false, debug };
     if (results[nf]?.encontrado) { try { const p: Record<string, any> = { melhor_envio_id: results[nf].melhor_envio_id, ultima_atualizacao_rastreio: new Date().toISOString() }; if (results[nf].codigo_rastreio) p.codigo_rastreio = results[nf].codigo_rastreio; if (results[nf].link_rastreio) p.link_rastreio = results[nf].link_rastreio; if (results[nf].transportadora) p.transportadora = results[nf].transportadora; for (const c of ['melhor_envio_id=is.null', 'melhor_envio_id=eq.', 'melhor_envio_id=like.ORD-*']) { await fetch(`${dbUrl()}/rest/v1/shippings?nf_numero=eq.${encodeURIComponent(nf)}&${c}`, { method: 'PATCH', headers: dbHeaders(), body: JSON.stringify(p) }); } } catch {} }
     if (i < Math.min(nfs.length, 10) - 1) await new Promise(r => setTimeout(r, 1500));
@@ -303,7 +378,7 @@ Deno.serve(async (req: Request) => {
     const body = await req.json(); let results: Record<string, any> = {};
     if (body.orderIds && Array.isArray(body.orderIds)) results = await rastrearEPersistir(body.orderIds);
     else if (body.codigosRastreio && Array.isArray(body.codigosRastreio)) results = await rastrearPorCodigo(body.codigosRastreio);
-    else if (body.buscarPorNF && Array.isArray(body.buscarPorNF)) results = await buscarPorNF(body.buscarPorNF, body.clientes);
+    else if (body.buscarPorNF && Array.isArray(body.buscarPorNF)) results = await buscarPorNF(body.buscarPorNF, body.clientes, body.cpfCnpj);
     else return new Response(JSON.stringify({ success: false, error: 'Forneca orderIds, codigosRastreio ou buscarPorNF' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     return new Response(JSON.stringify({ success: true, data: results }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (err) { return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }); }
