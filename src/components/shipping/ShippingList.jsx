@@ -1000,7 +1000,7 @@ export default function ShippingList({
         }
         setBuscandoNF(shipping.id);
         try {
-            const result = await buscarRastreioPorNF(shipping.nfNumero, shipping.cliente);
+            const result = await buscarRastreioPorNF(shipping.nfNumero, shipping.cliente, shipping.cpfCnpjDestinatario);
             if (result?.encontrado) {
                 const updateData = {
                     ultimaAtualizacaoRastreio: new Date().toISOString(),
