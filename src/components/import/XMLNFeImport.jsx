@@ -27,6 +27,7 @@
 import React, { useState, useCallback, useMemo, useRef } from 'react';
 import * as Sentry from '@sentry/react';
 import { parseNfeXml } from '@/utils/nfeXmlParser';
+import { normalizeCpfCnpj } from '@/utils/cpfCnpj';
 import { generateId } from '@/utils/helpers';
 
 const MAX_ARQUIVOS = 100;
@@ -380,10 +381,15 @@ export default function XMLNFeImport({
           observacao: '',
           manual: false,
         }));
+        // CPF/CNPJ do destinatário é PF→cpf ou PJ→cnpj (mutuamente exclusivos
+        // no XML SEFAZ). Helper retorna null se inválido — não bloqueia import.
+        // PII — segue só para persistência; não vai para Sentry nem logs.
+        const cpfCnpjDestinatario = normalizeCpfCnpj(l.cliente?.cpf || l.cliente?.cnpj);
         await onPrepareSeparationFromXml({
           nfNumero: l.numeroNf,
           chaveAcesso: l.chaveAcesso,
           cliente: l.cliente.nome,
+          cpfCnpjDestinatario,
           destino: destinoStr,
           observacoes: l.observacoes,
           transportadora: l.transportadora,

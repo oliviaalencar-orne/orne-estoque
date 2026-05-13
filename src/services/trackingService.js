@@ -108,15 +108,20 @@ export function getPendingTrackingShippings(shippings) {
 
 /**
  * Search Melhor Envio for tracking data by NF number.
- * Calls the Edge Function with { buscarPorNF: [nfNumero], clientes: { nf: nome } }.
- * The Edge Function uses the client name as fallback search when NF number yields no results.
+ * Calls the Edge Function with { buscarPorNF: [nfNumero], clientes, cpfCnpj }.
+ * The Edge Function tries E1-E5 in order; E5 (CPF/CNPJ) is Frente 8.9 and
+ * unlocks vínculo for NFs < 4 chars that the ME q= API rejects (#16).
  * The Edge Function also auto-saves found data to DB.
  *
+ * PII: cpfCnpj is sent to the EF over HTTPS and used only as a search term
+ * for the ME `document` field. Never log the value on the client.
+ *
  * @param {string} nfNumero - Invoice number to search
- * @param {string} [clienteNome] - Client name for fallback search
+ * @param {string} [clienteNome] - Client name for fallback search (E4)
+ * @param {string} [cpfCnpjDestinatario] - CPF/CNPJ destinatário, dígitos puros (E5)
  * @returns {Promise<Object|null>} Result { encontrado, melhor_envio_id, codigo_rastreio, debug, ... } or null
  */
-export async function buscarRastreioPorNF(nfNumero, clienteNome) {
+export async function buscarRastreioPorNF(nfNumero, clienteNome, cpfCnpjDestinatario) {
   if (!nfNumero) return null;
 
   const { data: { session } } = await supabaseClient.auth.getSession();
@@ -126,6 +131,9 @@ export async function buscarRastreioPorNF(nfNumero, clienteNome) {
   const payload = { buscarPorNF: [nfNumero] };
   if (clienteNome) {
     payload.clientes = { [nfNumero]: clienteNome };
+  }
+  if (cpfCnpjDestinatario) {
+    payload.cpfCnpj = { [nfNumero]: cpfCnpjDestinatario };
   }
 
   const response = await fetch(`${FUNCTIONS_URL}/rastrear-envio`, {
@@ -177,9 +185,17 @@ export async function buscarRastreiosLoteME(pendentes, { batchSize = 5, delayMs 
     const batch = pendentes.slice(i, i + batchSize);
     const nfs = batch.map(s => s.nfNumero);
     const clientes = {};
-    batch.forEach(s => { clientes[s.nfNumero] = s.cliente; });
+    const cpfCnpj = {};
+    batch.forEach(s => {
+      clientes[s.nfNumero] = s.cliente;
+      // Frente 8.9 — passa CPF/CNPJ persistido para habilitar E5 no EF.
+      // PII: só inclui chaves que têm valor; ausente fica fora do payload.
+      if (s.cpfCnpjDestinatario) cpfCnpj[s.nfNumero] = s.cpfCnpjDestinatario;
+    });
 
     const nfAtual = nfs[0];
+    const payload = { buscarPorNF: nfs, clientes };
+    if (Object.keys(cpfCnpj).length > 0) payload.cpfCnpj = cpfCnpj;
 
     try {
       const response = await fetch(`${FUNCTIONS_URL}/rastrear-envio`, {
@@ -188,7 +204,7 @@ export async function buscarRastreiosLoteME(pendentes, { batchSize = 5, delayMs 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ buscarPorNF: nfs, clientes }),
+        body: JSON.stringify(payload),
       });
 
       const result = await response.json();

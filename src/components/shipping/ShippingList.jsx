@@ -1000,7 +1000,7 @@ export default function ShippingList({
         }
         setBuscandoNF(shipping.id);
         try {
-            const result = await buscarRastreioPorNF(shipping.nfNumero, shipping.cliente);
+            const result = await buscarRastreioPorNF(shipping.nfNumero, shipping.cliente, shipping.cpfCnpjDestinatario);
             if (result?.encontrado) {
                 const updateData = {
                     ultimaAtualizacaoRastreio: new Date().toISOString(),
@@ -1017,11 +1017,18 @@ export default function ShippingList({
                 setSuccess(`Rastreio encontrado: ${result.codigo_rastreio || result.melhor_envio_id} (${result.transportadora})`);
                 setTimeout(() => setSuccess(''), 5000);
             } else {
-                const debugInfo = result?.debug ? '\nDebug:\n' + result.debug.join('\n') : '';
-                const msg = (result?.motivo || 'NF não encontrada no Melhor Envio') + debugInfo;
-                // NF não encontrada no ME
+                // Frente 8.9 — antes "Debug:\n...\"725\": 0..." vazava para a UI.
+                // Agora: mensagem amigável + debug detalhado vai apenas para console.
+                // O array `debug` contém só counts por estratégia, sem PII (CPF/CNPJ
+                // jamais entra; helper na EF garante isso).
+                if (result?.debug) {
+                    console.debug('[buscarPorNF] strategies result:', result.debug);
+                }
+                const motivo = result?.motivo
+                    || 'Não foi possível vincular automaticamente.';
+                const msg = `${motivo} Verifique se a etiqueta foi gerada no Melhor Envio ou adicione o código de rastreio manualmente editando o despacho.`;
                 setError(msg);
-                setTimeout(() => setError(''), 12000);
+                setTimeout(() => setError(''), 10000);
             }
         } catch (err) {
             setError('Erro ao buscar NF: ' + err.message);
