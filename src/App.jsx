@@ -17,6 +17,7 @@ import { useSeparations } from '@/hooks/useSeparations';
 import { useCategories, DEFAULT_CATEGORIES } from '@/hooks/useCategories';
 import { useLocaisOrigem } from '@/hooks/useLocaisOrigem';
 import { useHubs } from '@/hooks/useHubs';
+import { useMotivosDevolucao } from '@/hooks/useMotivosDevolucao';
 import { useStock } from '@/hooks/useStock';
 import { setupSupabaseCollection } from '@/hooks/useSupabaseCollection';
 import { useEquipeProducts, loadStockSummary } from '@/hooks/useEquipeData';
@@ -136,6 +137,17 @@ export default function App() {
 
   const { hubs, setHubs, initHubs, addHub, updateHub, deleteHub } =
     useHubs(isStockAdmin);
+
+  const {
+    motivos: motivosDevolucao,
+    loading: motivosDevolucaoLoading,
+    addMotivo: addMotivoDevolucao,
+    updateMotivo: updateMotivoDevolucao,
+    deleteMotivo: deleteMotivoDevolucao,
+    toggleAtivo: toggleAtivoMotivoDevolucao,
+    reorderMotivo: reorderMotivoDevolucao,
+    countUsage: countMotivoDevolucaoUsage,
+  } = useMotivosDevolucao(isStockAdmin);
 
   // ── Equipe-specific data (lazy loaded, server-side search) ───────────
   const {
@@ -549,6 +561,14 @@ export default function App() {
               onClearPendingDispatch={() => setPendingDispatchData(null)}
               onRefreshShippings={refreshShippings}
               onUpdateProduct={updateProduct}
+              motivosDevolucao={motivosDevolucao}
+              motivosDevolucaoLoading={motivosDevolucaoLoading}
+              onAddMotivoDevolucao={addMotivoDevolucao}
+              onUpdateMotivoDevolucao={updateMotivoDevolucao}
+              onDeleteMotivoDevolucao={deleteMotivoDevolucao}
+              onToggleAtivoMotivoDevolucao={toggleAtivoMotivoDevolucao}
+              onReorderMotivoDevolucao={reorderMotivoDevolucao}
+              onCountMotivoDevolucaoUsage={countMotivoDevolucaoUsage}
             />
           </div>
           <div style={{ display: activeTab === 'history' ? 'block' : 'none' }}>

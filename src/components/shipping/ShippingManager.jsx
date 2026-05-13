@@ -8,6 +8,7 @@
 import React, { useState, useEffect } from 'react';
 import { Icon } from '@/utils/icons';
 import LocaisModal from '@/components/ui/LocaisModal';
+import MotivosDevolucaoModal from '@/components/admin/MotivosDevolucaoModal';
 import TinyNFeImport from '@/components/import/TinyNFeImport';
 import CSVImportTab from '@/components/import/CSVImportTab';
 import ShippingList from './ShippingList';
@@ -56,7 +57,10 @@ export default function ShippingManager({
     categories, entries, exits, isStockAdmin,
     onAddCategory, onUpdateCategory, onDeleteCategory,
     pendingDispatchData, onClearPendingDispatch, onRefreshShippings,
-    isOperador, isEquipe, onUpdateProduct
+    isOperador, isEquipe, onUpdateProduct,
+    motivosDevolucao, motivosDevolucaoLoading,
+    onAddMotivoDevolucao, onUpdateMotivoDevolucao, onDeleteMotivoDevolucao,
+    onToggleAtivoMotivoDevolucao, onReorderMotivoDevolucao, onCountMotivoDevolucaoUsage,
 }) {
     const [activeView, setActiveView] = useState('list');
     const [tipoView, setTipoView] = useState('despacho');
@@ -65,6 +69,7 @@ export default function ShippingManager({
     const [success, setSuccess] = useState('');
     const [error, setError] = useState('');
     const [showLocaisModal, setShowLocaisModal] = useState(false);
+    const [showMotivosModal, setShowMotivosModal] = useState(false);
 
     // Estados para importação em lote
     const [importMode, setImportMode] = useState('single');
@@ -497,20 +502,34 @@ export default function ShippingManager({
                     <p className="page-subtitle">Gerencie despachos e devoluções</p>
                 </div>
                 {isStockAdmin && (
-                    <button
-                        onClick={() => setShowLocaisModal(true)}
-                        title="Gerenciar HUBs (locais de origem)"
-                        aria-label="Gerenciar HUBs"
-                        style={{
-                            display: 'inline-flex', alignItems: 'center', gap: '8px',
-                            background: '#fff', border: '1px solid var(--border-color)',
-                            borderRadius: '8px', padding: '8px 16px', cursor: 'pointer',
-                            fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)',
-                            flexShrink: 0,
-                        }}
-                    >
-                        HUB <Icon name="settings" size={14} />
-                    </button>
+                    <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                        <button
+                            onClick={() => setShowLocaisModal(true)}
+                            title="Gerenciar HUBs (locais de origem)"
+                            aria-label="Gerenciar HUBs"
+                            style={{
+                                display: 'inline-flex', alignItems: 'center', gap: '8px',
+                                background: '#fff', border: '1px solid var(--border-color)',
+                                borderRadius: '8px', padding: '8px 16px', cursor: 'pointer',
+                                fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)',
+                            }}
+                        >
+                            HUB <Icon name="settings" size={14} />
+                        </button>
+                        <button
+                            onClick={() => setShowMotivosModal(true)}
+                            title="Gerenciar motivos de devolução"
+                            aria-label="Gerenciar motivos de devolução"
+                            style={{
+                                display: 'inline-flex', alignItems: 'center', gap: '8px',
+                                background: '#fff', border: '1px solid var(--border-color)',
+                                borderRadius: '8px', padding: '8px 16px', cursor: 'pointer',
+                                fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)',
+                            }}
+                        >
+                            Motivos <Icon name="settings" size={14} />
+                        </button>
+                    </div>
                 )}
             </div>
 
@@ -620,6 +639,20 @@ export default function ShippingManager({
                 />
             )}
 
+            {/* Modal de Gestão de Motivos de Devolução (Sub-frente 3.0a) */}
+            {showMotivosModal && (
+                <MotivosDevolucaoModal
+                    motivos={motivosDevolucao || []}
+                    onAdd={onAddMotivoDevolucao}
+                    onUpdate={onUpdateMotivoDevolucao}
+                    onDelete={onDeleteMotivoDevolucao}
+                    onToggleAtivo={onToggleAtivoMotivoDevolucao}
+                    onReorder={onReorderMotivoDevolucao}
+                    countUsage={onCountMotivoDevolucaoUsage}
+                    onClose={() => setShowMotivosModal(false)}
+                />
+            )}
+
             {tipoView !== 'analise' && <>
             {/* Lista */}
             {activeView === 'list' && (
@@ -640,6 +673,7 @@ export default function ShippingManager({
                     statusTransitions={STATUS_TRANSITIONS}
                     transportadoras={transportadoras}
                     onRefresh={onRefreshShippings}
+                    motivosDevolucao={motivosDevolucao || []}
                 />
             )}
 
@@ -745,6 +779,7 @@ export default function ShippingManager({
                     onDeleteCategory={onDeleteCategory}
                     onPrepareShipping={handlePrepareDevFromTiny}
                     isDevolucao
+                    motivosDevolucao={motivosDevolucao || []}
                 />
             )}
 
@@ -775,6 +810,8 @@ export default function ShippingManager({
                     }}
                     onError={setError}
                     onUpdateProduct={onUpdateProduct}
+                    motivosDevolucao={motivosDevolucao || []}
+                    motivosDevolucaoLoading={motivosDevolucaoLoading}
                 />
             )}
 
