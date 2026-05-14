@@ -7,18 +7,17 @@
 import React, { useState, useMemo } from 'react';
 import { Icon } from '@/utils/icons';
 
-const MOTIVOS_DEVOLUCAO = [
-  'Defeito',
-  'Arrependimento',
-  'Produto errado',
-  'Avaria no transporte',
-  'Outro',
-];
-
 export default function DevolucaoForm({
   locaisOrigem, transportadoras, products, stock, onAdd,
   onCancel, onSuccess, onError, onUpdateProduct,
+  motivosDevolucao = [], motivosDevolucaoLoading = false,
 }) {
+  const motivosAtivos = useMemo(
+    () => motivosDevolucao
+      .filter(m => m.ativo)
+      .sort((a, b) => (a.ordem || 0) - (b.ordem || 0)),
+    [motivosDevolucao]
+  );
   const [form, setForm] = useState({
     nfNumero: '',
     cliente: '',
@@ -188,10 +187,13 @@ export default function DevolucaoForm({
               className="form-select"
               value={form.motivoDevolucao}
               onChange={(e) => setForm({ ...form, motivoDevolucao: e.target.value })}
+              disabled={motivosDevolucaoLoading}
             >
-              <option value="">Selecione...</option>
-              {MOTIVOS_DEVOLUCAO.map(m => (
-                <option key={m} value={m}>{m}</option>
+              <option value="">
+                {motivosDevolucaoLoading ? 'Carregando motivos...' : 'Selecione...'}
+              </option>
+              {motivosAtivos.map(m => (
+                <option key={m.id} value={m.nome}>{m.nome}</option>
               ))}
             </select>
           </div>

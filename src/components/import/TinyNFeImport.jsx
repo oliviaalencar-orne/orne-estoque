@@ -16,7 +16,13 @@ import { getEstoquePorNF } from '@/utils/fifo';
 import CategorySelectInline from '@/components/ui/CategorySelectInline';
 import { useBatchImport, BATCH_MAX_NFS, BATCH_FETCH_TIMEOUT_MS } from '@/hooks/useBatchImport';
 
-export default function TinyNFeImport({ products, onSubmitEntry, onSubmitExit, onAddProduct, categories, locaisOrigem, onUpdateLocais, entries, exits, stock, mode, onAddCategory, onUpdateCategory, onDeleteCategory, onPrepareShipping, checkNfDuplicate, isDevolucao = false, hubs = null, defaultHubId = '', transportadoras = null }) {
+export default function TinyNFeImport({ products, onSubmitEntry, onSubmitExit, onAddProduct, categories, locaisOrigem, onUpdateLocais, entries, exits, stock, mode, onAddCategory, onUpdateCategory, onDeleteCategory, onPrepareShipping, checkNfDuplicate, isDevolucao = false, hubs = null, defaultHubId = '', transportadoras = null, motivosDevolucao = [] }) {
+    const motivosAtivos = useMemo(
+        () => motivosDevolucao
+            .filter(m => m.ativo)
+            .sort((a, b) => (a.ordem || 0) - (b.ordem || 0)),
+        [motivosDevolucao]
+    );
     const [nfNumber, setNfNumber] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -1048,11 +1054,9 @@ export default function TinyNFeImport({ products, onSubmitEntry, onSubmitExit, o
                                         style={{fontSize: '13px'}}
                                     >
                                         <option value="">Selecione...</option>
-                                        <option value="Defeito">Defeito</option>
-                                        <option value="Arrependimento">Arrependimento</option>
-                                        <option value="Produto errado">Produto errado</option>
-                                        <option value="Avaria no transporte">Avaria no transporte</option>
-                                        <option value="Outro">Outro</option>
+                                        {motivosAtivos.map(m => (
+                                            <option key={m.id} value={m.nome}>{m.nome}</option>
+                                        ))}
                                     </select>
                                 </div>
                                 <div className="form-group" style={{flex: 1, marginBottom: 0}}>

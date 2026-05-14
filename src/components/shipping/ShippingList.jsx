@@ -89,10 +89,17 @@ function resolvePhotoBucket(path) {
 export default function ShippingList({
     shippings, onUpdate, onDelete, isStockAdmin, locaisOrigem,
     statusList, statusTransitions, transportadoras, onRefresh,
-    tipo = 'despacho', isOperador = false, isEquipe = false, onAddEntry
+    tipo = 'despacho', isOperador = false, isEquipe = false, onAddEntry,
+    motivosDevolucao = [],
 }) {
     const isDevolucao = tipo === 'devolucao';
     const canEdit = isStockAdmin || isOperador;
+    const motivosAtivos = useMemo(
+        () => motivosDevolucao
+            .filter(m => m.ativo)
+            .sort((a, b) => (a.ordem || 0) - (b.ordem || 0)),
+        [motivosDevolucao]
+    );
     const canDelete = isStockAdmin;
     const [searchTerm, setSearchTerm] = useState('');
     // Busca server-side: quando o state local de shippings não contém a NF
@@ -2026,11 +2033,14 @@ export default function ShippingList({
                                     <label className="form-label">Motivo da Devolução</label>
                                     <select className="form-select" value={editingShipping.motivoDevolucao || ''} onChange={(e) => setEditingShipping({...editingShipping, motivoDevolucao: e.target.value})}>
                                         <option value="">Selecione...</option>
-                                        <option value="Defeito">Defeito</option>
-                                        <option value="Arrependimento">Arrependimento</option>
-                                        <option value="Produto errado">Produto errado</option>
-                                        <option value="Avaria no transporte">Avaria no transporte</option>
-                                        <option value="Outro">Outro</option>
+                                        {motivosAtivos.map(m => (
+                                            <option key={m.id} value={m.nome}>{m.nome}</option>
+                                        ))}
+                                        {editingShipping.motivoDevolucao && !motivosAtivos.some(m => m.nome === editingShipping.motivoDevolucao) && (
+                                            <option value={editingShipping.motivoDevolucao}>
+                                                {editingShipping.motivoDevolucao} (desativado)
+                                            </option>
+                                        )}
                                     </select>
                                 </div>
                                 <div className="form-group">
