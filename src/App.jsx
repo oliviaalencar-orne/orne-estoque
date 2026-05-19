@@ -40,6 +40,9 @@ import Sidebar from '@/components/layout/Sidebar';
 // Error boundary (wrapper sobre Sentry.ErrorBoundary)
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
+// Badge visual de ambiente não-produção (Frente §16.2)
+import EnvironmentBadge from '@/components/ui/EnvironmentBadge';
+
 // Page components
 import Dashboard from '@/components/dashboard/Dashboard';
 import StockView from '@/components/stock/StockView';
@@ -380,6 +383,7 @@ export default function App() {
 
   return (
     <ErrorBoundary>
+    <EnvironmentBadge />
     <div className="app-container">
       {/* ── Mobile Header ─────────────────────────────────────────── */}
       <div className="mobile-header">

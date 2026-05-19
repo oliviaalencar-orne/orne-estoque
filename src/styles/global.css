@@ -1187,3 +1187,26 @@ body.sidebar-expanded .main-content { margin-left: 224px; }
     content-visibility: auto;
     contain-intrinsic-size: auto 180px;
 }
+
+/* ===================== ENVIRONMENT BADGE — Frente §16.2 ===================== */
+/* Classe `has-env-badge` é injetada no <body> pelo EnvironmentBadge.jsx
+   quando o ambiente != production. CSS var `--env-badge-height` cobre o
+   safe-area-inset-top do notch iOS (viewport-fit=cover). */
+body.has-env-badge { --env-badge-height: calc(28px + env(safe-area-inset-top, 0px)); }
+body.has-env-badge .app-container { padding-top: var(--env-badge-height); }
+body.has-env-badge .mobile-header { top: var(--env-badge-height); }
+body.has-env-badge .sidebar,
+body.has-env-badge .sb { top: var(--env-badge-height); height: calc(100vh - var(--env-badge-height)); }
+
+/* Visibilidade dos 3 textos por breakpoint (fallback mobile). */
+.env-badge-text-long { display: inline; }
+.env-badge-text-med,
+.env-badge-text-short { display: none; }
+@media (max-width: 639px) {
+    .env-badge-text-long { display: none; }
+    .env-badge-text-med { display: inline; }
+}
+@media (max-width: 479px) {
+    .env-badge-text-med { display: none; }
+    .env-badge-text-short { display: inline; }
+}
