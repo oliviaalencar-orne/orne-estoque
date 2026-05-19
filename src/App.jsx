@@ -592,6 +592,9 @@ export default function App() {
               onCountMotivoDevolucaoUsage={countMotivoDevolucaoUsage}
               hubs={hubs}
               hubsLoading={hubsLoading}
+              onAddHub={addHub}
+              onUpdateHub={updateHub}
+              onDeleteHub={deleteHub}
               hubAliases={hubAliases}
               onAddHubAlias={addHubAlias}
               onUpdateHubAlias={updateHubAlias}

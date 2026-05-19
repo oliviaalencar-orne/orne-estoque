@@ -7,7 +7,7 @@
  */
 import React, { useState, useEffect } from 'react';
 import { Icon } from '@/utils/icons';
-import LocaisModal from '@/components/ui/LocaisModal';
+import HubsModal from '@/components/separation/HubsModal';
 import MotivosDevolucaoModal from '@/components/admin/MotivosDevolucaoModal';
 import HubAliasesModal from '@/components/admin/HubAliasesModal';
 import TinyNFeImport from '@/components/import/TinyNFeImport';
@@ -64,6 +64,7 @@ export default function ShippingManager({
     onToggleAtivoMotivoDevolucao, onReorderMotivoDevolucao, onCountMotivoDevolucaoUsage,
     // Sub-frente 3.0b — hubs canônicos + aliases para devolução
     hubs = [], hubsLoading = false,
+    onAddHub, onUpdateHub, onDeleteHub,
     hubAliases = [],
     onAddHubAlias, onUpdateHubAlias, onDeleteHubAlias,
     aliasFeedback,
@@ -75,7 +76,7 @@ export default function ShippingManager({
     const [success, setSuccess] = useState('');
     const [error, setError] = useState('');
     const [info, setInfo] = useState('');
-    const [showLocaisModal, setShowLocaisModal] = useState(false);
+    const [showHubsModal, setShowHubsModal] = useState(false);
     const [showMotivosModal, setShowMotivosModal] = useState(false);
     const [showAliasesModal, setShowAliasesModal] = useState(false);
 
@@ -526,8 +527,8 @@ export default function ShippingManager({
                 {isStockAdmin && (
                     <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
                         <button
-                            onClick={() => setShowLocaisModal(true)}
-                            title="Gerenciar HUBs (locais de origem)"
+                            onClick={() => setShowHubsModal(true)}
+                            title="Gerenciar HUBs canônicos"
                             aria-label="Gerenciar HUBs"
                             style={{
                                 display: 'inline-flex', alignItems: 'center', gap: '8px',
@@ -666,12 +667,18 @@ export default function ShippingManager({
                 <ShippingAnalytics shippings={shippings} />
             )}
 
-            {/* Modal de Gestão de Locais */}
-            {showLocaisModal && (
-                <LocaisModal
-                    locaisOrigem={locaisOrigem}
-                    onUpdateLocais={onUpdateLocais}
-                    onClose={() => setShowLocaisModal(false)}
+            {/* Modal de Gestão de HUBs canônicos (Sub-frente 3.0b)
+               Antes: LocaisModal escrevia em locais_origem — wrong place para
+               a 3.0b. Agora HubsModal escreve em hubs, e o trigger dual-write
+               (M5) propaga para locais_origem automaticamente. */}
+            {showHubsModal && (
+                <HubsModal
+                    hubs={hubs}
+                    onAdd={onAddHub}
+                    onUpdate={onUpdateHub}
+                    onDelete={onDeleteHub}
+                    separations={[]}
+                    onClose={() => setShowHubsModal(false)}
                 />
             )}
 
