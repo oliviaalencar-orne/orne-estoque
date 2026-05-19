@@ -9,6 +9,7 @@ import React, { useState, useEffect } from 'react';
 import { Icon } from '@/utils/icons';
 import LocaisModal from '@/components/ui/LocaisModal';
 import MotivosDevolucaoModal from '@/components/admin/MotivosDevolucaoModal';
+import HubAliasesModal from '@/components/admin/HubAliasesModal';
 import TinyNFeImport from '@/components/import/TinyNFeImport';
 import CSVImportTab from '@/components/import/CSVImportTab';
 import ShippingList from './ShippingList';
@@ -61,6 +62,11 @@ export default function ShippingManager({
     motivosDevolucao, motivosDevolucaoLoading,
     onAddMotivoDevolucao, onUpdateMotivoDevolucao, onDeleteMotivoDevolucao,
     onToggleAtivoMotivoDevolucao, onReorderMotivoDevolucao, onCountMotivoDevolucaoUsage,
+    // Sub-frente 3.0b — hubs canônicos + aliases para devolução
+    hubs = [], hubsLoading = false,
+    hubAliases = [],
+    onAddHubAlias, onUpdateHubAlias, onDeleteHubAlias,
+    aliasFeedback,
 }) {
     const [activeView, setActiveView] = useState('list');
     const [tipoView, setTipoView] = useState('despacho');
@@ -68,8 +74,22 @@ export default function ShippingManager({
     const [nfData, setNfData] = useState(null);
     const [success, setSuccess] = useState('');
     const [error, setError] = useState('');
+    const [info, setInfo] = useState('');
     const [showLocaisModal, setShowLocaisModal] = useState(false);
     const [showMotivosModal, setShowMotivosModal] = useState(false);
+    const [showAliasesModal, setShowAliasesModal] = useState(false);
+
+    // Sub-frente 3.0b — Quando useShippings normaliza um hub_destino via
+    // alias (ex: "G+SHIP RJ" → "HUB RJ"), App.jsx atualiza aliasFeedback
+    // com timestamp. Mostramos card .alert-info auto-dismiss em 4s.
+    // Card separado de success/error para não sobrescrever a mensagem
+    // principal de "Devolução registrada com sucesso!".
+    useEffect(() => {
+        if (!aliasFeedback) return;
+        setInfo(`HUB '${aliasFeedback.original}' reconhecido como '${aliasFeedback.canonical}'`);
+        const t = setTimeout(() => setInfo(''), 4000);
+        return () => clearTimeout(t);
+    }, [aliasFeedback]);
 
     // Estados para importação em lote
     const [importMode, setImportMode] = useState('single');
@@ -254,7 +274,9 @@ export default function ShippingManager({
             status: 'DESPACHADO',
             tipo: 'devolucao',
             motivoDevolucao: data.motivoDevolucao || '',
-            hubDestino: data.hubDestino || locaisOrigem[0] || '',
+            // Sub-frente 3.0b — fallback agora é hub canônico (não locaisOrigem).
+            // useShippings.addShipping valida/normaliza via hubAliasResolver.
+            hubDestino: data.hubDestino || hubs[0]?.name || '',
             entradaCriada: false,
         };
 
@@ -529,12 +551,26 @@ export default function ShippingManager({
                         >
                             Motivos <Icon name="settings" size={14} />
                         </button>
+                        <button
+                            onClick={() => setShowAliasesModal(true)}
+                            title="Gerenciar aliases de HUB"
+                            aria-label="Gerenciar aliases de HUB"
+                            style={{
+                                display: 'inline-flex', alignItems: 'center', gap: '8px',
+                                background: '#fff', border: '1px solid var(--border-color)',
+                                borderRadius: '8px', padding: '8px 16px', cursor: 'pointer',
+                                fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)',
+                            }}
+                        >
+                            Aliases <Icon name="settings" size={14} />
+                        </button>
                     </div>
                 )}
             </div>
 
             {success && <div className="alert alert-success">{success}</div>}
             {error && <div className="alert alert-danger">{error}</div>}
+            {info && <div className="alert alert-info">{info}</div>}
 
             {/* Card combinado: sub-abas principais (topo-esq) + divider + ações (base-dir) */}
             {(() => {
@@ -650,6 +686,18 @@ export default function ShippingManager({
                     onReorder={onReorderMotivoDevolucao}
                     countUsage={onCountMotivoDevolucaoUsage}
                     onClose={() => setShowMotivosModal(false)}
+                />
+            )}
+
+            {/* Modal de Gestão de Hub Aliases (Sub-frente 3.0b) */}
+            {showAliasesModal && (
+                <HubAliasesModal
+                    aliases={hubAliases || []}
+                    hubs={hubs || []}
+                    onAdd={onAddHubAlias}
+                    onUpdate={onUpdateHubAlias}
+                    onDelete={onDeleteHubAlias}
+                    onClose={() => setShowAliasesModal(false)}
                 />
             )}
 
@@ -797,7 +845,8 @@ export default function ShippingManager({
             {/* Registrar Devolução */}
             {activeView === 'register-devolucao' && (
                 <DevolucaoForm
-                    locaisOrigem={locaisOrigem}
+                    hubs={hubs}
+                    hubsLoading={hubsLoading}
                     transportadoras={transportadoras}
                     products={products}
                     stock={stock}

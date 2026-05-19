@@ -8,7 +8,8 @@ import React, { useState, useMemo } from 'react';
 import { Icon } from '@/utils/icons';
 
 export default function DevolucaoForm({
-  locaisOrigem, transportadoras, products, stock, onAdd,
+  hubs = [], hubsLoading = false,
+  transportadoras, products, stock, onAdd,
   onCancel, onSuccess, onError, onUpdateProduct,
   motivosDevolucao = [], motivosDevolucaoLoading = false,
 }) {
@@ -18,11 +19,17 @@ export default function DevolucaoForm({
       .sort((a, b) => (a.ordem || 0) - (b.ordem || 0)),
     [motivosDevolucao]
   );
+  // Sub-frente 3.0b — hub_destino agora consome `hubs` canônicos (não
+  // mais locais_origem). Caminho saída continua usando locais_origem.
+  const hubNames = useMemo(
+    () => [...(hubs || [])].map(h => h.name).sort((a, b) => a.localeCompare(b)),
+    [hubs]
+  );
   const [form, setForm] = useState({
     nfNumero: '',
     cliente: '',
     motivoDevolucao: '',
-    hubDestino: locaisOrigem[0] || '',
+    hubDestino: hubNames[0] || '',
     transportadora: '',
     codigoRastreio: '',
     linkRastreio: '',
@@ -203,10 +210,13 @@ export default function DevolucaoForm({
               className="form-select"
               value={form.hubDestino}
               onChange={(e) => setForm({ ...form, hubDestino: e.target.value })}
+              disabled={hubsLoading}
             >
-              <option value="">Selecione...</option>
-              {locaisOrigem.map(l => (
-                <option key={l} value={l}>{l}</option>
+              <option value="">
+                {hubsLoading ? 'Carregando HUBs...' : 'Selecione...'}
+              </option>
+              {hubNames.map(name => (
+                <option key={name} value={name}>{name}</option>
               ))}
             </select>
           </div>

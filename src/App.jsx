@@ -17,6 +17,7 @@ import { useSeparations } from '@/hooks/useSeparations';
 import { useCategories, DEFAULT_CATEGORIES } from '@/hooks/useCategories';
 import { useLocaisOrigem } from '@/hooks/useLocaisOrigem';
 import { useHubs } from '@/hooks/useHubs';
+import { useHubAliases } from '@/hooks/useHubAliases';
 import { useMotivosDevolucao } from '@/hooks/useMotivosDevolucao';
 import { useStock } from '@/hooks/useStock';
 import { setupSupabaseCollection } from '@/hooks/useSupabaseCollection';
@@ -126,9 +127,6 @@ export default function App() {
   const { exits, setExits, addExit, updateExit, deleteExit } =
     useExits(user, isStockAdmin, isOperador);
 
-  const { shippings, setShippings, addShipping, updateShipping, deleteShipping, refreshShippings } =
-    useShippings(user, isStockAdmin, isOperador);
-
   const { separations, setSeparations, addSeparation, updateSeparation, deleteSeparation } =
     useSeparations(user, isStockAdmin, isOperador);
 
@@ -138,8 +136,27 @@ export default function App() {
   const { locaisOrigem, setLocaisOrigem, initLocais, updateLocaisOrigem } =
     useLocaisOrigem(isStockAdmin);
 
-  const { hubs, setHubs, initHubs, addHub, updateHub, deleteHub } =
+  const { hubs, setHubs, hubsLoading, initHubs, addHub, updateHub, deleteHub } =
     useHubs(isStockAdmin);
+
+  // Sub-frente 3.0b — aliases de HUB (mapping nome antigo → canônico)
+  const {
+    aliases: hubAliases,
+    addAlias: addHubAlias,
+    updateAlias: updateHubAlias,
+    deleteAlias: deleteHubAlias,
+  } = useHubAliases(isStockAdmin);
+
+  // Sub-frente 3.0b — quando useShippings normaliza hub_destino via alias,
+  // armazenamos o feedback aqui com timestamp para o ShippingManager
+  // observar via useEffect e mostrar card .alert-info (auto-dismiss 4s).
+  const [aliasFeedback, setAliasFeedback] = useState(null);
+  const handleAliasNormalized = useCallback(({ original, canonical }) => {
+    setAliasFeedback({ original, canonical, timestamp: Date.now() });
+  }, []);
+
+  const { shippings, setShippings, addShipping, updateShipping, deleteShipping, refreshShippings } =
+    useShippings(user, isStockAdmin, isOperador, hubs, hubAliases, handleAliasNormalized);
 
   const {
     motivos: motivosDevolucao,
@@ -573,6 +590,13 @@ export default function App() {
               onToggleAtivoMotivoDevolucao={toggleAtivoMotivoDevolucao}
               onReorderMotivoDevolucao={reorderMotivoDevolucao}
               onCountMotivoDevolucaoUsage={countMotivoDevolucaoUsage}
+              hubs={hubs}
+              hubsLoading={hubsLoading}
+              hubAliases={hubAliases}
+              onAddHubAlias={addHubAlias}
+              onUpdateHubAlias={updateHubAlias}
+              onDeleteHubAlias={deleteHubAlias}
+              aliasFeedback={aliasFeedback}
             />
           </div>
           <div style={{ display: activeTab === 'history' ? 'block' : 'none' }}>

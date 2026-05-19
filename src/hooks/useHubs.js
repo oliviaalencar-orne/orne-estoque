@@ -69,7 +69,7 @@ export function useHubs(isStockAdmin) {
       }
       const { error } = await supabaseClient
         .from('hubs')
-        .update({ name, updated_at: new Date().toISOString() })
+        .update({ name })
         .eq('id', hubId);
       if (error) {
         console.error('Erro ao atualizar hub:', error);
