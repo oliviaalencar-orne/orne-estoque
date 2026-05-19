@@ -52,7 +52,15 @@ export function useHubAliases(isStockAdmin) {
         .single();
       if (err) {
         console.error('Erro ao criar alias:', err);
-        alert('Erro ao criar alias: ' + err.message);
+        if (err.code === '23505') {
+          // unique_violation — name_alias PK colidiu com alias já cadastrado
+          alert(`Alias '${aliasTrim}' já existe. Use outro nome ou edite o existente.`);
+        } else if (err.code === '23503') {
+          // foreign_key_violation — canonical não existe em hubs.name
+          alert(`HUB '${canonicalTrim}' não está cadastrado. Cadastre o HUB antes de associar o alias.`);
+        } else {
+          alert('Erro ao criar alias: ' + (err.message || 'erro desconhecido'));
+        }
         return null;
       }
       await fetchAliases();
@@ -77,7 +85,13 @@ export function useHubAliases(isStockAdmin) {
         .eq('name_alias', nameAlias);
       if (err) {
         console.error('Erro ao atualizar alias:', err);
-        alert('Erro ao atualizar alias: ' + err.message);
+        if (err.code === '23503') {
+          // foreign_key_violation — canonical não existe em hubs.name
+          // (race condition: select listava o hub mas foi excluído entre listar e salvar)
+          alert(`HUB '${canonicalTrim}' não está mais cadastrado. Atualize a lista e tente de novo.`);
+        } else {
+          alert('Erro ao atualizar alias: ' + (err.message || 'erro desconhecido'));
+        }
         return false;
       }
       await fetchAliases();
