@@ -53,7 +53,13 @@ export function useHubs(isStockAdmin) {
         .single();
       if (error) {
         console.error('Erro ao criar hub:', error);
-        alert('Erro ao criar hub: ' + error.message);
+        if (error.code === '23505') {
+          // unique_violation — hubs_name_unique adicionada na Sub-frente 3.0b (M2).
+          // Antes da 3.0b a duplicata passava silenciosamente; agora bloqueia.
+          alert(`HUB '${name}' já existe. Use outro nome ou edite o existente.`);
+        } else {
+          alert('Erro ao criar hub: ' + (error.message || 'erro desconhecido'));
+        }
         return null;
       }
       return data;
@@ -69,7 +75,7 @@ export function useHubs(isStockAdmin) {
       }
       const { error } = await supabaseClient
         .from('hubs')
-        .update({ name, updated_at: new Date().toISOString() })
+        .update({ name })
         .eq('id', hubId);
       if (error) {
         console.error('Erro ao atualizar hub:', error);

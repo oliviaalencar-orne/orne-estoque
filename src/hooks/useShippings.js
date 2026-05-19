@@ -11,15 +11,21 @@ import { useState, useCallback } from 'react';
 import { supabaseClient } from '@/config/supabase';
 import { generateId } from '@/utils/helpers';
 import { mapShippingFromDB } from '@/utils/mappers';
+import { resolveHubAlias } from '@/utils/hubAliasResolver';
 
 /**
  * Hook for shippings state and CRUD.
  *
  * @param {Object|null} user - Current auth user
  * @param {boolean} isStockAdmin - Permission flag
+ * @param {boolean} isOperador - Permission flag
+ * @param {Array} hubs - Canonical hubs list (for devolucao validation, Sub-frente 3.0b)
+ * @param {Array} hubAliases - Hub aliases (for devolucao normalization, Sub-frente 3.0b)
+ * @param {Function} onAliasNormalized - Callback({original, canonical}) when a devolucao
+ *     hub_destino is normalized via alias. Caller exibe feedback ao usuário.
  * @returns {Object}
  */
-export function useShippings(user, isStockAdmin, isOperador) {
+export function useShippings(user, isStockAdmin, isOperador, hubs = [], hubAliases = [], onAliasNormalized) {
   const [shippings, setShippings] = useState([]);
 
   const addShipping = useCallback(
@@ -27,6 +33,24 @@ export function useShippings(user, isStockAdmin, isOperador) {
       if (!isStockAdmin && !isOperador) {
         alert('Sem permissão para esta ação');
         return;
+      }
+      // Sub-frente 3.0b — Validação app-level do hub_destino para devoluções.
+      // Bloqueia se nome desconhecido; normaliza silenciosamente se alias.
+      if ((shipping.tipo || 'despacho') === 'devolucao' && shipping.hubDestino) {
+        const resolved = resolveHubAlias(shipping.hubDestino, hubs, hubAliases);
+        if (resolved.canonical === null) {
+          alert(
+            `HUB '${shipping.hubDestino}' não está cadastrado. ` +
+            `Cadastre o HUB antes de criar a devolução ou peça ao admin para adicionar como alias.`
+          );
+          return null;
+        }
+        if (resolved.wasNormalized) {
+          shipping = { ...shipping, hubDestino: resolved.canonical };
+          if (typeof onAliasNormalized === 'function') {
+            onAliasNormalized({ original: resolved.originalName, canonical: resolved.canonical });
+          }
+        }
       }
       // Check for duplicate NF number (same NF + same tipo = duplicate)
       const nfNum = shipping.nfNumero || '';
@@ -103,7 +127,7 @@ export function useShippings(user, isStockAdmin, isOperador) {
       });
       return created;
     },
-    [user, isStockAdmin, isOperador]
+    [user, isStockAdmin, isOperador, hubs, hubAliases, onAliasNormalized]
   );
 
   const updateShipping = useCallback(
