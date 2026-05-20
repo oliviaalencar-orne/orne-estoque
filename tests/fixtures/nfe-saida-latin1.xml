@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">
+  <NFe xmlns="http://www.portalfiscal.inf.br/nfe">
+    <infNFe versao="4.00" Id="NFe35240101234567000190550010000001605123456789">
+      <ide>
+        <nNF>1605</nNF>
+        <tpNF>1</tpNF>
+        <dhEmi>2026-05-15T10:00:00-03:00</dhEmi>
+      </ide>
+      <dest>
+        <CPF>12345678901</CPF>
+        <xNome>JOÃO DA SILVA AÇÚCAR</xNome>
+        <enderDest>
+          <xLgr>RUA SÃO JOÃO</xLgr>
+          <nro>123</nro>
+          <xBairro>CENTRO</xBairro>
+          <xMun>SÃO PAULO</xMun>
+          <UF>SP</UF>
+          <CEP>01000000</CEP>
+        </enderDest>
+      </dest>
+      <det nItem="1">
+        <prod>
+          <cProd>SKU-ACU-01</cProd>
+          <xProd>LUMINÁRIA DE MESA</xProd>
+          <cEAN>SEM GTIN</cEAN>
+          <qCom>1.0000</qCom>
+          <uCom>UN</uCom>
+        </prod>
+      </det>
+      <total>
+        <ICMSTot>
+          <vNF>199.90</vNF>
+        </ICMSTot>
+      </total>
+    </infNFe>
+  </NFe>
+</nfeProc>
