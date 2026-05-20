@@ -6,9 +6,13 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { Buffer } from 'node:buffer';
 import {
   parseNfeXml,
   validarDvChaveAcesso,
+  matchPermissivo,
+  matchConservador,
   PARSER_ERRORS,
 } from './nfeXmlParser.js';
 
@@ -38,6 +42,10 @@ function xmlFull({
   comCpf = true,
   comComplemento = true,
   multiProdutos = true,
+  tpNF = '1',
+  refNFeChave = null, // 44 dígitos para inserir tag <NFref><refNFe>
+  infCpl = null, // texto para <infAdic><infCpl>
+  cEAN = null, // valor de cEAN no produto 1 (default: tag omitida)
 } = {}) {
   const ns = omitirNamespace ? '' : ' xmlns="http://www.portalfiscal.inf.br/nfe"';
   const idAttr = usarIdAttr ? ` Id="NFe${chave}"` : '';
@@ -45,6 +53,14 @@ function xmlFull({
     ? '<CPF>12345678901</CPF>'
     : '<CNPJ>12345678000190</CNPJ>';
   const cpl = comComplemento ? '<xCpl>APT 45</xCpl>' : '';
+  const tpNFTag = tpNF != null ? `<tpNF>${tpNF}</tpNF>` : '';
+  const nfRefTag = refNFeChave
+    ? `<NFref><refNFe>${refNFeChave}</refNFe></NFref>`
+    : '';
+  const infAdicTag = infCpl != null
+    ? `<infAdic><infCpl>${infCpl}</infCpl></infAdic>`
+    : '';
+  const cEANTag = cEAN != null ? `<cEAN>${cEAN}</cEAN>` : '';
   const prod2 = multiProdutos
     ? `<det nItem="2">
          <prod>
@@ -64,7 +80,9 @@ function xmlFull({
     <infNFe versao="4.00"${idAttr}>
       <ide>
         <nNF>519</nNF>
+        ${tpNFTag}
         <dhEmi>2026-04-20T10:30:00-03:00</dhEmi>
+        ${nfRefTag}
       </ide>
       <dest>
         ${destId}
@@ -83,6 +101,7 @@ function xmlFull({
         <prod>
           <cProd>ABC123</cProd>
           <xProd>LUMINARIA LED</xProd>
+          ${cEANTag}
           <qCom>2.0000</qCom>
           <uCom>UN</uCom>
         </prod>
@@ -93,6 +112,7 @@ function xmlFull({
           <vNF>199.90</vNF>
         </ICMSTot>
       </total>
+      ${infAdicTag}
     </infNFe>
   </NFe>
   ${chTag}
@@ -262,12 +282,14 @@ test('parseNfeXml extrai múltiplos produtos', () => {
     descricao: 'LUMINARIA LED',
     quantidade: 2,
     unidade: 'UN',
+    ean: '',
   });
   assert.deepEqual(r.dados.produtos[1], {
     sku: 'DEF456',
     descricao: 'ABAJUR MESA',
     quantidade: 1,
     unidade: 'UN',
+    ean: '',
   });
 });
 
@@ -311,4 +333,236 @@ test('parseNfeXml preserva SKU numérico como string', () => {
   const xml = xmlFull().replace('<cProd>ABC123</cProd>', '<cProd>000789</cProd>');
   const r = parseNfeXml(xml);
   assert.equal(r.dados.produtos[0].sku, '000789');
+});
+
+// ─── tpNF (Sub-frente 3.0c) ─────────────────────────────────────────────────
+
+test('parseNfeXml extrai tpNF=1 para saída', () => {
+  const r = parseNfeXml(xmlFull({ tpNF: '1' }));
+  assert.equal(r.sucesso, true);
+  assert.equal(r.dados.tpNF, 1);
+  assert.equal(typeof r.dados.tpNF, 'number');
+});
+
+test('parseNfeXml extrai tpNF=0 para devolução/entrada', () => {
+  const r = parseNfeXml(xmlFull({ tpNF: '0' }));
+  assert.equal(r.dados.tpNF, 0);
+});
+
+test('parseNfeXml retorna tpNF=null quando tag ausente', () => {
+  const r = parseNfeXml(xmlFull({ tpNF: null }));
+  assert.equal(r.dados.tpNF, null);
+});
+
+// ─── refNFe (Sub-frente 3.0c) ───────────────────────────────────────────────
+
+const REF_NFE_CHAVE = '35260446268741000159550020000002521939273693';
+
+test('parseNfeXml extrai refNFe via <ide><NFref><refNFe>', () => {
+  const r = parseNfeXml(xmlFull({ refNFeChave: REF_NFE_CHAVE }));
+  assert.equal(r.sucesso, true);
+  assert.equal(r.dados.refNFe, REF_NFE_CHAVE);
+});
+
+test('parseNfeXml retorna refNFe=null em saídas (sem NFref nem infCpl)', () => {
+  const r = parseNfeXml(xmlFull());
+  assert.equal(r.dados.refNFe, null);
+});
+
+test('parseNfeXml faz fallback de refNFe via regex em <infCpl> quando NFref ausente', () => {
+  const r = parseNfeXml(
+    xmlFull({
+      refNFeChave: null,
+      infCpl: `Devolução referente à NF chave ${REF_NFE_CHAVE} emitida em 14/04/2026.`,
+    }),
+  );
+  assert.equal(r.dados.refNFe, REF_NFE_CHAVE);
+});
+
+test('parseNfeXml ignora chaves curtas no fallback infCpl', () => {
+  const r = parseNfeXml(
+    xmlFull({
+      refNFeChave: null,
+      infCpl: 'Sem chave válida aqui — apenas números curtos: 12345.',
+    }),
+  );
+  assert.equal(r.dados.refNFe, null);
+});
+
+test('parseNfeXml prefere NFref ao fallback quando ambos presentes', () => {
+  const outraChave = '35260546268741000159550020000099991234567893';
+  const r = parseNfeXml(
+    xmlFull({
+      refNFeChave: REF_NFE_CHAVE,
+      infCpl: `Devolução da NF chave ${outraChave}.`,
+    }),
+  );
+  assert.equal(r.dados.refNFe, REF_NFE_CHAVE);
+});
+
+// ─── EAN (Sub-frente 3.0c) ──────────────────────────────────────────────────
+
+test('parseNfeXml extrai ean válido', () => {
+  const r = parseNfeXml(xmlFull({ cEAN: '7891234567890' }));
+  assert.equal(r.dados.produtos[0].ean, '7891234567890');
+});
+
+test('parseNfeXml normaliza "SEM GTIN" para string vazia', () => {
+  const r = parseNfeXml(xmlFull({ cEAN: 'SEM GTIN' }));
+  assert.equal(r.dados.produtos[0].ean, '');
+});
+
+test('parseNfeXml normaliza cEAN ausente para string vazia', () => {
+  const r = parseNfeXml(xmlFull({ cEAN: null }));
+  assert.equal(r.dados.produtos[0].ean, '');
+});
+
+test('parseNfeXml remove não-dígitos do ean (caso defensivo)', () => {
+  const r = parseNfeXml(xmlFull({ cEAN: '789-1234567890' }));
+  assert.equal(r.dados.produtos[0].ean, '7891234567890');
+});
+
+// ─── matchPermissivo (Sub-frente 3.0c) ──────────────────────────────────────
+
+const stockSample = [
+  { sku: 'ABC123', ean: '7891111111111', name: 'Produto Alpha' },
+  { sku: 'XYZ-999', ean: '7892222222222', name: 'Produto Beta' },
+  { sku: '1005006597736486-small-D45H27.5cm-warm-l', ean: '', name: 'Spedy Long' },
+];
+
+test('matchPermissivo casa por SKU exato lowercased', () => {
+  const r = matchPermissivo({ sku: 'abc123', ean: '' }, stockSample);
+  assert.ok(r);
+  assert.equal(r.sku, 'ABC123');
+});
+
+test('matchPermissivo casa por SKU normalizado (ignora não-alfanuméricos)', () => {
+  const r = matchPermissivo({ sku: 'XYZ#999', ean: '' }, stockSample);
+  assert.ok(r);
+  assert.equal(r.sku, 'XYZ-999');
+});
+
+test('matchPermissivo casa por EAN normalizado quando SKU diverge', () => {
+  const r = matchPermissivo({ sku: 'OUTROSKU', ean: '7891111111111' }, stockSample);
+  assert.ok(r);
+  assert.equal(r.sku, 'ABC123');
+});
+
+test('matchPermissivo casa por substring quando ambos ≥ 5 chars', () => {
+  const r = matchPermissivo(
+    { sku: '1005006597736486-small', ean: '' },
+    stockSample,
+  );
+  assert.ok(r);
+  assert.equal(r.sku, '1005006597736486-small-D45H27.5cm-warm-l');
+});
+
+test('matchPermissivo retorna null quando nenhum critério casa', () => {
+  const r = matchPermissivo({ sku: 'INEXISTENTE', ean: '' }, stockSample);
+  assert.equal(r, null);
+});
+
+test('matchPermissivo NÃO casa por substring quando SKU < 5 chars', () => {
+  const r = matchPermissivo({ sku: 'AB', ean: '' }, [
+    { sku: 'ABC123', ean: '', name: 'X' },
+  ]);
+  assert.equal(r, null);
+});
+
+test('matchPermissivo aceita produtoXml inválido sem crashar', () => {
+  assert.equal(matchPermissivo(null, stockSample), null);
+  assert.equal(matchPermissivo({}, stockSample), null);
+  assert.equal(matchPermissivo({ sku: '' }, stockSample), null);
+});
+
+test('matchPermissivo aceita estoque inválido sem crashar', () => {
+  assert.equal(matchPermissivo({ sku: 'X' }, null), null);
+  assert.equal(matchPermissivo({ sku: 'X' }, undefined), null);
+});
+
+// ─── matchConservador (Sub-frente 3.0c, antecipa 3.1) ───────────────────────
+
+test('matchConservador retorna 1 match para SKU exato lowercased', () => {
+  const r = matchConservador({ sku: 'abc123' }, stockSample);
+  assert.equal(r.length, 1);
+  assert.equal(r[0].sku, 'ABC123');
+});
+
+test('matchConservador retorna array vazio quando SKU não bate', () => {
+  const r = matchConservador({ sku: 'NAO-EXISTE' }, stockSample);
+  assert.deepEqual(r, []);
+});
+
+test('matchConservador retorna múltiplos matches em SKU duplicado', () => {
+  const stock = [
+    { sku: 'DUP', ean: '', name: 'Primeiro' },
+    { sku: 'dup', ean: '', name: 'Segundo lowercased' },
+    { sku: 'outro', ean: '', name: 'Outro' },
+  ];
+  const r = matchConservador({ sku: 'DUP' }, stock);
+  assert.equal(r.length, 2);
+});
+
+test('matchConservador NÃO casa com divergência mínima (sem normalização)', () => {
+  // matchPermissivo casaria 'XYZ#999' contra 'XYZ-999', matchConservador não.
+  const r = matchConservador({ sku: 'XYZ#999' }, stockSample);
+  assert.deepEqual(r, []);
+});
+
+test('matchConservador NÃO casa por EAN', () => {
+  // EAN bateria em matchPermissivo, mas conservador só olha SKU.
+  const r = matchConservador({ sku: 'NAO', ean: '7891111111111' }, stockSample);
+  assert.deepEqual(r, []);
+});
+
+test('matchConservador aceita inputs inválidos sem crashar', () => {
+  assert.deepEqual(matchConservador(null, stockSample), []);
+  assert.deepEqual(matchConservador({}, stockSample), []);
+  assert.deepEqual(matchConservador({ sku: '' }, stockSample), []);
+  assert.deepEqual(matchConservador({ sku: 'X' }, null), []);
+});
+
+// ─── Robustez Latin-1 (decisão 3.0c.1) ──────────────────────────────────────
+
+test('parseNfeXml não-crasha em fixture Latin-1 e preserva acentos', () => {
+  const buf = readFileSync(new URL('../../tests/fixtures/nfe-saida-latin1.xml', import.meta.url));
+  // Detectar encoding do header (mesmo caminho do caller no ShippingXMLImport)
+  const sample = new TextDecoder('ascii', { fatal: false }).decode(buf.subarray(0, 256));
+  const m = sample.match(/<\?xml[^>]+encoding=["']([^"']+)["']/i);
+  const encDeclarado = m ? m[1].toLowerCase() : 'utf-8';
+  assert.equal(encDeclarado, 'iso-8859-1', 'fixture deve declarar ISO-8859-1');
+  const text = new TextDecoder('iso-8859-1', { fatal: false }).decode(buf);
+  const r = parseNfeXml(text);
+  assert.equal(r.sucesso, true, `parser não deve crashar — erro: ${r.erro}`);
+  assert.ok(r.dados.cliente.nome.includes('JOÃO'), `cliente esperado conter JOÃO, recebeu: ${r.dados.cliente.nome}`);
+  assert.ok(r.dados.cliente.nome.includes('AÇÚCAR'), `cliente esperado conter AÇÚCAR, recebeu: ${r.dados.cliente.nome}`);
+  assert.ok(r.dados.destino.municipio.includes('SÃO PAULO'), `município esperado SÃO PAULO, recebeu: ${r.dados.destino.municipio}`);
+  assert.ok(r.dados.produtos[0].descricao.includes('LUMINÁRIA'), `xProd esperado conter LUMINÁRIA, recebeu: ${r.dados.produtos[0].descricao}`);
+});
+
+test('parseNfeXml retorna ean="" para fixture Latin-1 com cEAN=SEM GTIN', () => {
+  const buf = readFileSync(new URL('../../tests/fixtures/nfe-saida-latin1.xml', import.meta.url));
+  const text = new TextDecoder('iso-8859-1', { fatal: false }).decode(buf);
+  const r = parseNfeXml(text);
+  assert.equal(r.dados.produtos[0].ean, '');
+});
+
+test('parseNfeXml não corrompe acentos quando bytes Latin-1 são re-codificados como string', () => {
+  // Sanidade: gera bytes Latin-1 inline, decodifica, parseia, verifica acento exato.
+  const xmlStr = `<?xml version="1.0" encoding="ISO-8859-1"?>
+<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">
+  <NFe xmlns="http://www.portalfiscal.inf.br/nfe">
+    <infNFe versao="4.00" Id="NFe${CHAVE_VALIDA}">
+      <ide><nNF>1</nNF></ide>
+      <dest><xNome>AÇÃO</xNome></dest>
+      <det nItem="1"><prod><cProd>X</cProd><xProd>P</xProd><qCom>1</qCom><uCom>UN</uCom></prod></det>
+      <total><ICMSTot><vNF>0</vNF></ICMSTot></total>
+    </infNFe>
+  </NFe>
+</nfeProc>`;
+  const buf = Buffer.from(xmlStr, 'latin1');
+  const text = new TextDecoder('iso-8859-1', { fatal: false }).decode(buf);
+  const r = parseNfeXml(text);
+  assert.equal(r.sucesso, true);
+  assert.equal(r.dados.cliente.nome, 'AÇÃO');
 });
